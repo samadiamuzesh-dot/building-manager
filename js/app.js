@@ -5437,6 +5437,7 @@ function bindMessagesPage() {
 let votingSearchQuery = '';
 let votingFilterType = 'all';
 let votingCandidates = [];
+let editingVotingId = null;
 
 function getVotingKey() {
   return 'ham_sakhteman_votings';
@@ -5554,10 +5555,11 @@ function renderVotingPage() {
         <td><span class="badge badge-paid">${formatNumber(candidatesCount)} نفر</span></td>
         <td><strong>${formatNumber(totalVotes)}</strong></td>
         <td>${statusBadge}</td>
-        <td>
+          <td>
           <div class="row-actions">
-            <button class="row-action-btn" data-voting-action="results" data-id="${v.id}" title="نتایج">📊</button>
-            <button class="row-action-btn danger" data-voting-action="delete" data-id="${v.id}" title="حذف">🗑️</button>
+          <button class="row-action-btn" data-voting-action="results" data-id="${v.id}" title="نمودار نتایج">📊</button>
+<button class="row-action-btn" data-voting-action="edit" data-id="${v.id}" title="ویرایش">✏️</button>
+<button class="row-action-btn danger" data-voting-action="delete" data-id="${v.id}" title="حذف">🗑️</button>
           </div>
         </td>
       </tr>
@@ -5580,6 +5582,32 @@ function openVotingModal() {
 
   modal.classList.add('open');
 }
+function editVoting(votingId) {
+  const votings = loadVotings();
+  const voting = votings.find(v => v.id === votingId);
+  if (!voting) return;
+
+  editingVotingId = votingId;
+
+  document.getElementById('votingModalTitle').textContent = 'ویرایش رأی‌گیری';
+  document.getElementById('votingSaveBtn').textContent = '💾 ذخیره تغییرات';
+
+  document.getElementById('votingTitle').value = voting.title || '';
+  document.getElementById('votingDescription').value = voting.description || '';
+  document.getElementById('votingStartDate').value = voting.startDate || '';
+  document.getElementById('votingStartTime').value = voting.startTime || '';
+  document.getElementById('votingEndDate').value = voting.endDate || '';
+  document.getElementById('votingEndTime').value = voting.endTime || '';
+
+  votingCandidates = (voting.candidates || []).map(c => ({
+    id: c.id,
+    name: c.name || '',
+    phone: c.phone || '',
+  }));
+  renderVotingCandidates();
+
+  document.getElementById('votingModal').classList.add('open');
+}
 
 function closeVotingModal() {
   document.getElementById('votingModal').classList.remove('open');
@@ -5594,7 +5622,7 @@ function addVotingCandidate() {
   votingCandidates.push({
     id: newId,
     name: '',
-    unitId: null,
+    phone: '',
   });
 
   renderVotingCandidates();
@@ -5612,7 +5640,7 @@ function renderVotingCandidates() {
   if (votingCandidates.length === 0) {
     container.innerHTML = `
       <div style="text-align:center; color:#94a3b8; padding:20px; font-size:13px; background:#fff; border-radius:10px; border:1px dashed #e2e8f0;">
-        هنوز نامزدی اضافه نشده. روی «➕ افزودن کاندید» بزنید و نام را دستی وارد کنید.
+        هنوز کاندیدی اضافه نشده. روی «➕ افزودن کاندید» بزنید.
       </div>
     `;
     return;
@@ -5621,17 +5649,27 @@ function renderVotingCandidates() {
   container.innerHTML = votingCandidates.map((c, idx) => {
     return `
       <div class="form-section" style="margin-bottom:8px; padding:12px;">
-        <div style="display:flex; gap:8px; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
           <div style="background:#eef2ff; color:#5b4cdb; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;">
             ${toPersianNum(idx + 1)}
           </div>
           <input type="text"
                  class="form-input candidate-name-input"
                  data-candidate-id="${c.id}"
-                 placeholder="نام و نام خانوادگی نامزد هیئت امنا"
+                 placeholder="نام و نام خانوادگی کاندید"
                  value="${c.name || ''}"
                  style="flex:1; padding:8px 10px; font-size:13px;" />
           <button type="button" class="row-action-btn danger" onclick="removeVotingCandidate(${c.id})" title="حذف">🗑️</button>
+        </div>
+        <div style="padding-right:38px;">
+          <input type="tel"
+                 class="form-input candidate-phone-input"
+                 data-candidate-id="${c.id}"
+                 placeholder="شماره تماس کاندید"
+                 value="${c.phone || ''}"
+                 maxlength="11"
+                 dir="ltr"
+                 style="padding:8px 10px; font-size:13px;" />
         </div>
       </div>
     `;
@@ -5639,13 +5677,15 @@ function renderVotingCandidates() {
 
   container.querySelectorAll('.candidate-name-input').forEach(inp => {
     inp.addEventListener('input', (e) => {
-      const candidateId = Number(e.target.dataset.candidateId);
-      const candidate = votingCandidates.find(c => c.id === candidateId);
-      if (candidate) {
-        candidate.name = e.target.value.trim();
-        candidate.unitId = null;
-        candidate.unitLabel = '';
-      }
+      const candidate = votingCandidates.find(c => c.id === Number(e.target.dataset.candidateId));
+      if (candidate) candidate.name = e.target.value.trim();
+    });
+  });
+
+  container.querySelectorAll('.candidate-phone-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const candidate = votingCandidates.find(c => c.id === Number(e.target.dataset.candidateId));
+      if (candidate) candidate.phone = e.target.value.trim();
     });
   });
 }
@@ -5678,9 +5718,9 @@ function saveVoting() {
     return;
   }
 
-  const emptyCandidates = votingCandidates.filter(c => !c.name || !c.name.trim());
+   const emptyCandidates = votingCandidates.filter(c => !c.name || !c.name.trim());
   if (emptyCandidates.length > 0) {
-    toastWarning('لطفاً نام همه نامزدها را وارد کنید.');
+    toastWarning('لطفاً نام همه کاندیدها را وارد کنید.');
     return;
   }
 
@@ -5698,6 +5738,41 @@ function saveVoting() {
   }
 
   const votings = loadVotings();
+
+  // اگر در حال ویرایش هستیم
+  if (editingVotingId) {
+    const idx = votings.findIndex(v => v.id === editingVotingId);
+    if (idx !== -1) {
+      const old = votings[idx];
+      votings[idx] = {
+        ...old,
+        title: title,
+        description: description,
+        startDate: startDate,
+        startTime: startTime,
+        endDate: endDate,
+        endTime: endTime,
+        startDateTime: startDateTime.toISOString(),
+        endDateTime: endDateTime.toISOString(),
+        candidates: votingCandidates.map(c => {
+          const prev = (old.candidates || []).find(x => x.id === c.id);
+          return {
+            id: c.id,
+            name: c.name.trim(),
+            phone: (c.phone || '').trim(),
+            votes: prev ? (prev.votes || 0) : 0,
+          };
+        }),
+      };
+    }
+    editingVotingId = null;
+    saveVotings(votings);
+    closeVotingModal();
+    renderVotingPage();
+    toastSuccess('رأی‌گیری ویرایش شد.');
+    return;
+  }
+
   const newId = votings.length > 0 ? Math.max(...votings.map(v => v.id || 0)) + 1 : 1;
 
   votings.push({
@@ -5710,9 +5785,10 @@ function saveVoting() {
     endTime: endTime,
     startDateTime: startDateTime.toISOString(),
     endDateTime: endDateTime.toISOString(),
-        candidates: votingCandidates.map(c => ({
+          candidates: votingCandidates.map(c => ({
       id: c.id,
       name: c.name.trim(),
+      phone: (c.phone || '').trim(),
       votes: 0,
     })),
     votes: [],
@@ -5788,7 +5864,9 @@ function persianToGregorian(jy, jm, jd) {
 }
 
 function showVotingResults(votingId) {
-  const votings = loadVotings();
+    editingVotingId = null;
+  document.getElementById('votingModalTitle').textContent = 'ایجاد رأی‌گیری جدید';
+  document.getElementById('votingSaveBtn').textContent = '💾 ایجاد رأی‌گیری';
   const voting = votings.find(v => v.id === votingId);
   if (!voting) return;
 
@@ -5823,8 +5901,8 @@ function showVotingResults(votingId) {
         <div style="font-size:20px; font-weight:800; color:#5b4cdb;">${formatNumber(totalVotes)}</div>
       </div>
       <div style="text-align:center;">
-        <div style="font-size:11.5px; color:#64748b; margin-bottom:4px;">واحدها</div>
-        <div style="font-size:20px; font-weight:800; color:#1e293b;">${formatNumber(totalUnits)}</div>
+     <div style="font-size:11.5px; color:#64748b; margin-bottom:4px;">مالکین</div>
+        <div style="font-size:20px; font-weight:800; color:#1e293b;">${formatNumber(totalOwners)}</div>
       </div>
       <div style="text-align:center;">
         <div style="font-size:11.5px; color:#64748b; margin-bottom:4px;">مشارکت</div>
@@ -5937,11 +6015,13 @@ function bindVotingPage() {
       const action = btn.dataset.votingAction;
       const id = Number(btn.dataset.id);
 
-      if (action === 'results') {
-        showVotingResults(id);
-      } else if (action === 'delete') {
-        deleteVoting(id);
-      }
+     if (action === 'results') {
+  showVotingResults(id);
+} else if (action === 'edit') {
+  editVoting(id);
+} else if (action === 'delete') {
+  deleteVoting(id);
+}
     });
   }
 
