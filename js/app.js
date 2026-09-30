@@ -1443,16 +1443,6 @@ function bindWelcomeModal() {
   document.getElementById('wizardNextBtn')?.addEventListener('click', wizardNext);
   document.getElementById('wizardPrevBtn')?.addEventListener('click', wizardPrev);
   document.getElementById('blocksCount')?.addEventListener('input', buildBlockInputs);
-  
-  // ✅ بایند انتخاب پلن
-  bindPlanSelection();
-  function bindWelcomeModal() {
-  document.querySelectorAll('.type-option').forEach(el => {
-    el.addEventListener('click', () => selectBuildingType(el.dataset.type));
-  });
-  document.getElementById('wizardNextBtn')?.addEventListener('click', wizardNext);
-  document.getElementById('wizardPrevBtn')?.addEventListener('click', wizardPrev);
-  document.getElementById('blocksCount')?.addEventListener('input', buildBlockInputs);
 
   // ✅ دکمه نمایش/مخفی رمز در ویزارد ثبت‌نام
   document.querySelectorAll('[data-toggle-pass]').forEach(btn => {
@@ -1471,7 +1461,6 @@ function bindWelcomeModal() {
 
   // ✅ بایند انتخاب پلن
   bindPlanSelection();
-} 
 }
 
 /* ============ ۱۴) صفحه واحدها ============ */
