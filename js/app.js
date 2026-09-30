@@ -313,6 +313,7 @@ const PAGE_INFO = {
   profit:    { title: 'سود و زیان', subtitle: 'تحلیل درآمد و هزینه' },
   profile:   { title: 'پروفایل من', subtitle: 'اطلاعات شخصی و امنیتی' },
   settings:  { title: 'تنظیمات', subtitle: 'تنظیمات ساختمان و حساب' },
+     subscription: { title: 'اشتراکی', subtitle: 'مدیریت پلن و اشتراک' },
 };
 function switchPage(pageKey) {
   // ✅ چک دسترسی به صفحه
@@ -368,6 +369,7 @@ function switchPage(pageKey) {
   if (pageKey === 'profit') renderProfitPage();
   if (pageKey === 'profile') { fillProfileForm(); }
   if (pageKey === 'settings') renderSettingsPage();
+     if (pageKey === 'subscription') renderSubscriptionPage();
 }
 
 /* ============ ۷) فیلتر بلوک داشبورد ============ */
@@ -8814,6 +8816,104 @@ function printProfitPdf() {
   printWindow.document.write(html);
   printWindow.document.close();
 }
+/* ============================================================
+   💎 صفحه اشتراکی
+   ============================================================ */
+function renderSubscriptionPage() {
+  const plan = loadPlan();
+  const currentPlan = plan?.type || 'free';
+
+  const elPlan = document.getElementById('subCurrentPlan');
+  const elStart = document.getElementById('subStartDate');
+  const elExpiry = document.getElementById('subExpiryDate');
+  const elUnits = document.getElementById('subTotalUnits');
+
+  if (elPlan) {
+    elPlan.textContent = currentPlan === 'pro' ? '💎 حرفه‌ای' : '🆓 رایگان';
+  }
+
+  if (elStart) {
+    elStart.textContent = plan?.startedAt
+      ? new Date(plan.startedAt).toLocaleDateString('fa-IR')
+      : '—';
+  }
+
+  if (elExpiry) {
+    elExpiry.textContent = plan?.expiresAt
+      ? new Date(plan.expiresAt).toLocaleDateString('fa-IR')
+      : 'نامحدود';
+  }
+
+  if (elUnits) {
+    elUnits.textContent = formatNumber(plan?.totalUnits || UNITS.length);
+  }
+
+  // دکمه پلن رایگان
+  const btnFree = document.getElementById('subBtnFree');
+  if (btnFree) {
+    if (currentPlan === 'free') {
+      btnFree.textContent = 'پلن فعلی';
+      btnFree.disabled = true;
+      btnFree.className = 'btn btn-outline plan-select-btn';
+    } else {
+      btnFree.textContent = 'غیرفعال کردن حرفه‌ای';
+      btnFree.disabled = false;
+      btnFree.className = 'btn btn-cancel plan-select-btn';
+      btnFree.onclick = () => {
+        if (!confirm('آیا از غیرفعال کردن پلن حرفه‌ای مطمئن هستید؟')) return;
+        const newPlan = {
+          type: 'free',
+          totalUnits: UNITS.length,
+          startedAt: new Date().toISOString(),
+          expiresAt: null,
+          payment: { amount: 0, status: 'free' },
+        };
+        savePlan(newPlan);
+        renderSubscriptionPage();
+        updateSidebarLockStates();
+        toastSuccess('پلن حرفه‌ای غیرفعال شد.');
+      };
+    }
+  }
+
+  // دکمه پلن حرفه‌ای
+  const btnPro = document.getElementById('subBtnPro');
+  const elProPrice = document.getElementById('subProPrice');
+
+  const totalUnits = UNITS.length;
+  const result = calculatePrice(totalUnits);
+
+  let price = result.price;
+  if (price === 0) price = 10 * 100000;
+
+  if (elProPrice) {
+    elProPrice.textContent = (price / 1000000).toFixed(1).replace('.0', '');
+  }
+
+  if (btnPro) {
+    if (currentPlan === 'pro') {
+      btnPro.textContent = '✅ پلن فعلی';
+      btnPro.disabled = true;
+      btnPro.className = 'btn btn-outline plan-select-btn';
+      btnPro.onclick = null;
+    } else {
+      btnPro.textContent = 'ارتقا به حرفه‌ای';
+      btnPro.disabled = false;
+      btnPro.className = 'btn btn-primary plan-select-btn';
+      btnPro.onclick = () => {
+        const paymentInfo = {
+          planType: 'pro',
+          totalUnits: totalUnits,
+          amount: price,
+          orderId: 'SUB-' + Date.now(),
+          isUpgrade: true,
+        };
+        showMockPaymentPage(paymentInfo);
+      };
+    }
+  }
+}
+
 function processMockPaymentSuccess(paymentInfo) {
   activatePlan('pro', paymentInfo.totalUnits, {
     amount: paymentInfo.amount,
