@@ -3174,3 +3174,7 @@ body.dark-mode .form-input {
   z-index: 2;
 }
 
+input[type="number"] {
+  direction: ltr;
+  text-align: left;
+}
