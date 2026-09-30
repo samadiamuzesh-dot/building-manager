@@ -170,16 +170,10 @@
             <span class="nav-icon">💹</span>
             <span class="nav-text">گزارشات مالی</span>
           </li>
-          <li data-page="settings">
-            <span class="nav-icon">⚙️</span>
-            <span class="nav-text">تنظیمات</span>
-          </li>
-        </ul>
-      </nav>
+      <li data-page="settings">
 
       <!-- 💎 باکس ارتقا به پلن حرفه‌ای -->
       <div class="upgrade-box" id="upgradeBox">
-        <div class="upgrade-box-icon">💎</div>
         <div class="upgrade-box-title">ارتقا به حرفه‌ای</div>
         <div class="upgrade-box-desc">دسترسی کامل به همه امکانات</div>
         <button class="upgrade-box-btn" id="btnUpgradePlan">
@@ -1428,6 +1422,105 @@
           </table>
         </div>
 
+      </section>
+      <!-- ============ صفحه اشتراکی ============ -->
+      <section id="page-subscription" class="page">
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">💎</div>
+            <div class="stat-body">
+              <p class="stat-label">پلن فعلی</p>
+              <h3 class="stat-value" id="subCurrentPlan">رایگان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">📅</div>
+            <div class="stat-body">
+              <p class="stat-label">تاریخ شروع</p>
+              <h3 class="stat-value" id="subStartDate">—</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">⏰</div>
+            <div class="stat-body">
+              <p class="stat-label">تاریخ انقضا</p>
+              <h3 class="stat-value" id="subExpiryDate">—</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">🏠</div>
+            <div class="stat-body">
+              <p class="stat-label">تعداد واحدها</p>
+              <h3 class="stat-value" id="subTotalUnits">—</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-box" style="margin-top: 20px;">
+          <div class="table-header">
+            <h3>💎 پلن‌های موجود</h3>
+          </div>
+
+          <div class="plan-options" style="margin-top: 20px;">
+            <!-- پلن رایگان -->
+            <div class="plan-card" data-plan="free" id="subPlanFree">
+              <div class="plan-card-header">
+                <div class="plan-card-icon">🆓</div>
+                <div class="plan-card-title">
+                  <h3>رایگان</h3>
+                  <p>برای شروع سریع</p>
+                </div>
+              </div>
+              <div class="plan-card-price">
+                <span class="plan-price-number">۰</span>
+                <span class="plan-price-unit">تومان</span>
+                <span class="plan-price-period">همیشه</span>
+              </div>
+              <div class="plan-card-features">
+                <div class="plan-feature included">✅ تا ۱۰ واحد</div>
+                <div class="plan-feature included">✅ داشبورد و واحدها</div>
+                <div class="plan-feature included">✅ صدور شارژ</div>
+                <div class="plan-feature excluded">❌ دریافت‌ها و هزینه‌ها</div>
+                <div class="plan-feature excluded">❌ گزارشات و سود و زیان</div>
+                <div class="plan-feature excluded">❌ پشتیبان‌گیری</div>
+              </div>
+              <button class="btn btn-outline plan-select-btn" id="subBtnFree" disabled>
+                پلن فعلی
+              </button>
+            </div>
+
+            <!-- پلن حرفه‌ای -->
+            <div class="plan-card plan-card-pro" data-plan="pro" id="subPlanPro">
+              <div class="plan-badge">⭐ پیشنهاد ما</div>
+              <div class="plan-card-header">
+                <div class="plan-card-icon">💎</div>
+                <div class="plan-card-title">
+                  <h3>حرفه‌ای</h3>
+                  <p>دسترسی کامل</p>
+                </div>
+              </div>
+              <div class="plan-card-price">
+                <span class="plan-price-number" id="subProPrice">—</span>
+                <span class="plan-price-unit">تومان</span>
+                <span class="plan-price-period">سالانه</span>
+              </div>
+              <div class="plan-card-features">
+                <div class="plan-feature included">✅ واحد نامحدود</div>
+                <div class="plan-feature included">✅ همه امکانات</div>
+                <div class="plan-feature included">✅ گزارشات کامل</div>
+                <div class="plan-feature included">✅ خروجی اکسل و PDF</div>
+                <div class="plan-feature included">✅ پشتیبان‌گیری</div>
+                <div class="plan-feature included">✅ پشتیبانی</div>
+              </div>
+              <button class="btn btn-primary plan-select-btn" id="subBtnPro">
+                ارتقا به حرفه‌ای
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="page-settings" class="page">
