@@ -289,13 +289,11 @@ function renderBuildingCard() {
     if (codeEl) codeEl.textContent = '—';
     return;
   }
-  const b = data.building;
-  if (nameEl) nameEl.textContent = b.name;
+   const b = data.building;
+  if (nameEl) nameEl.textContent = b.name || '—';
 
   if (codeEl) {
-    if (b.type === 'complex') codeEl.textContent = `${b.blocks.length} بلوک • ${b.code}`;
-    else if (b.totalUnits > 40) codeEl.textContent = `برج • ${b.code}`;
-    else codeEl.textContent = `ساختمان • ${b.code}`;
+    codeEl.textContent = b.code || '—';
   }
 }
 
