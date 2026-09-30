@@ -1,0 +1,3175 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>آپارتمان پلاس | نرم‌افزار هوشمند مدیریت ساختمان</title>
+  <link rel="stylesheet" href="css/style.css?v=999">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-logo-svg" width="70" height="70" viewBox="0 0 512 512"
+         xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="512" height="512" rx="110" fill="#5b4cdb"/>
+      <path d="M370 380H142V200c0-8 5-15 12-17l140-33c6-1 12 0 17 3s8 9 8 15v212zM392 165c0-6 4-12 9-15s12-4 18-2l48 11c8 2 13 9 13 17v204h-88V165zM320 80c0-7 5-12 12-12h72c7 0 12 5 12 12v64h-96V80z"
+            fill="#ffffff"/>
+      <rect x="238" y="300" width="24" height="80" rx="12" fill="#5b4cdb"/>
+    </svg>
+    <div class="brand-text">
+      <h1>آپارتمان پلاس</h1>
+      <p>نرم‌افزار هوشمند مدیریت ساختمان</p>
+    </div>
+  </div>
+
+  <div class="topbar-actions">
+
+    <div class="notif-wrapper">
+      <button class="icon-btn" id="notifBtn" title="اعلان‌ها">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span class="notif-dot" id="notifDot" style="display:none;"></span>
+      </button>
+
+      <div class="notif-panel" id="notifPanel">
+        <div class="notif-header">
+          <h3>🔔 اعلان‌ها</h3>
+          <button class="notif-clear" id="notifClearBtn" title="پاک کردن همه">پاک کردن</button>
+        </div>
+        <div class="notif-list" id="notifList"></div>
+        <div class="notif-footer">
+          <span id="notifCountLabel">۰ اعلان</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-wrapper">
+      <div class="profile" id="profileBtn">
+        <div class="profile-avatar" id="profileAvatar">م</div>
+        <div class="profile-info">
+          <span class="profile-name" id="profileName">مدیر ساختمان</span>
+          <span class="profile-role" id="profileRole">مدیر</span>
+        </div>
+        <svg class="profile-chevron" width="14" height="14" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+
+      <div class="profile-menu" id="profileMenu">
+        <div class="profile-menu-header">
+          <div class="profile-avatar-lg" id="profileAvatarLg">م</div>
+          <div>
+            <div class="profile-menu-name" id="profileMenuName">مدیر ساختمان</div>
+            <div class="profile-menu-phone" id="profileMenuPhone">—</div>
+          </div>
+        </div>
+
+        <div class="profile-menu-divider"></div>
+
+        <button class="profile-menu-item" data-profile-action="profile">
+          <span class="menu-icon">👤</span>
+          <span>پروفایل من</span>
+        </button>
+
+        <button class="profile-menu-item" data-profile-action="settings">
+          <span class="menu-icon">⚙️</span>
+          <span>تنظیمات</span>
+        </button>
+
+        <button class="profile-menu-item" data-profile-action="backup">
+          <span class="menu-icon">💾</span>
+          <span>پشتیبان‌گیری</span>
+        </button>
+
+        <button class="profile-menu-item" data-profile-action="theme">
+          <span class="menu-icon" id="themeIcon">🌙</span>
+          <span id="themeLabel">حالت شب</span>
+        </button>
+
+        <div class="profile-menu-divider"></div>
+
+        <button class="profile-menu-item danger" data-profile-action="logout">
+          <span class="menu-icon">🚪</span>
+          <span>خروج از پنل</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</header>
+
+  <div class="app-body">
+
+    <aside class="sidebar">
+      <div class="building-card">
+        <div class="building-icon">🏢</div>
+        <div class="building-info">
+          <h3 id="buildingName">در حال بارگذاری...</h3>
+          <p><span id="buildingCode">—</span></p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <ul id="menu">
+          <li data-page="dashboard" class="active">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">داشبورد</span>
+          </li>
+          <li data-page="units">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-text">واحدها</span>
+          </li>
+                       <li data-page="charges">
+            <span class="nav-icon">💰</span>
+            <span class="nav-text">صدور شارژ</span>
+          </li>
+          <li class="has-submenu" data-page="payments">
+            <div class="nav-item-main">
+              <span class="nav-icon">💳</span>
+              <span class="nav-text">دریافت‌ها</span>
+              <span class="nav-arrow">◄</span>
+            </div>
+            <ul class="submenu">
+              <li data-page="charges-payments">
+                <span class="nav-icon">💰</span>
+                <span class="nav-text">شارژها</span>
+              </li>
+              <li data-page="side-incomes">
+                <span class="nav-icon">🏪</span>
+                <span class="nav-text">درآمد جانبی</span>
+              </li>
+            </ul>
+          </li>
+          <li data-page="expenses">
+            <span class="nav-icon">🧾</span>
+            <span class="nav-text">هزینه‌ها</span>
+          </li>
+          <li data-page="notices">
+            <span class="nav-icon">📢</span>
+            <span class="nav-text">اطلاعیه‌ها</span>
+          </li>
+          <li data-page="messages">
+            <span class="nav-icon">✉️</span>
+            <span class="nav-text">پیام‌ها</span>
+          </li>
+          <li data-page="voting">
+            <span class="nav-icon">🗳️</span>
+            <span class="nav-text">رأی‌گیری</span>
+          </li>
+          <li data-page="reports">
+            <span class="nav-icon">📈</span>
+            <span class="nav-text">گزارشات</span>
+          </li>
+                             <li data-page="profit">
+            <span class="nav-icon">💹</span>
+            <span class="nav-text">گزارشات مالی</span>
+          </li>
+          <li data-page="settings">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">تنظیمات</span>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- 💎 باکس ارتقا به پلن حرفه‌ای -->
+      <div class="upgrade-box" id="upgradeBox">
+        <div class="upgrade-box-icon">💎</div>
+        <div class="upgrade-box-title">ارتقا به حرفه‌ای</div>
+        <div class="upgrade-box-desc">دسترسی کامل به همه امکانات</div>
+        <button class="upgrade-box-btn" id="btnUpgradePlan">
+          🚀 همین حالا ارتقا بده
+        </button>
+      </div>
+    </aside>
+   
+
+    <main class="content">
+
+      <div class="content-header">
+        <h1 id="pageTitle">داشبورد</h1>
+        <p class="page-subtitle" id="pageSubtitle">خلاصه وضعیت ساختمان</p>
+      </div>
+
+      <section id="page-dashboard" class="page active">
+        <div class="toolbar">
+          <div class="toolbar-right">
+            <label for="blockFilter">نمایش بلوک:</label>
+            <select id="blockFilter" class="block-select">
+              <option value="all">🏢 همه بلوک‌ها</option>
+            </select>
+
+            <label for="statusFilter" style="margin-right: 8px;">وضعیت:</label>
+            <select id="statusFilter" class="block-select">
+              <option value="all">📋 همه</option>
+              <option value="debt">⚠️ بدهکار</option>
+              <option value="paid">✅ تسویه</option>
+              <option value="empty">👤 ثبت‌نام نکرده</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">🏢</div>
+            <div class="stat-body">
+              <div class="stat-label">تعداد بلوک‌ها</div>
+              <div class="stat-value" id="statBlocks">0</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">🏠</div>
+            <div class="stat-body">
+              <div class="stat-label">کل واحدها</div>
+              <div class="stat-value" id="statUnits">0</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">💰</div>
+            <div class="stat-body">
+              <div class="stat-label">شارژ دریافتی این ماه</div>
+              <div class="stat-value" id="statIncome">0</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-red">⚠️</div>
+            <div class="stat-body">
+              <div class="stat-label">بدهکاران</div>
+              <div class="stat-value" id="statDebtors">0</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">📄</div>
+            <div class="stat-body">
+              <div class="stat-label">هزینه‌های این ماه</div>
+              <div class="stat-value" id="statExpense">0</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">🏦</div>
+            <div class="stat-body">
+              <div class="stat-label">مانده کل در صندوق</div>
+              <div class="stat-value" id="statBalance">0</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>وضعیت پرداخت شارژ</h3>
+              <span class="chart-badge">این ماه</span>
+            </div>
+            <div class="donut-wrapper">
+              <canvas id="donutChart"></canvas>
+              <div class="donut-center">
+                <span class="donut-percent" id="donutPercent">۰٪</span>
+                <span class="donut-label">پرداخت شده</span>
+              </div>
+            </div>
+            <div class="donut-legend">
+              <div class="legend-item">
+                <span class="legend-dot legend-dot-green"></span>
+                <span>پرداخت شده</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot legend-dot-red"></span>
+                <span>پرداخت نشده</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>روند درآمد ۶ ماه اخیر</h3>
+              <span class="chart-badge">تومان</span>
+            </div>
+            <div class="line-wrapper">
+              <canvas id="lineChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header">
+            <h3>وضعیت واحدها</h3>
+            <a class="table-link" data-page-link="units">مشاهده همه →</a>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>بلوک</th>
+                <th>واحد</th>
+                <th>مالک</th>
+                <th>مستاجر</th>
+                <th>موبایل</th>
+                <th>بدهی</th>
+                <th>وضعیت</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardUnitsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-units" class="page">
+
+        <div class="stats-grid units-stats-grid">
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">🏠</div>
+            <div class="stat-body">
+              <p class="stat-label">کل واحدها</p>
+              <h3 class="stat-value" id="unitsTotal">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">✅</div>
+            <div class="stat-body">
+              <p class="stat-label">تسویه شده</p>
+              <h3 class="stat-value" id="unitsPaid">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-red">⚠️</div>
+            <div class="stat-body">
+              <p class="stat-label">بدهکار</p>
+              <h3 class="stat-value" id="unitsDebt">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">👤</div>
+            <div class="stat-body">
+              <p class="stat-label">ثبت‌نام نکرده</p>
+              <h3 class="stat-value" id="unitsEmpty">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">💰</div>
+            <div class="stat-body">
+              <p class="stat-label">کل بدهی</p>
+              <h3 class="stat-value" id="unitsTotalDebt">۰ تومان</h3>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="toolbar units-toolbar">
+          <div class="toolbar-right">
+            <select id="unitsBlockFilter" class="block-select">
+              <option value="all">🏢 همه بلوک‌ها</option>
+            </select>
+
+            <input type="text" id="unitsSearch" class="search-input"
+                   placeholder="🔍 جستجو (نام، شماره، موبایل)" />
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnExportExcel" class="btn btn-outline">
+              📥 خروجی اکسل
+            </button>
+            <button id="btnPrintPdf" class="btn btn-outline">
+              🖨️ چاپ PDF
+            </button>
+            <button id="btnAddUnit" class="btn btn-primary">
+              ➕ افزودن واحد
+            </button>
+          </div>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header">
+            <h3>لیست واحدها</h3>
+            <span id="unitsCountLabel" class="table-count">۰ واحد</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="block">بلوک <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="number">واحد <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="owner">مالک <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="tenant">مستاجر <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="phone">موبایل <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="debt">بدهی <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="status">وضعیت <span class="sort-icon"></span></th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="unitsTableBody"></tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <section id="page-charges" class="page">
+
+        <div class="toolbar charges-toolbar">
+          <div class="toolbar-right">
+            <label for="chargeMonth">ماه:</label>
+            <select id="chargeMonth" class="block-select">
+              <option value="فروردین">فروردین</option>
+              <option value="اردیبهشت">اردیبهشت</option>
+              <option value="خرداد">خرداد</option>
+              <option value="تیر">تیر</option>
+              <option value="مرداد">مرداد</option>
+              <option value="شهریور">شهریور</option>
+              <option value="مهر">مهر</option>
+              <option value="آبان">آبان</option>
+              <option value="آذر">آذر</option>
+              <option value="دی">دی</option>
+              <option value="بهمن">بهمن</option>
+              <option value="اسفند">اسفند</option>
+            </select>
+
+            <label for="chargeYear" style="margin-right: 8px;">سال:</label>
+            <select id="chargeYear" class="block-select">
+              <!-- با JS پر می‌شه -->
+            </select>
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnIssueCharge" class="btn btn-primary">
+              📤 صدور شارژ
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">📋</div>
+            <div class="stat-body">
+              <p class="stat-label">کل شارژها</p>
+              <h3 class="stat-value" id="chargeTotal">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">✅</div>
+            <div class="stat-body">
+              <p class="stat-label">پرداخت شده</p>
+              <h3 class="stat-value" id="chargePaid">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-red">⚠️</div>
+            <div class="stat-body">
+              <p class="stat-label">پرداخت نشده</p>
+              <h3 class="stat-value" id="chargeUnpaid">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">💰</div>
+            <div class="stat-body">
+              <p class="stat-label">مجموع دریافتی</p>
+              <h3 class="stat-value" id="chargeSum">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">🧾</div>
+            <div class="stat-body">
+              <p class="stat-label">هزینه‌ها</p>
+              <h3 class="stat-value" id="chargeExpenses">۰ تومان</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header">
+            <h3>لیست شارژها — <span id="chargeMonthLabel">—</span></h3>
+            <span id="chargeCountLabel" class="table-count">۰ مورد</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>بلوک</th>
+                <th>واحد</th>
+                <th>مالک</th>
+                <th>مبلغ شارژ</th>
+                <th>هزینه اضافی</th>
+                <th>جمع کل</th>
+                <th>وضعیت</th>
+                <th>نحوه پرداخت</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="chargesTableBody"></tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <section id="page-charges-payments" class="page">
+
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">💳</div>
+            <div class="stat-body">
+              <p class="stat-label">کل پرداخت‌ها</p>
+              <h3 class="stat-value" id="paymentsTotal">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">✅</div>
+            <div class="stat-body">
+              <p class="stat-label">پرداخت‌های این ماه</p>
+              <h3 class="stat-value" id="paymentsThisMonth">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">💰</div>
+            <div class="stat-body">
+              <p class="stat-label">مجموع دریافتی</p>
+              <h3 class="stat-value" id="paymentsSum">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">📅</div>
+            <div class="stat-body">
+              <p class="stat-label">میانگین پرداخت</p>
+              <h3 class="stat-value" id="paymentsAvg">۰ تومان</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar units-toolbar">
+          <div class="toolbar-right">
+            <input type="text" id="paymentsSearch" class="search-input"
+                   placeholder="🔍 جستجو (نام، واحد، روش)" />
+
+            <select id="paymentsMonthFilter" class="block-select">
+              <option value="all">📅 همه ماه‌ها</option>
+              <option value="فروردین">فروردین</option>
+              <option value="اردیبهشت">اردیبهشت</option>
+              <option value="خرداد">خرداد</option>
+              <option value="تیر">تیر</option>
+              <option value="مرداد">مرداد</option>
+              <option value="شهریور">شهریور</option>
+              <option value="مهر">مهر</option>
+              <option value="آبان">آبان</option>
+              <option value="آذر">آذر</option>
+              <option value="دی">دی</option>
+              <option value="بهمن">بهمن</option>
+              <option value="اسفند">اسفند</option>
+            </select>
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnExportPayments" class="btn btn-outline">
+              📥 خروجی اکسل
+            </button>
+            <button id="btnAddPayment" class="btn btn-primary">
+              ➕ ثبت شارژ
+            </button>
+          </div>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header">
+            <h3>تاریخچه پرداخت‌ها</h3>
+            <span id="paymentsCountLabel" class="table-count">۰ مورد</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="date">تاریخ <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="block">بلوک <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="unit">واحد <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="owner">مالک <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="amount">مبلغ <span class="sort-icon"></span></th>
+                <th class="sortable" data-sort="method">روش <span class="sort-icon"></span></th>
+                <th>توضیحات</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="paymentsTableBody"></tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <section id="page-side-incomes" class="page">
+
+        <div class="toolbar charges-toolbar">
+          <div class="toolbar-right">
+            <label for="sideIncomeBlockFilter">بلوک:</label>
+            <select id="sideIncomeBlockFilter" class="block-select">
+              <option value="all">🏢 همه بلوک‌ها</option>
+            </select>
+
+            <label for="sideIncomeSessionFilter" style="margin-right: 8px;">سانس:</label>
+            <select id="sideIncomeSessionFilter" class="block-select">
+              <option value="all">🕐 همه سانس‌ها</option>
+            </select>
+
+            <label for="sideIncomeMonthFilter" style="margin-right: 8px;">ماه:</label>
+            <select id="sideIncomeMonthFilter" class="block-select">
+              <option value="all">📅 همه ماه‌ها</option>
+            </select>
+
+            <label for="sideIncomeYearFilter" style="margin-right: 8px;">سال:</label>
+            <select id="sideIncomeYearFilter" class="block-select"></select>
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnExportSideIncomes" class="btn btn-outline">
+              📥 خروجی اکسل
+            </button>
+            <button id="btnAddSideIncome" class="btn btn-primary">
+              ➕ ثبت درآمد
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">🏪</div>
+            <div class="stat-body">
+              <p class="stat-label">کل درآمدها</p>
+              <h3 class="stat-value" id="sideIncomeTotal">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">💰</div>
+            <div class="stat-body">
+              <p class="stat-label">مجموع درآمد</p>
+              <h3 class="stat-value" id="sideIncomeSum">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">📅</div>
+            <div class="stat-body">
+              <p class="stat-label">درآمد این ماه</p>
+              <h3 class="stat-value" id="sideIncomeThisMonth">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">📊</div>
+            <div class="stat-body">
+              <p class="stat-label">میانگین</p>
+              <h3 class="stat-value" id="sideIncomeAvg">۰ تومان</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header">
+            <h3>لیست درآمدهای جانبی</h3>
+            <span id="sideIncomeCountLabel" class="table-count">۰ مورد</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>تاریخ</th>
+                <th>عنوان</th>
+                <th>دسته</th>
+                <th>🕐 سانس</th>
+                <th>بلوک</th>
+                <th>پرداخت‌کننده</th>
+                <th>مبلغ</th>
+                <th>روش</th>
+                <th>توضیحات</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="sideIncomesTableBody"></tbody>
+          </table>
+        </div>
+
+      </section>
+
+
+      <section id="page-expenses" class="page">
+
+        <div class="toolbar charges-toolbar">
+          <div class="toolbar-right">
+            <label for="expenseBlockFilter">بلوک:</label>
+            <select id="expenseBlockFilter" class="block-select">
+              <option value="all">🏢 همه بلوک‌ها</option>
+            </select>
+
+            <label for="expenseMonth" style="margin-right: 8px;">ماه:</label>
+            <select id="expenseMonth" class="block-select">
+              <option value="all">📅 همه ماه‌ها</option>
+              <option value="فروردین">فروردین</option>
+              <option value="اردیبهشت">اردیبهشت</option>
+              <option value="خرداد">خرداد</option>
+              <option value="تیر">تیر</option>
+              <option value="مرداد">مرداد</option>
+              <option value="شهریور">شهریور</option>
+              <option value="مهر" selected>مهر</option>
+              <option value="آبان">آبان</option>
+              <option value="آذر">آذر</option>
+              <option value="دی">دی</option>
+              <option value="بهمن">بهمن</option>
+              <option value="اسفند">اسفند</option>
+            </select>
+
+            <label for="expenseYear" style="margin-right: 8px;">سال:</label>
+            <select id="expenseYear" class="block-select">
+              <!-- با JS پر می‌شه -->
+            </select>
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnExportExpenses" class="btn btn-outline">
+              📥 خروجی اکسل
+            </button>
+            <button id="btnAddExpense" class="btn btn-primary">
+              ➕ ثبت هزینه
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">🧾</div>
+            <div class="stat-body">
+              <p class="stat-label">کل هزینه‌ها</p>
+              <h3 class="stat-value" id="expenseTotal">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">📅</div>
+            <div class="stat-body">
+              <p class="stat-label">هزینه‌های این ماه</p>
+              <h3 class="stat-value" id="expenseThisMonth">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">💰</div>
+            <div class="stat-body">
+              <p class="stat-label">مجموع هزینه‌ها</p>
+              <h3 class="stat-value" id="expenseSum">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">📊</div>
+            <div class="stat-body">
+              <p class="stat-label">میانگین هزینه</p>
+              <h3 class="stat-value" id="expenseAvg">۰ تومان</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header">
+            <h3>لیست هزینه‌ها</h3>
+            <span id="expenseCountLabel" class="table-count">۰ مورد</span>
+          </div>
+          <table>
+          <thead>
+  <tr>
+    <th>تاریخ</th>
+    <th>عنوان</th>
+    <th>دسته</th>
+    <th>بلوک</th>
+    <th>مبلغ</th>
+    <th>توضیحات</th>
+    <th>عملیات</th>
+  </tr>
+</thead>
+            <tbody id="expensesTableBody"></tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <section id="page-notices" class="page">
+
+        <div class="toolbar charges-toolbar">
+          <div class="toolbar-right">
+            <input type="text" id="noticesSearch" class="search-input"
+                   placeholder="🔍 جستجو (عنوان، متن)" />
+
+            <select id="noticesMonthFilter" class="block-select">
+              <option value="all">📅 همه ماه‌ها</option>
+              <option value="فروردین">فروردین</option>
+              <option value="اردیبهشت">اردیبهشت</option>
+              <option value="خرداد">خرداد</option>
+              <option value="تیر">تیر</option>
+              <option value="مرداد">مرداد</option>
+              <option value="شهریور">شهریور</option>
+              <option value="مهر">مهر</option>
+              <option value="آبان">آبان</option>
+              <option value="آذر">آذر</option>
+              <option value="دی">دی</option>
+              <option value="بهمن">بهمن</option>
+              <option value="اسفند">اسفند</option>
+            </select>
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnAddNotice" class="btn btn-primary">
+              ➕ ارسال اطلاعیه
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">📢</div>
+            <div class="stat-body">
+              <p class="stat-label">کل اطلاعیه‌ها</p>
+              <h3 class="stat-value" id="noticesTotal">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">📅</div>
+            <div class="stat-body">
+              <p class="stat-label">این ماه</p>
+              <h3 class="stat-value" id="noticesThisMonth">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">👥</div>
+            <div class="stat-body">
+              <p class="stat-label">کل دریافت‌کنندگان</p>
+              <h3 class="stat-value" id="noticesReceivers">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">📸</div>
+            <div class="stat-body">
+              <p class="stat-label">با عکس</p>
+              <h3 class="stat-value" id="noticesWithImage">۰</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header">
+            <h3>لیست اطلاعیه‌ها</h3>
+            <span id="noticesCountLabel" class="table-count">۰ مورد</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>تاریخ</th>
+                <th>عنوان</th>
+                <th>متن</th>
+                <th>مخاطبین</th>
+                <th>عکس</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="noticesTableBody"></tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <section id="page-messages" class="page">
+
+        <div class="toolbar charges-toolbar">
+          <div class="toolbar-right">
+            <input type="text" id="messagesSearch" class="search-input"
+                   placeholder="🔍 جستجو (نام، شماره، متن)" />
+
+            <select id="messagesFilter" class="block-select">
+              <option value="all">📬 همه پیام‌ها</option>
+              <option value="unread">📩 خوانده‌نشده</option>
+              <option value="sent">📤 ارسالی</option>
+              <option value="received">📥 دریافتی</option>
+            </select>
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnAddMessage" class="btn btn-primary">
+              ➕ ارسال پیام
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">✉️</div>
+            <div class="stat-body">
+              <p class="stat-label">کل پیام‌ها</p>
+              <h3 class="stat-value" id="messagesTotal">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-red">📩</div>
+            <div class="stat-body">
+              <p class="stat-label">خوانده‌نشده</p>
+              <h3 class="stat-value" id="messagesUnread">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">📤</div>
+            <div class="stat-body">
+              <p class="stat-label">ارسالی</p>
+              <h3 class="stat-value" id="messagesSent">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">📥</div>
+            <div class="stat-body">
+              <p class="stat-label">دریافتی</p>
+              <h3 class="stat-value" id="messagesReceived">۰</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header">
+            <h3>گفتگوها</h3>
+            <span id="messagesCountLabel" class="table-count">۰ مورد</span>
+          </div>
+
+          <div id="conversationsList"></div>
+        </div>
+
+      </section>
+
+      <section id="page-voting" class="page">
+
+        <div class="toolbar charges-toolbar">
+          <div class="toolbar-right">
+            <input type="text" id="votingSearch" class="search-input"
+                   placeholder="🔍 جستجو (عنوان)" />
+
+            <select id="votingFilter" class="block-select">
+              <option value="all">📊 همه</option>
+              <option value="active">🟢 فعال</option>
+              <option value="ended">⚫ پایان‌یافته</option>
+              <option value="upcoming">🟡 در انتظار</option>
+            </select>
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnAddVoting" class="btn btn-primary">
+              ➕ ایجاد رأی‌گیری
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">🗳️</div>
+            <div class="stat-body">
+              <p class="stat-label">کل رأی‌گیری‌ها</p>
+              <h3 class="stat-value" id="votingTotal">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">🟢</div>
+            <div class="stat-body">
+              <p class="stat-label">فعال</p>
+              <h3 class="stat-value" id="votingActive">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">🟡</div>
+            <div class="stat-body">
+              <p class="stat-label">در انتظار</p>
+              <h3 class="stat-value" id="votingUpcoming">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">⚫</div>
+            <div class="stat-body">
+              <p class="stat-label">پایان‌یافته</p>
+              <h3 class="stat-value" id="votingEnded">۰</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header">
+            <h3>لیست رأی‌گیری‌ها</h3>
+            <span id="votingCountLabel" class="table-count">۰ مورد</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>عنوان</th>
+                <th>شروع</th>
+                <th>پایان</th>
+                <th>کاندیدها</th>
+                <th>آراء</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="votingTableBody"></tbody>
+          </table>
+        </div>
+
+      </section>
+      <!-- ============ صفحه سود و زیان ============ -->
+      <section id="page-profit" class="page">
+
+        <!-- نوار ابزار -->
+        <div class="toolbar charges-toolbar">
+          <div class="toolbar-right">
+            <label for="profitYear">سال:</label>
+            <select id="profitYear" class="block-select">
+              <!-- با JS پر می‌شه -->
+            </select>
+
+            <label for="profitBlock" style="margin-right: 8px;">بلوک:</label>
+            <select id="profitBlock" class="block-select">
+              <option value="all">🏢 همه بلوک‌ها</option>
+            </select>
+
+            <label for="profitPeriod" style="margin-right: 8px;">دوره:</label>
+            <select id="profitPeriod" class="block-select">
+              <option value="year" selected>📆 کل سال</option>
+              <option value="6months">📅 ۶ ماه اخیر</option>
+              <option value="3months">📅 ۳ ماه اخیر</option>
+              <option value="thisMonth">📅 این ماه</option>
+            </select>
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnProfitExcel" class="btn btn-outline">
+              📥 خروجی اکسل
+            </button>
+            <button id="btnProfitPdf" class="btn btn-outline">
+              🖨️ چاپ PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- کارت‌های خلاصه -->
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">💰</div>
+            <div class="stat-body">
+              <p class="stat-label">کل درآمد</p>
+              <h3 class="stat-value" id="profitTotalIncome">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-red">🧾</div>
+            <div class="stat-body">
+              <p class="stat-label">کل هزینه</p>
+              <h3 class="stat-value" id="profitTotalExpense">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">📊</div>
+            <div class="stat-body">
+              <p class="stat-label">سود / زیان</p>
+              <h3 class="stat-value" id="profitNet">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">📈</div>
+            <div class="stat-body">
+              <p class="stat-label">حاشیه سود</p>
+              <h3 class="stat-value" id="profitMargin">۰٪</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">⚠️</div>
+            <div class="stat-body">
+              <p class="stat-label">بدهی معوق</p>
+              <h3 class="stat-value" id="profitDebt">۰ تومان</h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- وضعیت کلی -->
+        <div class="profit-status-banner" id="profitStatusBanner">
+          <div class="profit-status-icon" id="profitStatusIcon">📊</div>
+          <div class="profit-status-text">
+            <h3 id="profitStatusTitle">در حال محاسبه...</h3>
+            <p id="profitStatusDesc">—</p>
+          </div>
+        </div>
+
+        <!-- دو نمودار -->
+        <div class="charts-grid" style="grid-template-columns: 2fr 1fr;">
+
+          <!-- نمودار میله‌ای درآمد vs هزینه -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>📊 مقایسه درآمد و هزینه</h3>
+              <span class="chart-badge" id="profitChartBadge">—</span>
+            </div>
+            <div class="line-wrapper" style="height: 280px;">
+              <canvas id="profitBarChart"></canvas>
+            </div>
+          </div>
+
+          <!-- نمودار دایره‌ای ترکیب هزینه -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>🥧 ترکیب هزینه‌ها</h3>
+              <span class="chart-badge">این دوره</span>
+            </div>
+            <div class="donut-wrapper">
+              <canvas id="profitDonutChart"></canvas>
+              <div class="donut-center">
+                <span class="donut-percent" id="profitDonutPercent">۰٪</span>
+                <span class="donut-label">بزرگ‌ترین هزینه</span>
+              </div>
+            </div>
+            <div class="donut-legend" id="profitDonutLegend">
+              <!-- با JS پر می‌شه -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- جدول ماهانه -->
+        <div class="table-box" style="margin-top:20px;">
+          <div class="table-header">
+            <h3>📋 جدول ماهانه سود و زیان</h3>
+            <span id="profitTableCount" class="table-count">۰ ماه</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ماه</th>
+                <th>درآمد (شارژ دریافتی)</th>
+                <th>هزینه‌ها</th>
+                <th>سود / زیان</th>
+                <th>حاشیه سود</th>
+                <th>وضعیت</th>
+              </tr>
+            </thead>
+            <tbody id="profitTableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- خلاصه تفصیلی -->
+        <div class="charts-grid" style="grid-template-columns: 1fr 1fr; margin-top:20px;">
+
+          <div class="table-box">
+            <div class="table-header">
+              <h3>💰 منابع درآمد</h3>
+            </div>
+            <div style="padding: 8px 0;" id="profitIncomeBreakdown">
+              <!-- با JS پر می‌شه -->
+            </div>
+          </div>
+
+          <div class="table-box">
+            <div class="table-header">
+              <h3>🧾 تفکیک هزینه‌ها</h3>
+            </div>
+            <div style="padding: 8px 0;" id="profitExpenseBreakdown">
+              <!-- با JS پر می‌شه -->
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+      <section id="page-reports" class="page">
+
+        <div class="toolbar charges-toolbar">
+          <div class="toolbar-right">
+            <label>دوره:</label>
+            <select id="reportPeriod" class="block-select">
+              <option value="thisMonth" selected>📅 این ماه</option>
+              <option value="lastMonth">📅 ماه گذشته</option>
+              <option value="specificMonth">🗓️ ماه خاص</option>
+              <option value="thisYear">📆 امسال</option>
+              <option value="custom">⚙️ تنظیمات دستی</option>
+              <option value="all">🌐 همه</option>
+            </select>
+
+            <div id="reportSpecificMonthBox" style="display:none; gap:6px; align-items:center;">
+              <select id="reportMonthSelect" class="block-select">
+                <option value="فروردین">فروردین</option>
+                <option value="اردیبهشت">اردیبهشت</option>
+                <option value="خرداد">خرداد</option>
+                <option value="تیر">تیر</option>
+                <option value="مرداد">مرداد</option>
+                <option value="شهریور">شهریور</option>
+                <option value="مهر" selected>مهر</option>
+                <option value="آبان">آبان</option>
+                <option value="آذر">آذر</option>
+                <option value="دی">دی</option>
+                <option value="بهمن">بهمن</option>
+                <option value="اسفند">اسفند</option>
+              </select>
+
+              <select id="reportMonthYearSelect" class="block-select">
+                <!-- با JS پر می‌شه -->
+              </select>
+            </div>
+
+            <div id="reportCustomBox" style="display:none; gap:6px; align-items:center;">
+              <input type="text" id="reportFromDate" class="block-select" placeholder="از (۱۴۰۴/۰۷/۰۱)" style="min-width:130px;" />
+              <input type="text" id="reportToDate" class="block-select" placeholder="تا (۱۴۰۴/۰۷/۳۰)" style="min-width:130px;" />
+            </div>
+
+            <span id="reportPeriodLabel" style="font-size:13px; color:#64748b; font-weight:600; margin-right:8px;"></span>
+          </div>
+
+          <div class="toolbar-left">
+            <button id="btnReportExcel" class="btn btn-outline">
+              📥 خروجی اکسل
+            </button>
+            <button id="btnReportPdf" class="btn btn-outline">
+              🖨️ چاپ PDF
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">💰</div>
+            <div class="stat-body">
+              <p class="stat-label">کل شارژ دریافتی</p>
+              <h3 class="stat-value" id="reportIncome">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">🧾</div>
+            <div class="stat-body">
+              <p class="stat-label">کل هزینه‌ها</p>
+              <h3 class="stat-value" id="reportExpense">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">🏦</div>
+            <div class="stat-body">
+              <p class="stat-label">مانده صندوق</p>
+              <h3 class="stat-value" id="reportBalance">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-red">⚠️</div>
+            <div class="stat-body">
+              <p class="stat-label">کل بدهی معوق</p>
+              <h3 class="stat-value" id="reportDebt">۰ تومان</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>وضعیت پرداخت</h3>
+              <span class="chart-badge" id="reportDonutBadge">این ماه</span>
+            </div>
+            <div class="donut-wrapper">
+              <canvas id="reportDonutChart"></canvas>
+              <div class="donut-center">
+                <span class="donut-percent" id="reportDonutPercent">۰٪</span>
+                <span class="donut-label">پرداخت شده</span>
+              </div>
+            </div>
+            <div class="donut-legend">
+              <div class="legend-item">
+                <span class="legend-dot legend-dot-green"></span>
+                <span>پرداخت شده</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot legend-dot-red"></span>
+                <span>پرداخت نشده</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>روند درآمد ۶ ماه اخیر</h3>
+              <span class="chart-badge">تومان</span>
+            </div>
+            <div class="line-wrapper">
+              <canvas id="reportLineChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
+
+          <div class="table-box">
+            <div class="table-header">
+              <h3>💰 خلاصه شارژ</h3>
+            </div>
+            <div style="padding: 8px 0;">
+              <div class="report-row">
+                <span>تعداد کل شارژها</span>
+                <strong id="reportChargesCount">۰</strong>
+              </div>
+              <div class="report-row">
+                <span>پرداخت شده</span>
+                <strong style="color:#15803d;" id="reportChargesPaid">۰</strong>
+              </div>
+              <div class="report-row">
+                <span>پرداخت نشده</span>
+                <strong style="color:#b91c1c;" id="reportChargesUnpaid">۰</strong>
+              </div>
+              <div class="report-row">
+                <span>مجموع شارژها</span>
+                <strong id="reportChargesSum">۰ تومان</strong>
+              </div>
+              <div class="report-row">
+                <span>مجموع دریافتی</span>
+                <strong style="color:#15803d;" id="reportChargesIncome">۰ تومان</strong>
+              </div>
+              <div class="report-row">
+                <span>مجموع معوق</span>
+                <strong style="color:#b91c1c;" id="reportChargesDebt">۰ تومان</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-box">
+            <div class="table-header">
+              <h3>🧾 خلاصه هزینه</h3>
+            </div>
+            <div style="padding: 8px 0;">
+              <div class="report-row">
+                <span>تعداد هزینه‌ها</span>
+                <strong id="reportExpensesCount">۰</strong>
+              </div>
+              <div class="report-row">
+                <span>مجموع هزینه‌ها</span>
+                <strong style="color:#b91c1c;" id="reportExpensesSum">۰ تومان</strong>
+              </div>
+              <div class="report-row">
+                <span>میانگین هزینه</span>
+                <strong id="reportExpensesAvg">۰ تومان</strong>
+              </div>
+              <div class="report-row">
+                <span>بیشترین هزینه</span>
+                <strong id="reportExpensesMax">۰ تومان</strong>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="table-box" style="margin-top:20px;">
+          <div class="table-header">
+            <h3>📊 هزینه‌ها بر اساس دسته‌بندی</h3>
+            <span id="reportCategoriesCount" class="table-count">۰ مورد</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>دسته‌بندی</th>
+                <th>تعداد</th>
+                <th>مجموع</th>
+                <th>درصد</th>
+              </tr>
+            </thead>
+            <tbody id="reportCategoriesBody"></tbody>
+          </table>
+        </div>
+
+        <div class="table-box" style="margin-top:20px;">
+          <div class="table-header">
+            <h3>⚠️ واحدهای بدهکار</h3>
+            <span id="reportDebtorsCount" class="table-count">۰ مورد</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>واحد</th>
+                <th>مالک</th>
+                <th>موبایل</th>
+                <th>مبلغ بدهی</th>
+              </tr>
+            </thead>
+            <tbody id="reportDebtorsBody"></tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <section id="page-settings" class="page">
+
+        <div id="settingsMain">
+
+          <div class="settings-grid">
+
+            <div class="settings-card" data-settings-page="building">
+              <div class="settings-icon" style="background:#eef2ff;">🏢</div>
+              <div class="settings-info">
+                <h4>اطلاعات ساختمان</h4>
+                <p>نام، کد، نوع و بلوک‌ها</p>
+              </div>
+              <span class="settings-arrow">←</span>
+            </div>
+
+            <div class="settings-card" data-settings-page="manager">
+              <div class="settings-icon" style="background:#dcfce7;">👤</div>
+              <div class="settings-info">
+                <h4>اطلاعات مدیر</h4>
+                <p>نام و شماره تماس</p>
+              </div>
+              <span class="settings-arrow">←</span>
+            </div>
+
+            <div class="settings-card" data-settings-page="payment">
+              <div class="settings-icon" style="background:#dbeafe;">💳</div>
+              <div class="settings-info">
+                <h4>اطلاعات پرداخت</h4>
+                <p>شماره کارت و شبا</p>
+              </div>
+              <span class="settings-arrow">←</span>
+            </div>
+
+            <div class="settings-card" data-settings-page="financial">
+              <div class="settings-icon" style="background:#ffedd5;">💰</div>
+              <div class="settings-info">
+                <h4>تنظیمات مالی</h4>
+                <p>شارژ ماهانه و مهلت پرداخت</p>
+              </div>
+              <span class="settings-arrow">←</span>
+            </div>
+
+            <div class="settings-card" data-settings-page="appearance">
+              <div class="settings-icon" style="background:#fce7f3;">🎨</div>
+              <div class="settings-info">
+                <h4>ظاهر</h4>
+                <p>حالت شب/روز و رنگ</p>
+              </div>
+              <span class="settings-arrow">←</span>
+            </div>
+
+            <div class="settings-card" data-settings-page="data">
+              <div class="settings-icon" style="background:#fee2e2;">💾</div>
+              <div class="settings-info">
+                <h4>داده‌ها و پشتیبان</h4>
+                <p>پشتیبان‌گیری و بازیابی</p>
+              </div>
+              <span class="settings-arrow">←</span>
+            </div>
+
+            <div class="settings-card" data-settings-page="about">
+              <div class="settings-icon" style="background:#f1f5f9;">ℹ️</div>
+              <div class="settings-info">
+                <h4>درباره برنامه</h4>
+                <p>نسخه و اطلاعات</p>
+              </div>
+              <span class="settings-arrow">←</span>
+            </div>
+
+          </div>
+
+        </div>
+
+        <div id="settingsBuilding" class="settings-subpage" style="display:none;">
+          <button class="settings-back" data-back>→ بازگشت</button>
+          <div class="table-box">
+            <div class="table-header">
+              <h3>🏢 اطلاعات ساختمان</h3>
+            </div>
+
+            <div class="form-group">
+              <label for="setBuildingName">نام ساختمان</label>
+              <input type="text" id="setBuildingName" class="form-input" />
+            </div>
+
+            <div class="form-group">
+              <label for="setBuildingCode">کد ساختمان</label>
+              <input type="text" id="setBuildingCode" class="form-input" readonly
+                     style="background:#f1f5f9; cursor:not-allowed;" />
+            </div>
+
+            <div class="form-group">
+              <label for="setBuildingType">نوع ساختمان</label>
+              <select id="setBuildingType" class="form-input">
+                <option value="complex">🏢 مجتمع (چند بلوک)</option>
+                <option value="single">🏬 ساختمان / برج (تک بلوک)</option>
+              </select>
+            </div>
+
+            <button class="btn btn-primary" id="setSaveBuilding">💾 ذخیره اطلاعات ساختمان</button>
+          </div>
+        </div>
+
+        <div id="settingsManager" class="settings-subpage" style="display:none;">
+          <button class="settings-back" data-back>→ بازگشت</button>
+          <div class="table-box">
+            <div class="table-header">
+              <h3>👤 اطلاعات مدیر</h3>
+            </div>
+
+            <div class="form-group">
+              <label for="setManagerName">نام و نام خانوادگی</label>
+              <input type="text" id="setManagerName" class="form-input" />
+            </div>
+
+            <div class="form-group">
+              <label for="setManagerPhone">شماره تماس</label>
+              <input type="tel" id="setManagerPhone" class="form-input" />
+            </div>
+
+            <button class="btn btn-primary" id="setSaveManager">💾 ذخیره اطلاعات مدیر</button>
+          </div>
+        </div>
+
+        <div id="settingsPayment" class="settings-subpage" style="display:none;">
+          <button class="settings-back" data-back>→ بازگشت</button>
+          <div class="table-box">
+            <div class="table-header">
+              <h3>💳 اطلاعات پرداخت</h3>
+            </div>
+
+            <div class="form-group">
+              <label for="setManagerCard">شماره کارت مدیر</label>
+              <input type="text" id="setManagerCard" class="form-input"
+                     placeholder="مثلاً: 6037-XXXX-XXXX-1234" />
+              <p class="hint-text">این شماره به ساکنین نمایش داده می‌شود.</p>
+            </div>
+
+            <div class="form-group">
+              <label for="setManagerSheba">شماره شبا</label>
+              <input type="text" id="setManagerSheba" class="form-input"
+                     placeholder="مثلاً: IR-XXXX-XXXX-XXXX-XXXX-XXXX" />
+            </div>
+
+            <button class="btn btn-primary" id="setSavePayment">💾 ذخیره اطلاعات پرداخت</button>
+          </div>
+        </div>
+
+        <div id="settingsFinancial" class="settings-subpage" style="display:none;">
+          <button class="settings-back" data-back>→ بازگشت</button>
+          <div class="table-box">
+            <div class="table-header">
+              <h3>💰 تنظیمات مالی</h3>
+            </div>
+
+            <div class="form-group">
+              <label for="setMonthlyCharge">مبلغ شارژ ماهانه پیش‌فرض (تومان)</label>
+              <input type="number" id="setMonthlyCharge" class="form-input"
+                     placeholder="مثلاً: 500000" step="10000" />
+              <p class="hint-text">این مبلغ در فرم صدور شارژ، پیش‌فرض قرار می‌گیرد.</p>
+            </div>
+
+            <div class="form-group">
+              <label for="setPaymentDeadline">مهلت پرداخت (روز)</label>
+              <input type="number" id="setPaymentDeadline" class="form-input"
+                     placeholder="مثلاً: 10" min="1" />
+              <p class="hint-text">مثلاً: تا ۱۰ روز از تاریخ صدور شارژ.</p>
+            </div>
+
+            <button class="btn btn-primary" id="setSaveFinancial">💾 ذخیره تنظیمات مالی</button>
+          </div>
+        </div>
+
+        <div id="settingsAppearance" class="settings-subpage" style="display:none;">
+          <button class="settings-back" data-back>→ بازگشت</button>
+          <div class="table-box">
+            <div class="table-header">
+              <h3>🎨 ظاهر</h3>
+            </div>
+
+            <div class="form-group">
+              <label>حالت نمایش</label>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-outline" id="setThemeLight" style="flex:1;">☀️ روز</button>
+                <button class="btn btn-outline" id="setThemeDark" style="flex:1;">🌙 شب</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>رنگ اصلی</label>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;" id="setColorOptions">
+                <button class="color-option" data-color="#5b4cdb" style="background:#5b4cdb;" title="بنفش نیلی"></button>
+                <button class="color-option" data-color="#0f766e" style="background:#0f766e;" title="آبی نفتی"></button>
+                <button class="color-option" data-color="#ea580c" style="background:#ea580c;" title="نارنجی آجری"></button>
+                <button class="color-option" data-color="#1e3a8a" style="background:#1e3a8a;" title="سرمه‌ای"></button>
+                <button class="color-option" data-color="#a855f7" style="background:#a855f7;" title="بنفش مدرن"></button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="settingsData" class="settings-subpage" style="display:none;">
+          <button class="settings-back" data-back>→ بازگشت</button>
+          <div class="table-box">
+            <div class="table-header">
+              <h3>💾 داده‌ها و پشتیبان</h3>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:14px;">
+              <div>
+                <button class="btn btn-outline" id="setBackupDownload" style="width:100%;">
+                  📥 دانلود پشتیبان (JSON)
+                </button>
+                <p class="hint-text">تمام داده‌ها در یک فایل ذخیره می‌شود.</p>
+              </div>
+
+              <div>
+                <button class="btn btn-outline" id="setBackupUpload" style="width:100%;">
+                  📤 بازیابی از فایل پشتیبان
+                </button>
+                <input type="file" id="setBackupFile" accept=".json" style="display:none;" />
+                <p class="hint-text">هشدار: داده‌های فعلی جایگزین می‌شوند.</p>
+              </div>
+
+              <hr style="border:none; border-top:1px solid #e2e8f0; margin:8px 0;" />
+
+              <div>
+                <button class="btn btn-danger" id="setResetData" style="width:100%;">
+                  🗑️ پاک کردن همه داده‌ها
+                </button>
+                <p class="hint-text warn">همه واحدها، شارژها، هزینه‌ها و ... پاک می‌شوند.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="settingsAbout" class="settings-subpage" style="display:none;">
+          <button class="settings-back" data-back>→ بازگشت</button>
+          <div class="table-box">
+            <div class="table-header">
+              <h3>ℹ️ درباره برنامه</h3>
+            </div>
+
+            <div style="text-align:center; padding:20px;">
+              <svg width="80" height="80" viewBox="0 0 512 512"
+                   xmlns="http://www.w3.org/2000/svg" fill="none"
+                   style="margin-bottom:12px; border-radius:16px; box-shadow:0 4px 14px rgba(91,76,219,0.25);">
+                <rect width="512" height="512" rx="110" fill="#5b4cdb"/>
+                <path d="M370 380H142V200c0-8 5-15 12-17l140-33c6-1 12 0 17 3s8 9 8 15v212zM392 165c0-6 4-12 9-15s12-4 18-2l48 11c8 2 13 9 13 17v204h-88V165zM320 80c0-7 5-12 12-12h72c7 0 12 5 12 12v64h-96V80z"
+                      fill="#ffffff"/>
+                <rect x="238" y="300" width="24" height="80" rx="12" fill="#5b4cdb"/>
+              </svg>
+             <h3 style="font-size:20px; font-weight:800; color:#5b4cdb; margin-bottom:6px;">آپارتمان پلاس</h3>
+<p style="font-size:13px; color:#64748b; margin-bottom:4px;">نرم‌افزار هوشمند مدیریت ساختمان</p>
+              <p style="font-size:12px; color:#94a3b8;">نسخه ۱.۰.۰</p>
+            </div>
+
+            <div style="background:#f8fafc; border-radius:10px; padding:16px; font-size:13px; line-height:2; color:#64748b;">
+              <div style="display:flex; justify-content:space-between;"><span>نسخه:</span><strong style="color:#1e293b;">۱.۰.۰</strong></div>
+              <div style="display:flex; justify-content:space-between;"><span>تاریخ ساخت:</span><strong style="color:#1e293b;" id="aboutBuildDate">—</strong></div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+      <!-- ============ صفحه پروفایل من ============ -->
+      <section id="page-profile" class="page">
+
+        <!-- کارت هدر پروفایل -->
+        <div class="profile-hero">
+          <div class="profile-hero-avatar-wrapper">
+            <div class="profile-hero-avatar" id="heroAvatar">م</div>
+            <label class="profile-avatar-upload" for="avatarUpload" title="تغییر عکس">
+              📷
+              <input type="file" id="avatarUpload" accept="image/*" style="display:none;" />
+            </label>
+          </div>
+          <div class="profile-hero-info">
+            <h2 id="heroName">مدیر ساختمان</h2>
+            <p id="heroPhone">—</p>
+            <span class="profile-hero-badge" id="heroRole">👑 مدیر ساختمان</span>
+          </div>
+        </div>
+
+        <!-- تب‌های پروفایل -->
+        <div class="profile-tabs">
+          <button class="profile-tab active" data-profile-tab="info">👤 اطلاعات شخصی</button>
+          <button class="profile-tab" data-profile-tab="password">🔒 تغییر رمز عبور</button>
+          <button class="profile-tab" data-profile-tab="stats">📊 آمار فعالیت</button>
+          <button class="profile-tab" data-profile-tab="danger">⚠️ حذف حساب</button>
+        </div>
+
+        <!-- تب ۱: اطلاعات شخصی -->
+        <div class="profile-tab-content active" data-profile-tab-content="info">
+          <div class="table-box">
+            <div class="table-header">
+              <h3>👤 اطلاعات شخصی</h3>
+            </div>
+
+            <div class="unit-form">
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="profileFullName">نام و نام خانوادگی <span class="required">*</span></label>
+                  <input type="text" id="profileFullName" class="form-input" placeholder="مثلاً: علی احمدی" />
+                </div>
+
+                <div class="form-group">
+                  <label for="profilePhone">شماره موبایل <span class="required">*</span></label>
+                  <input type="tel" id="profilePhone" class="form-input" placeholder="۰۹۱۲۱۲۳۴۵۶۷" maxlength="11" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="profileEmail">ایمیل</label>
+                  <input type="email" id="profileEmail" class="form-input" placeholder="example@email.com" dir="ltr" />
+                </div>
+
+                <div class="form-group">
+                  <label for="profileNationalId">کد ملی</label>
+                  <input type="text" id="profileNationalId" class="form-input" placeholder="۱۰ رقم" maxlength="10" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="profileAddress">آدرس</label>
+                <input type="text" id="profileAddress" class="form-input" placeholder="آدرس محل سکونت" />
+              </div>
+
+              <div class="form-group">
+                <label for="profileBio">درباره من</label>
+                <textarea id="profileBio" class="form-input" rows="3"
+                          placeholder="توضیحات کوتاه..." style="resize:vertical; font-family:inherit;"></textarea>
+              </div>
+
+              <button class="btn btn-primary" id="btnSaveProfile" style="width:100%;">
+                💾 ذخیره اطلاعات
+              </button>
+
+            </div>
+          </div>
+
+          <!-- اطلاعات ساختمان -->
+          <div class="table-box" style="margin-top:20px;">
+            <div class="table-header">
+              <h3>🏢 اطلاعات ساختمان</h3>
+            </div>
+
+            <div style="padding: 8px 0;">
+              <div class="report-row">
+                <span>نام ساختمان</span>
+                <strong id="profileBuildingName">—</strong>
+              </div>
+              <div class="report-row">
+                <span>کد ساختمان</span>
+                <strong id="profileBuildingCode">—</strong>
+              </div>
+              <div class="report-row">
+                <span>نوع ساختمان</span>
+                <strong id="profileBuildingType">—</strong>
+              </div>
+              <div class="report-row">
+                <span>تعداد بلوک‌ها</span>
+                <strong id="profileBuildingBlocks">—</strong>
+              </div>
+              <div class="report-row">
+                <span>کل واحدها</span>
+                <strong id="profileBuildingUnits">—</strong>
+              </div>
+              <div class="report-row">
+                <span>تاریخ ایجاد</span>
+                <strong id="profileBuildingCreated">—</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- تب ۲: تغییر رمز عبور -->
+        <div class="profile-tab-content" data-profile-tab-content="password">
+          <div class="table-box">
+            <div class="table-header">
+              <h3>🔒 تغییر رمز عبور</h3>
+            </div>
+
+            <div class="unit-form">
+
+              <div class="form-group">
+                <label for="currentPassword">رمز عبور فعلی <span class="required">*</span></label>
+                <input type="password" id="currentPassword" class="form-input" placeholder="••••••••" />
+              </div>
+
+              <div class="form-group">
+                <label for="newPassword">رمز عبور جدید <span class="required">*</span></label>
+                <input type="password" id="newPassword" class="form-input" placeholder="حداقل ۶ کاراکتر" />
+                <div class="password-strength" id="passwordStrength">
+                  <div class="password-strength-bar"></div>
+                </div>
+                <p class="hint-text" id="passwordHint">حداقل ۶ کاراکتر شامل حرف و عدد</p>
+              </div>
+
+              <div class="form-group">
+                <label for="confirmPassword">تکرار رمز عبور جدید <span class="required">*</span></label>
+                <input type="password" id="confirmPassword" class="form-input" placeholder="••••••••" />
+              </div>
+
+              <button class="btn btn-primary" id="btnChangePassword" style="width:100%;">
+                🔐 تغییر رمز عبور
+              </button>
+
+              <p class="hint-text" style="text-align:center; margin-top:14px;">
+                💡 اگه رمز فعلی رو فراموش کردی، از گزینه «حذف حساب» استفاده کن و دوباره ثبت‌نام کن.
+              </p>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- تب ۳: آمار فعالیت -->
+        <div class="profile-tab-content" data-profile-tab-content="stats">
+          <div class="stats-grid units-stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-purple">🏠</div>
+              <div class="stat-body">
+                <p class="stat-label">کل واحدها</p>
+                <h3 class="stat-value" id="statProfileUnits">۰</h3>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-green">💰</div>
+              <div class="stat-body">
+                <p class="stat-label">کل شارژها</p>
+                <h3 class="stat-value" id="statProfileCharges">۰</h3>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-blue">💳</div>
+              <div class="stat-body">
+                <p class="stat-label">پرداخت‌ها</p>
+                <h3 class="stat-value" id="statProfilePayments">۰</h3>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-orange">🧾</div>
+              <div class="stat-body">
+                <p class="stat-label">هزینه‌ها</p>
+                <h3 class="stat-value" id="statProfileExpenses">۰</h3>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-red">📢</div>
+              <div class="stat-body">
+                <p class="stat-label">اطلاعیه‌ها</p>
+                <h3 class="stat-value" id="statProfileNotices">۰</h3>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-box" style="margin-top:20px;">
+            <div class="table-header">
+              <h3>📋 فعالیت‌های اخیر</h3>
+            </div>
+
+            <div id="profileActivityList" style="padding: 8px 0;">
+              <!-- با JS پر می‌شه -->
+            </div>
+          </div>
+        </div>
+
+        <!-- تب ۴: حذف حساب -->
+        <div class="profile-tab-content" data-profile-tab-content="danger">
+          <div class="table-box">
+            <div class="table-header">
+              <h3 style="color:#b91c1c;">⚠️ منطقه خطر</h3>
+            </div>
+
+            <div class="danger-zone-box">
+              <div class="danger-zone-icon">🗑️</div>
+              <h3>حذف کامل حساب کاربری</h3>
+              <p>
+                با این کار، تمام اطلاعات ساختمان، واحدها، شارژها، پرداخت‌ها، هزینه‌ها،
+                اطلاعیه‌ها و پیام‌ها <strong>برای همیشه پاک می‌شوند</strong> و
+                قابل بازگشت نیستند.
+              </p>
+              <p style="margin-top:8px; font-size:12px; color:#94a3b8;">
+                💡 پیشنهاد: قبل از حذف، از بخش «تنظیمات → داده‌ها» یه پشتیبان بگیر.
+              </p>
+
+              <button class="btn btn-danger" id="btnDeleteAccount" style="margin-top:16px; width:100%;">
+                🗑️ حذف کامل حساب کاربری
+              </button>
+            </div>
+<div class="danger-zone-box" style="margin-top:16px;">
+  <div class="danger-zone-icon">🚪</div>
+  <h3>خروج از پنل</h3>
+  <p>
+    با خروج، از پنل خارج می‌شوید ولی اطلاعات باقی می‌مانند و
+    می‌توانید دوباره وارد شوید.
+  </p>
+
+  <button class="btn btn-outline" id="btnLogoutFromProfile" style="margin-top:16px; width:100%;">
+    🚪 خروج از پنل
+  </button>
+</div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- ============ مودال ایجاد رأی‌گیری ============ -->
+  <div class="modal-backdrop" id="votingModal">
+    <div class="modal modal-unit" style="max-width: 700px;">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">🗳️</div>
+        <div>
+          <h2 id="votingModalTitle">ایجاد رأی‌گیری جدید</h2>
+          <p id="votingModalSubtitle">اطلاعات رأی‌گیری را وارد کنید</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="form-group">
+          <label for="votingTitle">عنوان رأی‌گیری <span class="required">*</span></label>
+          <input type="text" id="votingTitle" class="form-input"
+                 placeholder="مثلاً: انتخابات هیئت مدیره ۱۴۰۴" />
+        </div>
+
+        <div class="form-group">
+          <label for="votingDescription">توضیحات</label>
+          <textarea id="votingDescription" class="form-input" rows="3"
+                    placeholder="توضیحات اختیاری..." style="resize:vertical; font-family:inherit;"></textarea>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>⏰ زمان رأی‌گیری</span>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <label style="font-size:13px; font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">🟢 شروع</label>
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;">
+                <label for="votingStartDate" style="font-size:12px; color:#64748b;">تاریخ</label>
+                <input type="text" id="votingStartDate" class="form-input"
+                       placeholder="مثلاً: ۱۴۰۴/۰۷/۱۵" />
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label for="votingStartTime" style="font-size:12px; color:#64748b;">ساعت</label>
+                <input type="text" id="votingStartTime" class="form-input"
+                       placeholder="مثلاً: ۱۰:۰۰" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:13px; font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">🔴 پایان</label>
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;">
+                <label for="votingEndDate" style="font-size:12px; color:#64748b;">تاریخ</label>
+                <input type="text" id="votingEndDate" class="form-input"
+                       placeholder="مثلاً: ۱۴۰۴/۰۷/۱۵" />
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label for="votingEndTime" style="font-size:12px; color:#64748b;">ساعت</label>
+                <input type="text" id="votingEndTime" class="form-input"
+                       placeholder="مثلاً: ۱۵:۰۰" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>👥 کاندیدها</span>
+            <button type="button" class="btn btn-outline" id="votingAddCandidate"
+                    style="padding:6px 12px; font-size:12px;">➕ افزودن کاندید</button>
+          </div>
+
+          <div id="votingCandidatesList">
+            <!-- لیست کاندیدها -->
+          </div>
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="votingCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="votingSaveBtn">💾 ایجاد رأی‌گیری</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال نمایش نتایج رأی‌گیری ============ -->
+  <div class="modal-backdrop" id="votingResultsModal">
+    <div class="modal modal-unit" style="max-width: 700px;">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">📊</div>
+        <div>
+          <h2 id="votingResultsTitle">نتایج رأی‌گیری</h2>
+          <p id="votingResultsSubtitle">—</p>
+        </div>
+        <button class="detail-close" id="votingResultsCloseBtn" style="margin-right:auto;">✖</button>
+      </div>
+
+      <div id="votingResultsContent">
+        <!-- نتایج -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال ارسال پیام ============ -->
+  <div class="modal-backdrop" id="messageModal">
+    <div class="modal modal-unit">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">✉️</div>
+        <div>
+          <h2 id="messageModalTitle">ارسال پیام</h2>
+          <p id="messageModalSubtitle">گیرنده را انتخاب کنید</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>👤 گیرنده</span>
+          </div>
+
+          <div class="form-group">
+            <select id="messageTargetType" class="form-input">
+              <option value="unit">🏠 یک واحد خاص</option>
+              <option value="block">🏢 یک بلوک (گروهی)</option>
+              <option value="all">🌐 همه ساکنین</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="messageUnitSection">
+            <label>انتخاب واحد</label>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+              <select id="messageBlockSelect" class="form-input" style="padding:8px 10px; font-size:13px;">
+                <option value="all">🏢 همه بلوک‌ها</option>
+              </select>
+              <input type="text" id="messageUnitSearch" class="form-input"
+                     style="padding:8px 10px; font-size:13px;"
+                     placeholder="🔍 شماره واحد..." />
+            </div>
+            <select id="messageUnitSelect" class="form-input" size="6" style="padding:6px;">
+              <!-- لیست واحدها -->
+            </select>
+          </div>
+
+          <div class="form-group" id="messageBlockSection" style="display:none;">
+            <label>انتخاب بلوک</label>
+            <select id="messageTargetBlock" class="form-input">
+              <option value="">— انتخاب کنید —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="messageBody">متن پیام <span class="required">*</span></label>
+          <textarea id="messageBody" class="form-input" rows="5"
+                    placeholder="متن پیام..." style="resize:vertical; font-family:inherit;"></textarea>
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="messageCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="messageSaveBtn">📤 ارسال پیام</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال نمایش گفتگو ============ -->
+  <div class="modal-backdrop" id="conversationModal">
+    <div class="modal modal-unit" style="max-width: 700px;">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">💬</div>
+        <div>
+          <h2 id="conversationTitle">گفتگو</h2>
+          <p id="conversationSubtitle">—</p>
+        </div>
+        <button class="detail-close" id="conversationCloseBtn" style="margin-right:auto;">✖</button>
+      </div>
+
+      <div id="conversationMessages" style="max-height: 400px; overflow-y: auto; padding: 10px; background: #f8fafc; border-radius: 12px; display: flex; flex-direction: column; gap: 10px;">
+        <!-- پیام‌ها -->
+      </div>
+
+      <div style="margin-top: 14px; display: flex; gap: 8px;">
+        <input type="text" id="conversationReply" class="form-input"
+               placeholder="پاسخ..." style="flex: 1;" />
+        <button class="btn btn-primary" id="conversationSendBtn">📤 ارسال</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال ارسال اطلاعیه ============ -->
+  <div class="modal-backdrop" id="noticeModal">
+    <div class="modal modal-unit">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">📢</div>
+        <div>
+          <h2 id="noticeModalTitle">ارسال اطلاعیه جدید</h2>
+          <p id="noticeModalSubtitle">اطلاعات اطلاعیه را وارد کنید</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="form-group">
+          <label for="noticeTitle">عنوان اطلاعیه <span class="required">*</span></label>
+          <input type="text" id="noticeTitle" class="form-input"
+                 placeholder="مثلاً: قطع آب" />
+        </div>
+
+        <div class="form-group">
+          <label for="noticeBody">متن اطلاعیه <span class="required">*</span></label>
+          <textarea id="noticeBody" class="form-input" rows="5"
+                    placeholder="متن کامل اطلاعیه..." style="resize:vertical; font-family:inherit;"></textarea>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>📸 عکس (اختیاری)</span>
+          </div>
+
+          <div class="form-group">
+            <input type="file" id="noticeImage" accept="image/*" class="form-input" />
+            <div id="noticeImagePreview" style="margin-top:10px; display:none;">
+              <img id="noticeImagePreviewImg" style="max-width:100%; max-height:200px; border-radius:10px; border:1px solid #e2e8f0;" />
+              <button type="button" class="btn btn-cancel" id="noticeImageRemove" style="margin-top:8px; padding:6px 12px; font-size:12px;">🗑️ حذف عکس</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>👥 مخاطبین</span>
+          </div>
+
+          <div class="form-group">
+            <label>نوع مخاطب</label>
+            <select id="noticeTargetType" class="form-input">
+              <option value="all">🌐 همه ساکنین</option>
+              <option value="block">🏢 یک بلوک خاص</option>
+              <option value="units">🏠 واحدهای خاص</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="noticeBlockSection" style="display:none;">
+            <label>انتخاب بلوک</label>
+            <select id="noticeBlockSelect" class="form-input">
+              <option value="">— انتخاب کنید —</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="noticeUnitsSection" style="display:none;">
+            <label>انتخاب واحدها</label>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px;">
+              <select id="noticeUnitsBlockSelect" class="form-input" style="padding:8px 10px; font-size:13px;">
+                <option value="all">🏢 همه بلوک‌ها</option>
+              </select>
+
+              <input type="text" id="noticeUnitsSearch"
+                     class="form-input"
+                     style="padding:8px 10px; font-size:13px;"
+                     placeholder="🔍 شماره واحد..." />
+            </div>
+
+            <div style="display:flex; gap:6px; margin-bottom:8px;">
+              <button type="button" class="btn btn-outline" id="noticeSelectAllUnits" style="padding:5px 10px; font-size:11.5px; flex:1;">✅ انتخاب همه</button>
+              <button type="button" class="btn btn-outline" id="noticeDeselectAllUnits" style="padding:5px 10px; font-size:11.5px; flex:1;">❌ لغو همه</button>
+            </div>
+
+            <div id="noticeUnitsList" style="max-height:220px; overflow-y:auto; background:#fff; border-radius:10px; border:1px solid #e2e8f0; padding:8px;">
+              <!-- لیست واحدها -->
+            </div>
+
+            <div style="margin-top:8px; font-size:13px; color:#64748b;">
+              انتخاب‌شده: <strong id="noticeUnitsSelectedCount">۰</strong> واحد
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="noticeCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="noticeSaveBtn">📤 ارسال اطلاعیه</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال افزودن/ویرایش هزینه ============ -->
+  <div class="modal-backdrop" id="expenseModal">
+    <div class="modal modal-unit">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">🧾</div>
+        <div>
+          <h2 id="expenseModalTitle">ثبت هزینه جدید</h2>
+          <p id="expenseModalSubtitle">اطلاعات هزینه را وارد کنید</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="expenseTitle">عنوان هزینه <span class="required">*</span></label>
+            <input type="text" id="expenseTitle" class="form-input"
+                   placeholder="مثلاً: تعمیر آسانسور" />
+          </div>
+
+          <div class="form-group">
+            <label for="expenseCategory">دسته‌بندی</label>
+            <select id="expenseCategory" class="form-input">
+              <option value="نظافت">🧹 نظافت</option>
+              <option value="تعمیرات">🔧 تعمیرات</option>
+              <option value="قبوض">💡 قبوض</option>
+              <option value="آسانسور">🛗 آسانسور</option>
+              <option value="فضای سبز">🌿 فضای سبز</option>
+              <option value="نگهبانی">🚪 نگهبانی</option>
+              <option value="سایر" selected>📦 سایر</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="expenseAmount">مبلغ (تومان) <span class="required">*</span></label>
+            <input type="number" id="expenseAmount" class="form-input"
+                   placeholder="مثلاً: ۵۰۰۰۰۰" value="0" min="0" step="10000" />
+          </div>
+
+          <div class="form-group">
+            <label for="expenseDate">تاریخ</label>
+            <input type="text" id="expenseDate" class="form-input"
+                   placeholder="مثلاً: ۱۴۰۴/۰۷/۰۵" />
+          </div>
+        </div>
+
+        <div class="form-section" id="expenseBlockSection">
+          <div class="form-section-title">
+            <span>🏢 مربوط به</span>
+          </div>
+
+          <div class="form-group">
+            <select id="expenseBlockSelect" class="form-input">
+              <option value="all">🏢 همه بلوک‌ها / کل ساختمان</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>📅 دوره</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="expenseModalMonth">ماه</label>
+              <select id="expenseModalMonth" class="form-input">
+                <option value="فروردین">فروردین</option>
+                <option value="اردیبهشت">اردیبهشت</option>
+                <option value="خرداد">خرداد</option>
+                <option value="تیر">تیر</option>
+                <option value="مرداد">مرداد</option>
+                <option value="شهریور">شهریور</option>
+                <option value="مهر">مهر</option>
+                <option value="آبان">آبان</option>
+                <option value="آذر">آذر</option>
+                <option value="دی">دی</option>
+                <option value="بهمن">بهمن</option>
+                <option value="اسفند">اسفند</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="expenseModalYear">سال</label>
+              <select id="expenseModalYear" class="form-input">
+                <!-- با JS پر می‌شه -->
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="expenseDescription">توضیحات</label>
+          <input type="text" id="expenseDescription" class="form-input"
+                 placeholder="توضیحات اختیاری" />
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="expenseCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="expenseSaveBtn">💾 ذخیره</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال ثبت پرداخت جدید (گروهی) ============ -->
+  <div class="modal-backdrop" id="newPaymentModal">
+    <div class="modal modal-unit">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">➕</div>
+        <div>
+          <h2>ثبت پرداخت جدید</h2>
+          <p id="newPaySubtitle">واحدها را انتخاب کنید</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>🏢 انتخاب بلوک</span>
+          </div>
+
+          <div class="form-group">
+            <select id="newPayBlock" class="form-input">
+              <option value="">— همه بلوک‌ها —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>🏠 واحدها</span>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn btn-outline" id="newPaySelectAll" style="padding:6px 12px; font-size:12px;">✅ انتخاب همه</button>
+              <button type="button" class="btn btn-outline" id="newPayDeselectAll" style="padding:6px 12px; font-size:12px;">❌ لغو همه</button>
+            </div>
+          </div>
+
+          <div id="newPayUnitsList" style="max-height: 250px; overflow-y: auto; background:#fff; border-radius:10px; border:1px solid #e2e8f0; padding:8px;">
+            <div style="text-align:center; color:#94a3b8; padding:20px; font-size:13px;">
+              بلوک را انتخاب کنید
+            </div>
+          </div>
+
+          <div id="newPaySelectedInfo" style="margin-top:12px; background:#f0f4ff; border-radius:10px; padding:12px; font-size:13.5px;">
+            <div style="display:flex; justify-content:space-between;">
+              <span style="color:#64748b;">تعداد انتخاب‌شده:</span>
+              <strong id="newPaySelectedCount">۰</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:6px;">
+              <span style="color:#64748b;">مجموع شارژ:</span>
+              <strong id="newPaySelectedTotal" style="color:#5b4cdb;">۰ تومان</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>💳 اطلاعات پرداخت</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newPayDate">تاریخ پرداخت</label>
+              <input type="text" id="newPayDate" class="form-input"
+                     placeholder="مثلاً: ۱۴۰۴/۰۷/۰۵" />
+            </div>
+
+            <div class="form-group">
+              <label for="newPayMethod">روش پرداخت</label>
+              <select id="newPayMethod" class="form-input">
+                <option value="آنلاین">🌐 آنلاین (درگاه)</option>
+                <option value="کارت به کارت">💳 کارت به کارت</option>
+                <option value="نقدی" selected>💵 نقدی</option>
+                <option value="انتقال بانکی">🏦 انتقال بانکی</option>
+                <option value="چک">📝 چک</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="newPayDescription">توضیحات</label>
+            <input type="text" id="newPayDescription" class="form-input"
+                   placeholder="مثلاً: پرداخت نقدی در دفتر" />
+          </div>
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="newPayCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="newPayConfirmBtn">✅ ثبت پرداخت گروهی</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال ثبت پرداخت ============ -->
+  <div class="modal-backdrop" id="payChargeModal">
+    <div class="modal modal-unit">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">💳</div>
+        <div>
+          <h2>ثبت پرداخت شارژ</h2>
+          <p id="payChargeSubtitle">—</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="detail-stats" style="margin-bottom: 18px;">
+          <div class="detail-stat">
+            <span>واحد</span>
+            <strong id="payUnitLabel">—</strong>
+          </div>
+          <div class="detail-stat">
+            <span>دوره</span>
+            <strong id="payMonthLabel">—</strong>
+          </div>
+          <div class="detail-stat">
+            <span>مبلغ کل</span>
+            <strong id="payTotalLabel">—</strong>
+          </div>
+          <div class="detail-stat">
+            <span>وضعیت</span>
+            <strong id="payStatusLabel">—</strong>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>💳 اطلاعات پرداخت</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="payDate">تاریخ پرداخت</label>
+              <input type="text" id="payDate" class="form-input"
+                     placeholder="مثلاً: ۱۴۰۴/۰۷/۰۵" />
+            </div>
+
+            <div class="form-group">
+              <label for="payMethod">روش پرداخت</label>
+              <select id="payMethod" class="form-input">
+                <option value="آنلاین">🌐 آنلاین (درگاه)</option>
+                <option value="کارت به کارت">💳 کارت به کارت</option>
+                <option value="نقدی" selected>💵 نقدی</option>
+                <option value="انتقال بانکی">🏦 انتقال بانکی</option>
+                <option value="چک">📝 چک</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="payDescription">توضیحات</label>
+            <input type="text" id="payDescription" class="form-input"
+                   placeholder="مثلاً: پرداخت نقدی در دفتر" />
+          </div>
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="payCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="payConfirmBtn">✅ تأیید پرداخت</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال صدور شارژ ============ -->
+  <div class="modal-backdrop" id="issueChargeModal">
+    <div class="modal modal-unit">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">📤</div>
+        <div>
+          <h2>صدور شارژ ماهانه</h2>
+          <p id="issueChargeSubtitle">برای همه واحدها</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="issueMonth">ماه <span class="required">*</span></label>
+            <select id="issueMonth" class="form-input">
+              <!-- با JS پر می‌شه -->
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="issueYear">سال <span class="required">*</span></label>
+            <select id="issueYear" class="form-input">
+              <!-- با JS پر می‌شه -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>💰 مبلغ شارژ</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="issueBaseCharge">شارژ پایه ماهانه (تومان) <span class="required">*</span></label>
+              <input type="number" id="issueBaseCharge" class="form-input"
+                     placeholder="مثلاً: ۵۰۰۰۰۰" value="500000" min="0" step="10000" />
+            </div>
+
+            <div class="form-group">
+              <label for="issueExtra">هزینه اضافی (تومان)</label>
+              <input type="number" id="issueExtra" class="form-input"
+                     placeholder="مثلاً: ۰" value="0" min="0" step="10000" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section" id="issueBlockSection">
+          <div class="form-section-title">
+            <span>🏢 صدور برای</span>
+          </div>
+
+          <div class="form-group">
+            <select id="issueBlockSelect" class="form-input">
+              <option value="all">🏢 همه بلوک‌ها</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>📅 جزئیات</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="issueDueDate">تاریخ سررسید</label>
+              <input type="text" id="issueDueDate" class="form-input"
+                     placeholder="مثلاً: ۱۴۰۴/۰۷/۱۰" />
+            </div>
+
+            <div class="form-group">
+              <label for="issueDescription">توضیحات</label>
+              <input type="text" id="issueDescription" class="form-input"
+                     placeholder="مثلاً: شارژ مهر ماه" />
+            </div>
+          </div>
+        </div>
+
+        <div class="issue-preview">
+          <div class="issue-preview-row">
+            <span>تعداد واحدها:</span>
+            <strong id="issueUnitCount">۰</strong>
+          </div>
+          <div class="issue-preview-row">
+            <span>مجموع دریافتی:</span>
+            <strong id="issueTotalAmount">۰ تومان</strong>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="issueCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="issueConfirmBtn">📤 صدور شارژ</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال جزئیات واحد ============ -->
+  <div class="modal-backdrop" id="unitDetailModal">
+    <div class="modal modal-detail">
+
+      <div class="detail-header">
+        <div class="detail-title">
+          <span class="detail-icon">🏠</span>
+          <div>
+            <h2 id="detailUnitTitle">جزئیات واحد</h2>
+            <p id="detailUnitSubtitle">—</p>
+          </div>
+        </div>
+        <button class="detail-close" id="detailCloseBtn">✖</button>
+      </div>
+
+      <div class="detail-stats">
+        <div class="detail-stat">
+          <span>بلوک</span>
+          <strong id="detailBlock">—</strong>
+        </div>
+        <div class="detail-stat">
+          <span>شماره واحد</span>
+          <strong id="detailNumber">—</strong>
+        </div>
+        <div class="detail-stat">
+          <span>شارژ ماهانه</span>
+          <strong id="detailCharge">—</strong>
+        </div>
+        <div class="detail-stat">
+          <span>بدهی</span>
+          <strong id="detailDebt">—</strong>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">
+          <span>👤 مالک</span>
+          <span class="detail-status" id="detailOwnerStatus">—</span>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span>نام</span>
+            <strong id="detailOwnerName">—</strong>
+          </div>
+          <div class="detail-item">
+            <span>موبایل</span>
+            <strong id="detailOwnerPhone">—</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">
+          <span>🏘️ مستاجر</span>
+          <span class="detail-status" id="detailTenantStatus">—</span>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span>نام</span>
+            <strong id="detailTenantName">—</strong>
+          </div>
+          <div class="detail-item">
+            <span>موبایل</span>
+            <strong id="detailTenantPhone">—</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">
+          <span>📋 تاریخچه</span>
+        </div>
+        <div class="detail-empty">
+          به‌زودی: تاریخچه شارژها و پرداخت‌های این واحد
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        <button class="btn btn-cancel" id="detailCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="detailEditBtn">✏️ ویرایش</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال افزودن/ویرایش واحد ============ -->
+  <div class="modal-backdrop" id="unitModal">
+    <div class="modal modal-unit">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">🏠</div>
+        <div>
+          <h2 id="unitModalTitle">افزودن واحد جدید</h2>
+          <p id="unitModalSubtitle">اطلاعات واحد را وارد کنید</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="unitBlock">بلوک <span class="required">*</span></label>
+            <select id="unitBlock" class="form-input">
+              <option value="">— انتخاب کنید —</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="unitNumber">شماره واحد <span class="required">*</span></label>
+            <input type="number" id="unitNumber" class="form-input"
+                   placeholder="مثلاً: ۱" min="1" />
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>👤 مالک</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ownerName">نام مالک</label>
+              <input type="text" id="ownerName" class="form-input"
+                     placeholder="مثلاً: علی احمدی" />
+            </div>
+
+            <div class="form-group">
+              <label for="ownerPhone">موبایل مالک</label>
+              <input type="tel" id="ownerPhone" class="form-input"
+                     placeholder="مثلاً: ۰۹۱۲۱۲۳۴۵۶۷" maxlength="11" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>🏘️ مستاجر</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="tenantName">نام مستاجر</label>
+              <input type="text" id="tenantName" class="form-input"
+                     placeholder="مثلاً: لیلا کرمی" />
+            </div>
+
+            <div class="form-group">
+              <label for="tenantPhone">موبایل مستاجر</label>
+              <input type="tel" id="tenantPhone" class="form-input"
+                     placeholder="مثلاً: ۰۹۱۲۰۰۰۰۰۰۱" maxlength="11" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>💰 اطلاعات مالی</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="unitCharge">شارژ ماهانه (تومان)</label>
+              <input type="number" id="unitCharge" class="form-input"
+                     placeholder="مثلاً: ۵۰۰۰۰۰" value="500000" min="0" step="10000" />
+            </div>
+
+            <div class="form-group">
+              <label for="unitDebt">بدهی فعلی (تومان)</label>
+              <input type="number" id="unitDebt" class="form-input"
+                     placeholder="مثلاً: ۰" value="0" min="0" step="10000" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="unitCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="unitSaveBtn">💾 ذخیره</button>
+      </div>
+
+    </div>
+  </div>
+  <!-- ============ مودال ثبت درآمد جانبی ============ -->
+  <div class="modal-backdrop" id="sideIncomeModal">
+    <div class="modal modal-unit">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">🏪</div>
+        <div>
+          <h2 id="sideIncomeModalTitle">ثبت درآمد جانبی</h2>
+          <p id="sideIncomeModalSubtitle">اطلاعات درآمد را وارد کنید</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="sideIncomeTitle">عنوان درآمد <span class="required">*</span></label>
+            <input type="text" id="sideIncomeTitle" class="form-input"
+                   placeholder="مثلاً: اجاره مغازه" />
+          </div>
+
+          <div class="form-group">
+            <label for="sideIncomeCategory">دسته‌بندی</label>
+            <select id="sideIncomeCategory" class="form-input">
+              <option value="اجاره مغازه">🏪 اجاره مغازه</option>
+              <option value="اجاره پارکینگ">🚗 اجاره پارکینگ</option>
+              <option value="اجاره آنتن">📡 اجاره آنتن</option>
+              <option value="تبلیغات">📢 تبلیغات</option>
+              <option value="اجاره سالن">🎉 اجاره سالن اجتماعات</option>
+              <option value="اجاره استخر">🏊 اجاره استخر</option>
+              <option value="اجاره باشگاه">🏋️ اجاره باشگاه</option>
+              <option value="اجاره سالن ورزش">🏀 اجاره سالن ورزش</option>
+              <option value="سپرده">🗝️ سپرده</option>
+              <option value="سایر">📦 سایر</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section" id="sideIncomeSessionSection">
+          <div class="form-section-title">
+            <span>🕐 سانس / بازه زمانی</span>
+            <span style="font-size:11.5px; color:#94a3b8; font-weight:500;">(اختیاری)</span>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <select id="sideIncomeSessionSelect" class="form-input">
+              <option value="">— بدون سانس —</option>
+            </select>
+
+            <input type="text" id="sideIncomeSessionCustom" class="form-input"
+                   placeholder="سانس دلخواه را وارد کنید..."
+                   style="display:none; margin-top:8px;" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="sideIncomeAmount">مبلغ (تومان) <span class="required">*</span></label>
+            <input type="number" id="sideIncomeAmount" class="form-input"
+                   placeholder="مثلاً: ۵۰۰۰۰۰۰" value="0" min="0" step="10000" />
+          </div>
+
+          <div class="form-group">
+            <label for="sideIncomeDate">تاریخ دریافت</label>
+            <input type="text" id="sideIncomeDate" class="form-input"
+                   placeholder="مثلاً: ۱۴۰۴/۰۷/۰۵" />
+          </div>
+        </div>
+
+        <div class="form-section" id="sideIncomeBlockSection">
+          <div class="form-section-title">
+            <span>🏢 مربوط به</span>
+          </div>
+
+          <div class="form-group">
+            <select id="sideIncomeBlockSelect" class="form-input">
+              <option value="all">🏢 کل ساختمان</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>📅 دوره</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="sideIncomeModalMonth">ماه</label>
+              <select id="sideIncomeModalMonth" class="form-input"></select>
+            </div>
+
+            <div class="form-group">
+              <label for="sideIncomeModalYear">سال</label>
+              <select id="sideIncomeModalYear" class="form-input"></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="sideIncomePayer">پرداخت‌کننده</label>
+            <input type="text" id="sideIncomePayer" class="form-input"
+                   placeholder="مثلاً: آقای رضایی" />
+          </div>
+
+          <div class="form-group">
+            <label for="sideIncomeMethod">روش دریافت</label>
+            <select id="sideIncomeMethod" class="form-input">
+              <option value="نقدی">💵 نقدی</option>
+              <option value="کارت به کارت">💳 کارت به کارت</option>
+              <option value="انتقال بانکی">🏦 انتقال بانکی</option>
+              <option value="چک">📝 چک</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="sideIncomeDescription">توضیحات</label>
+          <input type="text" id="sideIncomeDescription" class="form-input"
+                 placeholder="توضیحات اختیاری" />
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="sideIncomeCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="sideIncomeSaveBtn">💾 ذخیره</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ مودال Wizard ============ -->
+  <div class="modal-backdrop" id="welcomeModal">
+    <div class="modal modal-welcome">
+<div class="wizard-steps">
+  <div class="wizard-step active" data-step="1">
+    <span class="step-num">۱</span>
+    <span class="step-label">اطلاعات شما</span>
+  </div>
+  <div class="wizard-line"></div>
+  <div class="wizard-step" data-step="2">
+    <span class="step-num">۲</span>
+    <span class="step-label">ساختمان</span>
+  </div>
+  <div class="wizard-line"></div>
+  <div class="wizard-step" data-step="3">
+    <span class="step-num">۳</span>
+    <span class="step-label">جزئیات</span>
+  </div>
+  <div class="wizard-line"></div>
+  <div class="wizard-step" data-step="4">
+    <span class="step-num">۴</span>
+    <span class="step-label">پلن</span>
+  </div>
+</div>
+<div class="wizard-page active" data-page="1">
+  <div class="wizard-header">
+    <div class="wizard-icon">👤</div>
+    <h2>اطلاعات شما</h2>
+    <p>لطفاً اطلاعات خود را وارد کنید</p>
+  </div>
+
+  <div class="form-group">
+    <label for="managerName">نام و نام خانوادگی <span class="required">*</span></label>
+    <input type="text" id="managerName" class="form-input"
+           placeholder="مثلاً: علی احمدی" />
+  </div>
+
+  <div class="form-group">
+    <label for="managerPhone">شماره تماس <span class="required">*</span></label>
+    <input type="tel" id="managerPhone" class="form-input"
+           placeholder="۰۹۱۲۱۲۳۴۵۶۷" maxlength="11" dir="ltr" />
+    <div class="error-message" id="managerPhoneError"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="managerPassword">🔒 رمز عبور <span class="required">*</span></label>
+    <input type="password" id="managerPassword" class="form-input"
+           placeholder="حداقل ۶ کاراکتر" />
+    <div class="error-message" id="managerPasswordError"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="managerPasswordConfirm">🔒 تکرار رمز عبور <span class="required">*</span></label>
+    <input type="password" id="managerPasswordConfirm" class="form-input"
+           placeholder="رمز را دوباره وارد کنید" />
+    <div class="error-message" id="managerPasswordConfirmError"></div>
+  </div>
+</div>
+
+      <div class="wizard-page" data-page="2">
+        <div class="wizard-header">
+          <div class="wizard-icon">🏢</div>
+          <h2>اطلاعات ساختمان</h2>
+          <p>نام و نوع ساختمان را انتخاب کنید</p>
+        </div>
+
+        <div class="form-group">
+          <label for="buildingNameInput">نام ساختمان / مجتمع</label>
+          <input type="text" id="buildingNameInput" class="form-input"
+                 placeholder="مثلاً: مجتمع مسکونی نور" />
+        </div>
+
+        <div class="form-group">
+          <label>نوع ساختمان</label>
+          <div class="type-options">
+            <div class="type-option" data-type="complex">
+              <div class="type-icon">🏢</div>
+              <h4>مجتمع</h4>
+              <p>چند بلوک دارد</p>
+            </div>
+            <div class="type-option" data-type="single">
+              <div class="type-icon">🏬</div>
+              <h4>ساختمان / برج</h4>
+              <p>تک بلوک</p>
+            </div>
+          </div>
+        </div>
+      </div>
+<!-- ============ مرحله ۳: جزئیات ============ -->
+<div class="wizard-page" data-page="3">
+  <div class="wizard-header">
+    <div class="wizard-icon">📋</div>
+    <h2>جزئیات ساختمان</h2>
+    <p>تعداد بلوک‌ها و واحدهای هر بلوک را وارد کنید</p>
+  </div>
+
+  <div id="complexForm" style="display:none;">
+    <div class="form-group">
+      <label for="blocksCount">تعداد بلوک‌ها</label>
+      <input type="number" id="blocksCount" class="form-input"
+             placeholder="مثلاً: ۳" min="1" />
+    </div>
+
+    <div id="blockNamesContainer" style="margin-top:14px;"></div>
+  </div>
+
+  <div id="singleForm" style="display:none;">
+    <div class="form-group">
+      <label for="singleUnitsCount">تعداد واحدها</label>
+      <input type="number" id="singleUnitsCount" class="form-input"
+             placeholder="مثلاً: ۱۰" min="1" />
+    </div>
+  </div>
+</div>
+
+<!-- ============ مرحله ۴: انتخاب پلن ============ -->
+<div class="wizard-page" data-page="4">
+  <div class="wizard-header">
+    <div class="wizard-icon">💎</div>
+    <h2>انتخاب پلن</h2>
+    <p>پلن مناسب ساختمان خود را انتخاب کنید</p>
+  </div>
+
+  <!-- خلاصه اطلاعات -->
+  <div class="plan-summary" id="planSummary">
+    <div class="plan-summary-row">
+      <span>🏢 ساختمان:</span>
+      <strong id="planSummaryBuilding">—</strong>
+    </div>
+    <div class="plan-summary-row">
+      <span>🏠 تعداد واحدها:</span>
+      <strong id="planSummaryUnits">—</strong>
+    </div>
+    <div class="plan-summary-row">
+      <span>🏢 تعداد بلوک‌ها:</span>
+      <strong id="planSummaryBlocks">—</strong>
+    </div>
+  </div>
+
+
+  <!-- دو پلن -->
+  <div class="plan-options">
+    
+    <!-- پلن رایگان -->
+    <div class="plan-card" data-plan="free" id="planCardFree">
+      <div class="plan-card-header">
+        <div class="plan-card-icon">🆓</div>
+        <div class="plan-card-title">
+          <h3>رایگان</h3>
+          <p>برای شروع سریع</p>
+        </div>
+      </div>
+      <div class="plan-card-price">
+        <span class="plan-price-number">۰</span>
+        <span class="plan-price-unit">تومان</span>
+        <span class="plan-price-period">همیشه</span>
+      </div>
+      <div class="plan-card-features">
+        <div class="plan-feature included">✅ تا ۱۰ واحد</div>
+        <div class="plan-feature included">✅ داشبورد و واحدها</div>
+        <div class="plan-feature included">✅ صدور شارژ</div>
+        <div class="plan-feature excluded">❌ دریافت‌ها و هزینه‌ها</div>
+        <div class="plan-feature excluded">❌ گزارشات و سود و زیان</div>
+        <div class="plan-feature excluded">❌ پشتیبان‌گیری</div>
+      </div>
+      <button class="btn btn-outline plan-select-btn" data-plan-select="free">
+        انتخاب پلن رایگان
+      </button>
+    </div>
+
+    <!-- پلن حرفه‌ای -->
+    <div class="plan-card plan-card-pro" data-plan="pro" id="planCardPro">
+      <div class="plan-badge">⭐ پیشنهاد ما</div>
+      <div class="plan-card-header">
+        <div class="plan-card-icon">💎</div>
+        <div class="plan-card-title">
+          <h3>حرفه‌ای</h3>
+          <p>دسترسی کامل</p>
+        </div>
+      </div>
+      <div class="plan-card-price">
+        <span class="plan-price-number" id="planProPrice">—</span>
+        <span class="plan-price-unit">تومان</span>
+        <span class="plan-price-period">سالانه</span>
+      </div>
+      <div class="plan-card-features">
+        <div class="plan-feature included">✅ واحد نامحدود</div>
+        <div class="plan-feature included">✅ همه امکانات</div>
+        <div class="plan-feature included">✅ گزارشات کامل</div>
+        <div class="plan-feature included">✅ خروجی اکسل و PDF</div>
+        <div class="plan-feature included">✅ پشتیبان‌گیری</div>
+        <div class="plan-feature included">✅ پشتیبانی</div>
+      </div>
+      <button class="btn btn-primary plan-select-btn" data-plan-select="pro">
+        انتخاب و پرداخت
+      </button>
+    </div>
+
+  </div>
+
+  <!-- دکمه‌ها -->
+  <div class="wizard-actions" style="margin-top:20px;">
+    <button id="wizardPrevBtn4" class="btn btn-cancel">→ قبلی</button>
+  </div>
+</div>
+
+      
+        <button id="wizardNextBtn" class="btn btn-primary btn-block">
+          بعدی ←
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ فوتر ============ -->
+ <footer class="app-footer">
+  <p>
+    © ۱۴۰۴ <strong>آپارتمان پلاس</strong> — نرم‌افزار هوشمند مدیریت ساختمان
+  </p>
+  <p class="footer-designer">
+    🎨 طراحی و توسعه: <strong>الهام صمدی</strong>
+  </p>
+</footer>
+<script src="js/plans.js?v=2"></script>
+<script src="js/auth.js?v=2"></script>
+<script src="js/app.js?v=100000"></script>
+</body>
+</html>
