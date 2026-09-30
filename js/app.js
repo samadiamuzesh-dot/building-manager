@@ -5649,7 +5649,7 @@ function renderVotingCandidates() {
   container.innerHTML = votingCandidates.map((c, idx) => {
     return `
       <div class="form-section" style="margin-bottom:8px; padding:12px;">
-        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+        <div style="display:flex; gap:8px; align-items:center;">
           <div style="background:#eef2ff; color:#5b4cdb; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;">
             ${toPersianNum(idx + 1)}
           </div>
@@ -5658,18 +5658,15 @@ function renderVotingCandidates() {
                  data-candidate-id="${c.id}"
                  placeholder="نام و نام خانوادگی کاندید"
                  value="${c.name || ''}"
-                 style="flex:1; padding:8px 10px; font-size:13px;" />
-          <button type="button" class="row-action-btn danger" onclick="removeVotingCandidate(${c.id})" title="حذف">🗑️</button>
-        </div>
-        <div style="padding-right:38px;">
+                 style="flex:1; padding:8px 10px; font-size:13px; text-align:right;" />
           <input type="tel"
                  class="form-input candidate-phone-input"
                  data-candidate-id="${c.id}"
-                 placeholder="شماره تماس کاندید"
+                 placeholder="شماره تماس"
                  value="${c.phone || ''}"
                  maxlength="11"
-                 dir="ltr"
-                 style="padding:8px 10px; font-size:13px;" />
+                 style="width:140px; padding:8px 10px; font-size:13px; text-align:right;" />
+          <button type="button" class="row-action-btn danger" onclick="removeVotingCandidate(${c.id})" title="حذف">🗑️</button>
         </div>
       </div>
     `;
@@ -5689,7 +5686,6 @@ function renderVotingCandidates() {
     });
   });
 }
-
 function saveVoting() {
   const title = document.getElementById('votingTitle').value.trim();
   const description = document.getElementById('votingDescription').value.trim();
@@ -5862,18 +5858,15 @@ function persianToGregorian(jy, jm, jd) {
 
   return { year: gy, month: gm, day: gd };
 }
-
 function showVotingResults(votingId) {
-    editingVotingId = null;
-  document.getElementById('votingModalTitle').textContent = 'ایجاد رأی‌گیری جدید';
-  document.getElementById('votingSaveBtn').textContent = '💾 ایجاد رأی‌گیری';
+  const votings = loadVotings();
   const voting = votings.find(v => v.id === votingId);
   if (!voting) return;
 
   const status = getVotingStatus(voting);
 
   if (status !== 'ended') {
-    if (!confirm('⚠️ رأی‌گیری هنوز تمام نشده. آیا می‌خواید نتایج فعلی رو ببینید؟')) {
+    if (!confirm('⚠️ رأی‌گیری هنوز تمام نشده. آیا می‌خواهید نتایج فعلی را ببینید؟')) {
       return;
     }
   }
@@ -5886,12 +5879,10 @@ function showVotingResults(votingId) {
   if (subtitle) subtitle.textContent = `از ${voting.startDate} ${voting.startTime} تا ${voting.endDate} ${voting.endTime}`;
 
   const totalVotes = (voting.votes || []).length;
-  // فقط مالکین (واحدهایی که مالک دارند) حق رأی دارند
   const totalOwners = UNITS.filter(u => u.owner && u.owner.name).length;
   const participation = totalOwners > 0 ? Math.round((totalVotes / totalOwners) * 100) : 0;
 
   const sortedCandidates = [...(voting.candidates || [])].sort((a, b) => (b.votes || 0) - (a.votes || 0));
-
   const winner = sortedCandidates[0];
 
   let html = `
@@ -5901,7 +5892,7 @@ function showVotingResults(votingId) {
         <div style="font-size:20px; font-weight:800; color:#5b4cdb;">${formatNumber(totalVotes)}</div>
       </div>
       <div style="text-align:center;">
-     <div style="font-size:11.5px; color:#64748b; margin-bottom:4px;">مالکین</div>
+        <div style="font-size:11.5px; color:#64748b; margin-bottom:4px;">مالکین</div>
         <div style="font-size:20px; font-weight:800; color:#1e293b;">${formatNumber(totalOwners)}</div>
       </div>
       <div style="text-align:center;">
@@ -5916,7 +5907,7 @@ function showVotingResults(votingId) {
       <div style="background:linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%); border-radius:12px; padding:16px; margin-bottom:16px; color:#fff; text-align:center;">
         <div style="font-size:12px; opacity:0.9; margin-bottom:6px;">🏆 برنده</div>
         <div style="font-size:18px; font-weight:800;">${winner.name}</div>
-        <div style="font-size:12px; opacity:0.9; margin-top:4px;">${winner.unitLabel} — ${formatNumber(winner.votes || 0)} رأی</div>
+        <div style="font-size:12px; opacity:0.9; margin-top:4px;">${winner.phone ? winner.phone + ' — ' : ''}${formatNumber(winner.votes || 0)} رأی</div>
       </div>
     `;
   }
@@ -5937,7 +5928,7 @@ function showVotingResults(votingId) {
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <div>
             <strong style="font-size:14px;">${medal} ${c.name}</strong>
-            <span style="font-size:12px; color:#64748b; margin-right:8px;">(${c.unitLabel})</span>
+            ${c.phone ? `<span style="font-size:12px; color:#64748b; margin-right:8px;">(${c.phone})</span>` : ''}
           </div>
           <div style="text-align:left;">
             <strong style="font-size:16px; color:#5b4cdb;">${formatNumber(votes)}</strong>
@@ -5953,7 +5944,7 @@ function showVotingResults(votingId) {
 
   html += `</div>`;
 
-  content.innerHTML = html;
+  if (content) content.innerHTML = html;
 
   const modal = document.getElementById('votingResultsModal');
   if (modal) modal.classList.add('open');
