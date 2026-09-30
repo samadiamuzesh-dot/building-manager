@@ -5612,58 +5612,38 @@ function renderVotingCandidates() {
   if (votingCandidates.length === 0) {
     container.innerHTML = `
       <div style="text-align:center; color:#94a3b8; padding:20px; font-size:13px; background:#fff; border-radius:10px; border:1px dashed #e2e8f0;">
-        هنوز کاندیدی اضافه نشده. روی «➕ افزودن کاندید» بزنید.
+        هنوز نامزدی اضافه نشده. روی «➕ افزودن کاندید» بزنید و نام را دستی وارد کنید.
       </div>
     `;
     return;
   }
 
-  const unitsSorted = [...UNITS].sort((a, b) => {
-    const blockCompare = String(a.block).localeCompare(String(b.block), 'fa');
-    if (blockCompare !== 0) return blockCompare;
-    return Number(a.number) - Number(b.number);
-  });
-
   container.innerHTML = votingCandidates.map((c, idx) => {
-    const options = unitsSorted.map(u => {
-      const ownerName = u.owner?.name || 'ثبت‌نام نکرده';
-      const unitLabel = `${u.block}-${toPersianNum(u.number)}`;
-      const isSelected = c.unitId === u.id;
-      return `<option value="${u.id}" ${isSelected ? 'selected' : ''}>${unitLabel} — ${ownerName}</option>`;
-    }).join('');
-
     return `
       <div class="form-section" style="margin-bottom:8px; padding:12px;">
         <div style="display:flex; gap:8px; align-items:center;">
           <div style="background:#eef2ff; color:#5b4cdb; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;">
             ${toPersianNum(idx + 1)}
           </div>
-          <select class="form-input candidate-select" data-candidate-id="${c.id}" style="flex:1; padding:8px 10px; font-size:13px;">
-            <option value="">— انتخاب ساکن —</option>
-            ${options}
-          </select>
+          <input type="text"
+                 class="form-input candidate-name-input"
+                 data-candidate-id="${c.id}"
+                 placeholder="نام و نام خانوادگی نامزد هیئت امنا"
+                 value="${c.name || ''}"
+                 style="flex:1; padding:8px 10px; font-size:13px;" />
           <button type="button" class="row-action-btn danger" onclick="removeVotingCandidate(${c.id})" title="حذف">🗑️</button>
         </div>
       </div>
     `;
   }).join('');
 
-  container.querySelectorAll('.candidate-select').forEach(sel => {
-    sel.addEventListener('change', (e) => {
+  container.querySelectorAll('.candidate-name-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
       const candidateId = Number(e.target.dataset.candidateId);
-      const unitId = e.target.value ? Number(e.target.value) : null;
-
       const candidate = votingCandidates.find(c => c.id === candidateId);
-      if (!candidate) return;
-
-      if (unitId) {
-        const unit = UNITS.find(u => u.id === unitId);
-        candidate.unitId = unitId;
-        candidate.name = unit?.owner?.name || 'ثبت‌نام نکرده';
-        candidate.unitLabel = unit ? `${unit.block}-${toPersianNum(unit.number)}` : '';
-      } else {
+      if (candidate) {
+        candidate.name = e.target.value.trim();
         candidate.unitId = null;
-        candidate.name = '';
         candidate.unitLabel = '';
       }
     });
@@ -5698,9 +5678,9 @@ function saveVoting() {
     return;
   }
 
-  const emptyCandidates = votingCandidates.filter(c => !c.unitId);
+  const emptyCandidates = votingCandidates.filter(c => !c.name || !c.name.trim());
   if (emptyCandidates.length > 0) {
-    toastWarning('لطفاً برای همه کاندیدها ساکن انتخاب کنید.');
+    toastWarning('لطفاً نام همه نامزدها را وارد کنید.');
     return;
   }
 
@@ -5730,14 +5710,13 @@ function saveVoting() {
     endTime: endTime,
     startDateTime: startDateTime.toISOString(),
     endDateTime: endDateTime.toISOString(),
-    candidates: votingCandidates.map(c => ({
+        candidates: votingCandidates.map(c => ({
       id: c.id,
-      unitId: c.unitId,
-      name: c.name,
-      unitLabel: c.unitLabel,
+      name: c.name.trim(),
       votes: 0,
     })),
     votes: [],
+    eligibleVoters: 'owners',   // فقط مالکین حق رأی دارند
     createdAt: new Date().toISOString(),
   });
 
@@ -5829,8 +5808,9 @@ function showVotingResults(votingId) {
   if (subtitle) subtitle.textContent = `از ${voting.startDate} ${voting.startTime} تا ${voting.endDate} ${voting.endTime}`;
 
   const totalVotes = (voting.votes || []).length;
-  const totalUnits = UNITS.length;
-  const participation = totalUnits > 0 ? Math.round((totalVotes / totalUnits) * 100) : 0;
+  // فقط مالکین (واحدهایی که مالک دارند) حق رأی دارند
+  const totalOwners = UNITS.filter(u => u.owner && u.owner.name).length;
+  const participation = totalOwners > 0 ? Math.round((totalVotes / totalOwners) * 100) : 0;
 
   const sortedCandidates = [...(voting.candidates || [])].sort((a, b) => (b.votes || 0) - (a.votes || 0));
 
