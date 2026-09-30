@@ -123,16 +123,21 @@ function showToastAuth(message, type = 'success') {
 }
 
 function initLoginPage() {
-  localStorage.removeItem(LOGGED_OUT_KEY);
+  // ✅ فلگ خروج رو چک کن
+  const loggedOut = localStorage.getItem(LOGGED_OUT_KEY);
 
+  // اگه کاربر لاگین کرده و از خروج نیومده، بره به پنل
   const hasAuth = !!localStorage.getItem(USER_PHONE_KEY)
                && !!localStorage.getItem(USER_PASSWORD_KEY);
 
-  if (hasAuth) {
+  if (hasAuth && loggedOut !== 'true') {
     window.location.replace('index.html');
     return;
   }
 
+  // اگه کاربر با خروج اومده، فلگ رو نگه دار تا بعد از ورود موفق پاک بشه
+
+  // تب‌ها
   document.querySelectorAll('.login-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       const target = tab.dataset.loginTab;
@@ -188,7 +193,6 @@ function initLoginPage() {
     if (e.key === 'Enter') document.getElementById('loginPassword').focus();
   });
 }
-
 function handleLoginSubmit() {
   const phoneInput = document.getElementById('loginPhone');
   const passwordInput = document.getElementById('loginPassword');
