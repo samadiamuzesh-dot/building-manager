@@ -672,6 +672,7 @@ let selectedBuildingType = null;
 let blockNames = [];
 let selectedPlanType = null;
 function openWelcomeModal() {
+   
   wizardStep = 1;
   selectedBuildingType = null;
   blockNames = [];
