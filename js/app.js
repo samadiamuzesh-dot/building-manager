@@ -671,6 +671,7 @@ let wizardStep = 1;
 let selectedBuildingType = null;
 let blockNames = [];
 let selectedPlanType = null;
+let wizardAuthData = { name: '', phone: '', password: '' };  // ← این خط جدید
 function openWelcomeModal() {
    
   wizardStep = 1;
@@ -780,8 +781,8 @@ function renderBlockInputs() {
       <span class="block-index">${toPersianNum(i + 1)}.</span>
       <input type="text" class="form-input block-name-input"
              data-index="${i}" placeholder="اسم بلوک (A, B, مینا, سینا)" value="${b.name}" />
-      <input type="number" class="form-input units-input"
-             data-index="${i}" placeholder="واحد" min="1" value="${b.units}" />
+         <input type="number" class="form-input units-input"
+             data-index="${i}" placeholder="واحد" min="1" value="${b.units}" dir="ltr" />
     </div>
   `).join('');
 
@@ -854,6 +855,13 @@ function wizardValidateStep(step) {
       showFieldError('managerPasswordConfirm', 'رمز عبور و تکرار آن یکسان نیستند.');
       return false;
     }
+
+       // ✅ ذخیره موقت نام، موبایل و رمز برای پایان ثبت‌نام
+    wizardAuthData = {
+      name: n,
+      phone: p,
+      password: pass
+    };
 
     return true;
   }
@@ -1279,9 +1287,9 @@ function getTotalUnitsFromWizard() {
 
 /* ✅ ذخیره اطلاعات ویزارد توی localStorage */
 function saveWizardData() {
-  const mn = document.getElementById('managerName')?.value.trim();
-  const mp = document.getElementById('managerPhone')?.value.trim();
-  const password = document.getElementById('managerPassword')?.value || '';
+  const mn = wizardAuthData.name || document.getElementById('managerName')?.value.trim() || '';
+  const mp = wizardAuthData.phone || document.getElementById('managerPhone')?.value.trim() || '';
+  const password = wizardAuthData.password || document.getElementById('managerPassword')?.value || '';
   const bn = document.getElementById('buildingNameInput')?.value.trim();
 
   let blocks = [];
@@ -1312,10 +1320,9 @@ function saveWizardData() {
 
   currentBlockFilter = 'all';
   currentStatusFilter = 'all';
-
   saveData({ building, manager: { name: mn, phone: mp } });
 
-  if (typeof saveUserAuth === 'function') {
+  if (typeof saveUserAuth === 'function' && mp && password) {
     saveUserAuth(mp, password);
   }
 
@@ -1439,6 +1446,32 @@ function bindWelcomeModal() {
   
   // ✅ بایند انتخاب پلن
   bindPlanSelection();
+  function bindWelcomeModal() {
+  document.querySelectorAll('.type-option').forEach(el => {
+    el.addEventListener('click', () => selectBuildingType(el.dataset.type));
+  });
+  document.getElementById('wizardNextBtn')?.addEventListener('click', wizardNext);
+  document.getElementById('wizardPrevBtn')?.addEventListener('click', wizardPrev);
+  document.getElementById('blocksCount')?.addEventListener('input', buildBlockInputs);
+
+  // ✅ دکمه نمایش/مخفی رمز در ویزارد ثبت‌نام
+  document.querySelectorAll('[data-toggle-pass]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.togglePass);
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+      }
+    });
+  });
+
+  // ✅ بایند انتخاب پلن
+  bindPlanSelection();
+} 
 }
 
 /* ============ ۱۴) صفحه واحدها ============ */
