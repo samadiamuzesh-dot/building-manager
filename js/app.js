@@ -219,7 +219,7 @@ function loadUnits() {
 }
 function saveUnits() { localStorage.setItem(UNITS_KEY, JSON.stringify(UNITS)); }
 
-/* ============ ۴) ساخت واحدهای نمونه ============ */
+/* ============ ۴) ساخت واحدهای خالی ============ */
 function buildDemoUnits(building) {
   UNITS = [];
   let id = 1;
@@ -228,7 +228,7 @@ function buildDemoUnits(building) {
     building.blocks.forEach((block) => {
       const blockName = String(block.name).trim();
       let count = parseInt(block.units) || 0;
-      if (count < 1) count = 5;
+      if (count < 1) count = 0;
 
       for (let i = 1; i <= count; i++) {
         UNITS.push({
@@ -237,25 +237,25 @@ function buildDemoUnits(building) {
           number: i,
           code: `${blockName}-${toPersianNum(i)}`,
           owner: {
-            name: i % 2 === 0 ? 'علی احمدی' : 'مریم رضایی',
-            phone: '0912000000' + i,
-            registered: i % 2 === 0,
-            approved: i % 2 === 0,
+            name: null,
+            phone: null,
+            registered: false,
+            approved: false,
           },
           tenant: {
-            name: i % 3 === 0 ? 'رضا نوری' : null,
-            phone: i % 3 === 0 ? '0913000000' + i : null,
-            registered: i % 3 === 0,
-            approved: i % 3 === 0,
+            name: null,
+            phone: null,
+            registered: false,
+            approved: false,
           },
-          debt: i % 4 === 0 ? 500000 : 0,
-          chargeAmount: 500000,
+          debt: 0,
+          chargeAmount: 0,
         });
       }
     });
   } else {
     let count = parseInt(building.totalUnits) || 0;
-    if (count < 1) count = 5;
+    if (count < 1) count = 0;
 
     for (let i = 1; i <= count; i++) {
       UNITS.push({
@@ -264,21 +264,20 @@ function buildDemoUnits(building) {
         number: i,
         code: `${building.code}-${toPersianNum(i)}`,
         owner: {
-          name: i % 2 === 0 ? 'علی احمدی' : 'مریم رضایی',
-          phone: '0912000000' + i,
-          registered: i % 2 === 0,
-          approved: i % 2 === 0,
+          name: null,
+          phone: null,
+          registered: false,
+          approved: false,
         },
         tenant: { name: null, phone: null, registered: false, approved: false },
-        debt: i % 4 === 0 ? 500000 : 0,
-        chargeAmount: 500000,
+        debt: 0,
+        chargeAmount: 0,
       });
     }
   }
 
   saveUnits();
 }
-
 /* ============ ۵) کارت ساختمان ============ */
 function renderBuildingCard() {
   const data = loadData();
