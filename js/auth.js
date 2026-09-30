@@ -123,7 +123,7 @@ function showToastAuth(message, type = 'success') {
 }
 
 function initLoginPage() {
-   const hasAuth = !!localStorage.getItem(USER_PHONE_KEY)
+  const hasAuth = !!localStorage.getItem(USER_PHONE_KEY)
                && !!localStorage.getItem(USER_PASSWORD_KEY);
   const loggedOut = localStorage.getItem(LOGGED_OUT_KEY) === 'true';
 
@@ -132,19 +132,6 @@ function initLoginPage() {
     window.location.replace('index.html');
     return;
   }
-  // ✅ فلگ خروج رو چک کن
-  const loggedOut = localStorage.getItem(LOGGED_OUT_KEY);
-
-  // اگه کاربر لاگین کرده و از خروج نیومده، بره به پنل
-  const hasAuth = !!localStorage.getItem(USER_PHONE_KEY)
-               && !!localStorage.getItem(USER_PASSWORD_KEY);
-
-  if (hasAuth && loggedOut !== 'true') {
-    window.location.replace('index.html');
-    return;
-  }
-
-  // اگه کاربر با خروج اومده، فلگ رو نگه دار تا بعد از ورود موفق پاک بشه
 
   // تب‌ها
   document.querySelectorAll('.login-tab').forEach(tab => {
@@ -171,16 +158,19 @@ function initLoginPage() {
     });
   });
 
+  // دکمه نمایش/مخفی رمز
   document.querySelectorAll('[data-toggle-pass]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const input = document.getElementById(btn.dataset.togglePass);
-      if (!input) return;
-      if (input.type === 'password') {
-        input.type = 'text';
-        btn.textContent = '🙈';
-      } else {
-        input.type = 'password';
-        btn.textContent = '👁️';
+      const inputId = btn.dataset.togglePass;
+      const input = document.getElementById(inputId);
+      if (input) {
+        if (input.type === 'password') {
+          input.type = 'text';
+          btn.textContent = '🙈';
+        } else {
+          input.type = 'password';
+          btn.textContent = '👁️';
+        }
       }
     });
   });
