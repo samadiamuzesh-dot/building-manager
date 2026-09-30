@@ -240,4 +240,9 @@ function handleLoginSubmit() {
   }, 800);
 }
 
-document.addEventListener('DOMContentLoaded', initLoginPage);
+// ✅ فقط روی صفحه لاگین اجرا بشه (جلوگیری از رفرش بی‌نهایت در index.html)
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('btnLoginSubmit') || document.querySelector('.login-page')) {
+    initLoginPage();
+  }
+});
