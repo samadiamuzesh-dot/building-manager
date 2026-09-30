@@ -6911,20 +6911,19 @@ function bindSettingsPage() {
 
 /* ============ ۱۹) راه‌اندازی ============ */
 function init() {
-console.log('INIT RUN ✅');
-
-  // ✅ چک وضعیت ورود
-  if (typeof isLoggedIn === 'function' && !isLoggedIn()) {
-    window.location.replace('login.html');
-    return;
-  }
+  console.log('INIT RUN ✅');
 
   const urlParams = new URLSearchParams(window.location.search);
   const isSignup = urlParams.get('signup') === '1';
-  console.log('INIT RUN ✅');
-   const urlParams = new URLSearchParams(window.location.search);
-  const isSignup = urlParams.get('signup') === '1';
-  
+
+  // اگر ثبت‌نام است، اجازه بده وارد شود (حتی بدون لاگین)
+  if (!isSignup) {
+    if (typeof isLoggedIn === 'function' && !isLoggedIn()) {
+      window.location.replace('login.html');
+      return;
+    }
+  }
+
   loadUnits();
 
   document.querySelectorAll('select').forEach(select => {
