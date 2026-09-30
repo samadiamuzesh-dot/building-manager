@@ -3157,4 +3157,20 @@ body.dark-mode .form-input {
   align-items: center !important;
   gap: 16px !important;
 }
+.show-pass-wrapper {
+  position: relative;
+}
+.show-pass-btn {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  z-index: 2;
+}
 
