@@ -2988,19 +2988,24 @@
     <div class="error-message" id="managerPhoneError"></div>
   </div>
 
-  <div class="form-group">
-    <label for="managerPassword">🔒 رمز عبور <span class="required">*</span></label>
+<div class="form-group">
+  <label for="managerPassword">🔒 رمز عبور <span class="required">*</span></label>
+  <div class="show-pass-wrapper">
     <input type="password" id="managerPassword" class="form-input"
-           placeholder="حداقل ۶ کاراکتر" />
-    <div class="error-message" id="managerPasswordError"></div>
+           placeholder="حداقل ۶ کاراکتر" style="padding-left: 40px;" />
+    <button type="button" class="show-pass-btn" data-toggle-pass="managerPassword">👁️</button>
   </div>
+  <div class="error-message" id="managerPasswordError"></div>
+</div>
 
-  <div class="form-group">
-    <label for="managerPasswordConfirm">🔒 تکرار رمز عبور <span class="required">*</span></label>
+<div class="form-group">
+  <label for="managerPasswordConfirm">🔒 تکرار رمز عبور <span class="required">*</span></label>
+  <div class="show-pass-wrapper">
     <input type="password" id="managerPasswordConfirm" class="form-input"
-           placeholder="رمز را دوباره وارد کنید" />
-    <div class="error-message" id="managerPasswordConfirmError"></div>
+           placeholder="رمز را دوباره وارد کنید" style="padding-left: 40px;" />
+    <button type="button" class="show-pass-btn" data-toggle-pass="managerPasswordConfirm">👁️</button>
   </div>
+  <div class="error-message" id="managerPasswordConfirmError"></div>
 </div>
 
       <div class="wizard-page" data-page="2">
