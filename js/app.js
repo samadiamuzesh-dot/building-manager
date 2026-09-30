@@ -1571,11 +1571,14 @@ function buildUnitsBlockFilter() {
 }
 
 function renderUnitsStats() {
-  const allUnits = UNITS;
+  // اگر فیلتر بلوک فعال است، فقط همان بلوک را حساب کن
+  const allUnits = getUnitsPageFiltered(); // یا UNITS اگر همیشه کل را می‌خواهید
+
   const total = allUnits.length;
-  const paid = allUnits.filter(u => u.debt === 0).length;
-  const debt = allUnits.filter(u => u.debt > 0).length;
   const empty = allUnits.filter(u => !u.owner?.name).length;
+  const registered = allUnits.filter(u => u.owner?.name);
+  const paid = registered.filter(u => u.debt === 0).length;
+  const debt = registered.filter(u => u.debt > 0).length;
   const totalDebt = allUnits.reduce((sum, u) => sum + (Number(u.debt) || 0), 0);
 
   const elTotal = document.getElementById('unitsTotal');
