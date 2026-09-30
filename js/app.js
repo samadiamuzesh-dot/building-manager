@@ -6911,6 +6911,16 @@ function bindSettingsPage() {
 
 /* ============ ۱۹) راه‌اندازی ============ */
 function init() {
+console.log('INIT RUN ✅');
+
+  // ✅ چک وضعیت ورود
+  if (typeof isLoggedIn === 'function' && !isLoggedIn()) {
+    window.location.replace('login.html');
+    return;
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const isSignup = urlParams.get('signup') === '1';
   console.log('INIT RUN ✅');
    const urlParams = new URLSearchParams(window.location.search);
   const isSignup = urlParams.get('signup') === '1';
