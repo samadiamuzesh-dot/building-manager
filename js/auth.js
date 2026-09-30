@@ -123,6 +123,15 @@ function showToastAuth(message, type = 'success') {
 }
 
 function initLoginPage() {
+   const hasAuth = !!localStorage.getItem(USER_PHONE_KEY)
+               && !!localStorage.getItem(USER_PASSWORD_KEY);
+  const loggedOut = localStorage.getItem(LOGGED_OUT_KEY) === 'true';
+
+  // فقط وقتی لاگین‌شده و خارج نشده، بره پنل
+  if (hasAuth && !loggedOut) {
+    window.location.replace('index.html');
+    return;
+  }
   // ✅ فلگ خروج رو چک کن
   const loggedOut = localStorage.getItem(LOGGED_OUT_KEY);
 
