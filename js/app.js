@@ -314,6 +314,7 @@ const PAGE_INFO = {
   profile:   { title: 'پروفایل من', subtitle: 'اطلاعات شخصی و امنیتی' },
   settings:  { title: 'تنظیمات', subtitle: 'تنظیمات ساختمان و حساب' },
      subscription: { title: 'اشتراکی', subtitle: 'مدیریت پلن و اشتراک' },
+     support: { title: 'پشتیبانی', subtitle: 'ارسال تیکت و پیگیری' },
 };
 function switchPage(pageKey) {
   // ✅ چک دسترسی به صفحه
@@ -370,6 +371,7 @@ function switchPage(pageKey) {
   if (pageKey === 'profile') { fillProfileForm(); }
   if (pageKey === 'settings') renderSettingsPage();
      if (pageKey === 'subscription') renderSubscriptionPage();
+     if (pageKey === 'support') renderSupportPage();
 }
 
 /* ============ ۷) فیلتر بلوک داشبورد ============ */
@@ -7101,6 +7103,7 @@ function init() {
   bindProfitPage();
     bindSideIncomesPage();
   bindSettingsPage();
+     bindSupportPage();
    bindProfilePage();
   bindUpgradeModal();       
   initNotificationsAndProfile();
@@ -8816,6 +8819,196 @@ function printProfitPdf() {
   printWindow.document.write(html);
   printWindow.document.close();
 }
+/* ============================================================
+   🆘 صفحه پشتیبانی
+   ============================================================ */
+const TICKETS_KEY = 'ham_sakhteman_tickets';
+
+function loadTickets() {
+  const raw = localStorage.getItem(TICKETS_KEY);
+  if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
+  return [];
+}
+
+function saveTickets(tickets) {
+  localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
+}
+
+function renderSupportPage() {
+  const tickets = loadTickets();
+
+  const total = tickets.length;
+  const pending = tickets.filter(t => t.status === 'pending').length;
+  const answered = tickets.filter(t => t.status === 'answered').length;
+  const lastDate = tickets.length > 0 ? tickets[tickets.length - 1].date : '—';
+
+  const elTotal = document.getElementById('supportTotal');
+  const elPending = document.getElementById('supportPending');
+  const elAnswered = document.getElementById('supportAnswered');
+  const elLast = document.getElementById('supportLastDate');
+
+  if (elTotal) elTotal.textContent = formatNumber(total);
+  if (elPending) elPending.textContent = formatNumber(pending);
+  if (elAnswered) elAnswered.textContent = formatNumber(answered);
+  if (elLast) elLast.textContent = lastDate;
+
+  const tbody = document.getElementById('supportTableBody');
+  if (!tbody) return;
+
+  if (tickets.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center;color:#94a3b8;padding:40px;">
+          هنوز تیکتی ارسال نکرده‌اید.
+          <br><br>
+          <button class="btn btn-primary" onclick="document.getElementById('btnNewTicket').click()">
+            📩 ارسال اولین تیکت
+          </button>
+        </td>
+      </tr>`;
+    return;
+  }
+
+  const statusIcons = {
+    'pending': '<span class="badge badge-debt">⏳ در انتظار</span>',
+    'answered': '<span class="badge badge-paid">✅ پاسخ داده شده</span>',
+    'closed': '<span class="badge" style="background:#e5e7eb; color:#4b5563;">🔒 بسته شده</span>',
+  };
+
+  const priorityIcons = {
+    'کم': '🟢',
+    'متوسط': '🟡',
+    'زیاد': '🔴',
+  };
+
+  tbody.innerHTML = [...tickets].reverse().map(t => `
+    <tr>
+      <td>${t.date || '—'}</td>
+      <td><strong>${t.subject || '—'}</strong></td>
+      <td>${t.category || '—'}</td>
+      <td>${statusIcons[t.status] || '—'}</td>
+      <td>
+        <div class="row-actions">
+          <button class="row-action-btn" data-ticket-action="view" data-id="${t.id}" title="مشاهده">👁️</button>
+          <button class="row-action-btn danger" data-ticket-action="delete" data-id="${t.id}" title="حذف">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openTicketModal() {
+  const modal = document.getElementById('ticketModal');
+  if (!modal) return;
+
+  document.getElementById('ticketSubject').value = '';
+  document.getElementById('ticketCategory').value = 'مشکل فنی';
+  document.getElementById('ticketPriority').value = 'متوسط';
+  document.getElementById('ticketMessage').value = '';
+
+  modal.classList.add('open');
+}
+
+function closeTicketModal() {
+  const modal = document.getElementById('ticketModal');
+  if (modal) modal.classList.remove('open');
+}
+
+function saveTicket() {
+  const subject = document.getElementById('ticketSubject')?.value.trim();
+  const category = document.getElementById('ticketCategory')?.value || 'سایر';
+  const priority = document.getElementById('ticketPriority')?.value || 'متوسط';
+  const message = document.getElementById('ticketMessage')?.value.trim();
+
+  if (!subject) {
+    toastWarning('لطفاً موضوع تیکت را وارد کنید.');
+    return;
+  }
+  if (!message) {
+    toastWarning('لطفاً متن پیام را وارد کنید.');
+    return;
+  }
+
+  const tickets = loadTickets();
+  const newId = tickets.length > 0 ? Math.max(...tickets.map(t => t.id || 0)) + 1 : 1;
+
+  const now = new Date();
+  const persianDate = now.toLocaleDateString('fa-IR');
+  const persianTime = now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+
+  tickets.push({
+    id: newId,
+    subject: subject,
+    category: category,
+    priority: priority,
+    message: message,
+    status: 'pending',
+    date: persianDate,
+    time: persianTime,
+    createdAt: now.toISOString(),
+  });
+
+  saveTickets(tickets);
+  closeTicketModal();
+  renderSupportPage();
+  toastSuccess('تیکت شما با موفقیت ارسال شد. به‌زودی پاسخ می‌دهیم.');
+}
+
+function viewTicket(ticketId) {
+  const tickets = loadTickets();
+  const ticket = tickets.find(t => t.id === ticketId);
+  if (!ticket) return;
+
+  const priorityIcons = { 'کم': '🟢', 'متوسط': '🟡', 'زیاد': '🔴' };
+
+  alert(
+    `📩 تیکت #${ticket.id}\n\n` +
+    `📌 موضوع: ${ticket.subject}\n` +
+    `📁 دسته: ${ticket.category}\n` +
+    `🎯 اولویت: ${priorityIcons[ticket.priority]} ${ticket.priority}\n` +
+    `📅 تاریخ: ${ticket.date} - ${ticket.time}\n\n` +
+    `📝 پیام:\n${ticket.message}`
+  );
+}
+
+function deleteTicket(ticketId) {
+  if (!confirm('⚠️ آیا از حذف این تیکت مطمئن هستید؟')) return;
+
+  let tickets = loadTickets();
+  tickets = tickets.filter(t => t.id !== ticketId);
+  saveTickets(tickets);
+
+  renderSupportPage();
+  toastSuccess('تیکت حذف شد.');
+}
+
+function bindSupportPage() {
+  document.getElementById('btnNewTicket')?.addEventListener('click', openTicketModal);
+  document.getElementById('ticketCancelBtn')?.addEventListener('click', closeTicketModal);
+  document.getElementById('ticketSaveBtn')?.addEventListener('click', saveTicket);
+
+  const modal = document.getElementById('ticketModal');
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeTicketModal();
+    });
+  }
+
+  const tbody = document.getElementById('supportTableBody');
+  if (tbody) {
+    tbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-ticket-action]');
+      if (!btn) return;
+
+      const action = btn.dataset.ticketAction;
+      const id = Number(btn.dataset.id);
+
+      if (action === 'view') viewTicket(id);
+      else if (action === 'delete') deleteTicket(id);
+    });
+  }
+}
+
 /* ============================================================
    💎 صفحه اشتراکی
    ============================================================ */
