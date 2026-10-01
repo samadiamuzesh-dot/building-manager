@@ -8823,6 +8823,7 @@ function printProfitPdf() {
    🆘 صفحه پشتیبانی
    ============================================================ */
 const TICKETS_KEY = 'ham_sakhteman_tickets';
+let currentTicketId = null;
 
 function loadTickets() {
   const raw = localStorage.getItem(TICKETS_KEY);
@@ -8834,13 +8835,24 @@ function saveTickets(tickets) {
   localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
 }
 
+function getPersianDateTime() {
+  const now = new Date();
+  return {
+    date: now.toLocaleDateString('fa-IR'),
+    time: now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+    iso: now.toISOString(),
+  };
+}
+
 function renderSupportPage() {
   const tickets = loadTickets();
 
   const total = tickets.length;
-  const pending = tickets.filter(t => t.status === 'pending').length;
-  const answered = tickets.filter(t => t.status === 'answered').length;
-  const lastDate = tickets.length > 0 ? tickets[tickets.length - 1].date : '—';
+  const open = tickets.filter(t => t.status === 'open').length;
+  const closed = tickets.filter(t => t.status === 'closed').length;
+  const lastDate = tickets.length > 0
+    ? tickets[tickets.length - 1].date
+    : '—';
 
   const elTotal = document.getElementById('supportTotal');
   const elPending = document.getElementById('supportPending');
@@ -8848,8 +8860,8 @@ function renderSupportPage() {
   const elLast = document.getElementById('supportLastDate');
 
   if (elTotal) elTotal.textContent = formatNumber(total);
-  if (elPending) elPending.textContent = formatNumber(pending);
-  if (elAnswered) elAnswered.textContent = formatNumber(answered);
+  if (elPending) elPending.textContent = formatNumber(open);
+  if (elAnswered) elAnswered.textContent = formatNumber(closed);
   if (elLast) elLast.textContent = lastDate;
 
   const tbody = document.getElementById('supportTableBody');
@@ -8858,7 +8870,7 @@ function renderSupportPage() {
   if (tickets.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="5" style="text-align:center;color:#94a3b8;padding:40px;">
+        <td colspan="6" style="text-align:center;color:#94a3b8;padding:40px;">
           هنوز تیکتی ارسال نکرده‌اید.
           <br><br>
           <button class="btn btn-primary" onclick="document.getElementById('btnNewTicket').click()">
@@ -8869,32 +8881,36 @@ function renderSupportPage() {
     return;
   }
 
-  const statusIcons = {
-    'pending': '<span class="badge badge-debt">⏳ در انتظار</span>',
-    'answered': '<span class="badge badge-paid">✅ پاسخ داده شده</span>',
+  const statusBadge = {
+    'open': '<span class="badge badge-debt">🟢 باز</span>',
     'closed': '<span class="badge" style="background:#e5e7eb; color:#4b5563;">🔒 بسته شده</span>',
   };
 
-  const priorityIcons = {
-    'کم': '🟢',
-    'متوسط': '🟡',
-    'زیاد': '🔴',
-  };
+  const priorityIcons = { 'کم': '🟢', 'متوسط': '🟡', 'زیاد': '🔴' };
 
-  tbody.innerHTML = [...tickets].reverse().map(t => `
-    <tr>
-      <td>${t.date || '—'}</td>
-      <td><strong>${t.subject || '—'}</strong></td>
-      <td>${t.category || '—'}</td>
-      <td>${statusIcons[t.status] || '—'}</td>
-      <td>
-        <div class="row-actions">
-          <button class="row-action-btn" data-ticket-action="view" data-id="${t.id}" title="مشاهده">👁️</button>
-          <button class="row-action-btn danger" data-ticket-action="delete" data-id="${t.id}" title="حذف">🗑️</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = [...tickets].reverse().map(t => {
+    const lastMsg = t.messages[t.messages.length - 1];
+    const msgCount = t.messages.length;
+
+    return `
+      <tr>
+        <td>${t.date}<br><small style="color:#94a3b8;">${t.time}</small></td>
+        <td>
+          <strong>${t.subject}</strong>
+          <br><small style="color:#94a3b8;">${priorityIcons[t.priority]} ${t.priority} • ${msgCount} پیام</small>
+        </td>
+        <td>${t.category}</td>
+        <td>${statusBadge[t.status] || '—'}</td>
+        <td style="color:#64748b; font-size:12.5px;">${t.lastUpdateDate || t.date}</td>
+        <td>
+          <div class="row-actions">
+            <button class="row-action-btn" data-ticket-action="view" data-id="${t.id}" title="مشاهده / ادامه">💬</button>
+            <button class="row-action-btn danger" data-ticket-action="delete" data-id="${t.id}" title="حذف">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function openTicketModal() {
@@ -8931,21 +8947,29 @@ function saveTicket() {
 
   const tickets = loadTickets();
   const newId = tickets.length > 0 ? Math.max(...tickets.map(t => t.id || 0)) + 1 : 1;
-
-  const now = new Date();
-  const persianDate = now.toLocaleDateString('fa-IR');
-  const persianTime = now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+  const dt = getPersianDateTime();
 
   tickets.push({
     id: newId,
     subject: subject,
     category: category,
     priority: priority,
-    message: message,
-    status: 'pending',
-    date: persianDate,
-    time: persianTime,
-    createdAt: now.toISOString(),
+    status: 'open',
+    date: dt.date,
+    time: dt.time,
+    lastUpdateDate: dt.date,
+    lastUpdateTime: dt.time,
+    createdAt: dt.iso,
+    updatedAt: dt.iso,
+    messages: [
+      {
+        sender: 'user',
+        text: message,
+        date: dt.date,
+        time: dt.time,
+        createdAt: dt.iso,
+      }
+    ],
   });
 
   saveTickets(tickets);
@@ -8954,21 +8978,117 @@ function saveTicket() {
   toastSuccess('تیکت شما با موفقیت ارسال شد. به‌زودی پاسخ می‌دهیم.');
 }
 
-function viewTicket(ticketId) {
+function openTicketView(ticketId) {
   const tickets = loadTickets();
   const ticket = tickets.find(t => t.id === ticketId);
   if (!ticket) return;
 
+  currentTicketId = ticketId;
+
+  const elSubject = document.getElementById('ticketViewSubject');
+  const elMeta = document.getElementById('ticketViewMeta');
+
+  if (elSubject) elSubject.textContent = ticket.subject;
+
   const priorityIcons = { 'کم': '🟢', 'متوسط': '🟡', 'زیاد': '🔴' };
 
-  alert(
-    `📩 تیکت #${ticket.id}\n\n` +
-    `📌 موضوع: ${ticket.subject}\n` +
-    `📁 دسته: ${ticket.category}\n` +
-    `🎯 اولویت: ${priorityIcons[ticket.priority]} ${ticket.priority}\n` +
-    `📅 تاریخ: ${ticket.date} - ${ticket.time}\n\n` +
-    `📝 پیام:\n${ticket.message}`
-  );
+  if (elMeta) {
+    elMeta.textContent = `${priorityIcons[ticket.priority]} ${ticket.priority} • ${ticket.category} • ${ticket.date} - ${ticket.time}`;
+  }
+
+  renderTicketMessages(ticket);
+
+  // اگه تیکت بسته شده، فرم پاسخ مخفی بشه
+  const replyBox = document.getElementById('ticketReplyBox');
+  if (replyBox) {
+    replyBox.style.display = ticket.status === 'closed' ? 'none' : 'block';
+  }
+
+  const modal = document.getElementById('ticketViewModal');
+  if (modal) modal.classList.add('open');
+}
+
+function closeTicketView() {
+  const modal = document.getElementById('ticketViewModal');
+  if (modal) modal.classList.remove('open');
+  currentTicketId = null;
+  renderSupportPage();
+}
+
+function renderTicketMessages(ticket) {
+  const container = document.getElementById('ticketMessagesBox');
+  if (!container) return;
+
+  container.innerHTML = ticket.messages.map((m, idx) => {
+    const isUser = m.sender === 'user';
+    const isAdmin = m.sender === 'admin';
+
+    const label = isUser ? '👤 شما' : '🆘 پشتیبانی';
+    const bgColor = isUser ? '#5b4cdb' : '#0f766e';
+    const align = isUser ? 'flex-start' : 'flex-end';
+    const borderRadius = isUser
+      ? 'border-top-right-radius: 4px;'
+      : 'border-top-left-radius: 4px;';
+
+    return `
+      <div style="display: flex; justify-content: ${align};">
+        <div style="max-width: 80%; padding: 12px 16px; border-radius: 14px; ${borderRadius} background: ${bgColor}; color: #fff;">
+          <div style="font-size: 12px; opacity: 0.85; margin-bottom: 6px; font-weight: 700;">
+            ${label}
+          </div>
+          <div style="font-size: 14px; line-height: 1.7; word-wrap: break-word;">
+            ${m.text.replace(/\n/g, '<br>')}
+          </div>
+          <div style="font-size: 10.5px; margin-top: 8px; opacity: 0.75; text-align: left;">
+            ${m.time} — ${m.date}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function replyToTicket() {
+  if (!currentTicketId) return;
+
+  const message = document.getElementById('ticketReplyMessage')?.value.trim();
+  if (!message) {
+    toastWarning('لطفاً متن پاسخ را وارد کنید.');
+    return;
+  }
+
+  const tickets = loadTickets();
+  const ticket = tickets.find(t => t.id === currentTicketId);
+  if (!ticket) return;
+
+  if (ticket.status === 'closed') {
+    toastWarning('این تیکت بسته شده و قابل پاسخ نیست.');
+    return;
+  }
+
+  const dt = getPersianDateTime();
+
+  ticket.messages.push({
+    sender: 'user',
+    text: message,
+    date: dt.date,
+    time: dt.time,
+    createdAt: dt.iso,
+  });
+
+  ticket.lastUpdateDate = dt.date;
+  ticket.lastUpdateTime = dt.time;
+  ticket.updatedAt = dt.iso;
+
+  saveTickets(tickets);
+
+  document.getElementById('ticketReplyMessage').value = '';
+  renderTicketMessages(ticket);
+  renderSupportPage();
+
+  toastSuccess('پاسخ شما ثبت شد.');
 }
 
 function deleteTicket(ticketId) {
@@ -8987,10 +9107,21 @@ function bindSupportPage() {
   document.getElementById('ticketCancelBtn')?.addEventListener('click', closeTicketModal);
   document.getElementById('ticketSaveBtn')?.addEventListener('click', saveTicket);
 
+  document.getElementById('ticketViewCloseBtn')?.addEventListener('click', closeTicketView);
+  document.getElementById('ticketViewCancelBtn')?.addEventListener('click', closeTicketView);
+  document.getElementById('ticketReplyBtn')?.addEventListener('click', replyToTicket);
+
   const modal = document.getElementById('ticketModal');
   if (modal) {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeTicketModal();
+    });
+  }
+
+  const viewModal = document.getElementById('ticketViewModal');
+  if (viewModal) {
+    viewModal.addEventListener('click', (e) => {
+      if (e.target === viewModal) closeTicketView();
     });
   }
 
@@ -9003,11 +9134,12 @@ function bindSupportPage() {
       const action = btn.dataset.ticketAction;
       const id = Number(btn.dataset.id);
 
-      if (action === 'view') viewTicket(id);
+      if (action === 'view') openTicketView(id);
       else if (action === 'delete') deleteTicket(id);
     });
   }
 }
+
 
 /* ============================================================
    💎 صفحه اشتراکی
