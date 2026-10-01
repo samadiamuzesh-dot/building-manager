@@ -3209,6 +3209,39 @@
 
     </div>
   </div>
+    <!-- ============ مودال مشاهده و ادامه تیکت ============ -->
+  <div class="modal-backdrop" id="ticketViewModal">
+    <div class="modal modal-unit" style="max-width: 700px;">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">📩</div>
+        <div>
+          <h2 id="ticketViewSubject">تیکت</h2>
+          <p id="ticketViewMeta">—</p>
+        </div>
+        <button class="detail-close" id="ticketViewCloseBtn" style="margin-right:auto;">✖</button>
+      </div>
+
+      <!-- پیام‌های تیکت -->
+      <div id="ticketMessagesBox" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px;"></div>
+
+      <!-- فرم ادامه تیکت -->
+      <div id="ticketReplyBox" style="margin-top: 18px;">
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label for="ticketReplyMessage">پاسخ شما</label>
+          <textarea id="ticketReplyMessage" class="form-input" rows="4"
+                    placeholder="پاسخ یا توضیح خود را بنویسید..."
+                    style="resize: vertical; font-family: inherit;"></textarea>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-cancel" id="ticketViewCancelBtn">بستن</button>
+          <button class="btn btn-primary" id="ticketReplyBtn" style="flex: 1;">📤 ارسال پاسخ</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 
   <!-- ============ مودال Wizard ============ -->
   <div class="modal-backdrop" id="welcomeModal">
