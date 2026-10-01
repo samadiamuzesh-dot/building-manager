@@ -3316,3 +3316,74 @@ input[type="number"] {
     font-size: 14px;
   }
 }
+
+
+/* ============================================================
+   💎 گزینه اشتراکی توی سایدبار — باکس بزرگ
+   ============================================================ */
+.sidebar-nav .subscription-nav-item {
+  margin-top: 20px !important;
+  background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%) !important;
+  border-radius: 14px !important;
+  padding: 18px 16px !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  font-size: 16px !important;
+  box-shadow: 0 6px 20px rgba(91, 76, 219, 0.4) !important;
+  border: 2px solid rgba(255, 255, 255, 0.15) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.sidebar-nav .subscription-nav-item::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+  animation: subNavGlow 4s infinite;
+  pointer-events: none;
+}
+
+@keyframes subNavGlow {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+}
+
+.sidebar-nav .subscription-nav-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(91, 76, 219, 0.55) !important;
+  background: linear-gradient(135deg, #6d5ee8 0%, #4f44d8 100%) !important;
+}
+
+.sidebar-nav .subscription-nav-item .nav-icon {
+  font-size: 24px !important;
+  width: 32px !important;
+  text-align: center !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  animation: subNavBounce 2s infinite;
+}
+
+@keyframes subNavBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.sidebar-nav .subscription-nav-item .nav-text {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* حالت active */
+.sidebar-nav .subscription-nav-item.active {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5) !important;
+}
