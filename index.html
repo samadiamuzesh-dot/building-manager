@@ -178,6 +178,10 @@
             <span class="nav-icon">💎</span>
             <span class="nav-text">اشتراک حرفه ای</span>
           </li>
+                    <li data-page="support" style="margin-top: 12px;">
+            <span class="nav-icon">🆘</span>
+            <span class="nav-text">پشتیبانی</span>
+          </li>
         </ul>
       </nav>
 
@@ -1432,7 +1436,78 @@
         </div>
 
       </section>
-      <!-- ============ صفحه اشتراکی ============ -->
+        <!-- ============ صفحه پشتیبانی ============ -->
+      <section id="page-support" class="page">
+
+        <!-- هدر پشتیبانی -->
+        <div class="support-hero">
+          <div class="support-hero-icon">🆘</div>
+          <h1 class="support-hero-title">پشتیبانی آپارتمان پلاس</h1>
+          <p class="support-hero-desc">
+            هر سوال، مشکل یا پیشنهادی داری؟ تیکت بفرست تا در اسرع وقت پاسخ بدیم.
+          </p>
+        </div>
+
+        <!-- کارت‌های آماری -->
+        <div class="stats-grid units-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">📩</div>
+            <div class="stat-body">
+              <p class="stat-label">کل تیکت‌ها</p>
+              <h3 class="stat-value" id="supportTotal">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-orange">⏳</div>
+            <div class="stat-body">
+              <p class="stat-label">در انتظار پاسخ</p>
+              <h3 class="stat-value" id="supportPending">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">✅</div>
+            <div class="stat-body">
+              <p class="stat-label">پاسخ داده‌شده</p>
+              <h3 class="stat-value" id="supportAnswered">۰</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">📅</div>
+            <div class="stat-body">
+              <p class="stat-label">آخرین تیکت</p>
+              <h3 class="stat-value" id="supportLastDate">—</h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- دکمه ارسال تیکت -->
+        <div class="table-box" style="margin-top: 20px;">
+          <div class="table-header">
+            <h3>📩 تیکت‌های من</h3>
+            <button class="btn btn-primary" id="btnNewTicket">
+              ➕ ارسال تیکت جدید
+            </button>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>تاریخ</th>
+                <th>موضوع</th>
+                <th>دسته‌بندی</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="supportTableBody"></tbody>
+          </table>
+        </div>
+
+      </section>
+
             <!-- ============ صفحه اشتراکی ============ -->
       <section id="page-subscription" class="page">
 
@@ -3072,6 +3147,64 @@
       <div class="unit-modal-actions">
         <button class="btn btn-cancel" id="sideIncomeCancelBtn">انصراف</button>
         <button class="btn btn-primary" id="sideIncomeSaveBtn">💾 ذخیره</button>
+      </div>
+
+    </div>
+  </div>
+  <!-- ============ مودال ارسال تیکت ============ -->
+  <div class="modal-backdrop" id="ticketModal">
+    <div class="modal modal-unit">
+
+      <div class="unit-modal-header">
+        <div class="unit-modal-icon">📩</div>
+        <div>
+          <h2 id="ticketModalTitle">ارسال تیکت جدید</h2>
+          <p id="ticketModalSubtitle">سوال یا مشکل خود را بنویسید</p>
+        </div>
+      </div>
+
+      <div class="unit-form">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="ticketSubject">موضوع <span class="required">*</span></label>
+            <input type="text" id="ticketSubject" class="form-input"
+                   placeholder="مثلاً: مشکل در صدور شارژ" />
+          </div>
+
+          <div class="form-group">
+            <label for="ticketCategory">دسته‌بندی</label>
+            <select id="ticketCategory" class="form-input">
+              <option value="مشکل فنی">🔧 مشکل فنی</option>
+              <option value="سوال">❓ سوال</option>
+              <option value="پیشنهاد">💡 پیشنهاد</option>
+              <option value="شکایت">⚠️ شکایت</option>
+              <option value="سایر">📦 سایر</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="ticketPriority">اولویت</label>
+          <select id="ticketPriority" class="form-input">
+            <option value="کم">🟢 کم</option>
+            <option value="متوسط" selected>🟡 متوسط</option>
+            <option value="زیاد">🔴 زیاد</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="ticketMessage">متن پیام <span class="required">*</span></label>
+          <textarea id="ticketMessage" class="form-input" rows="6"
+                    placeholder="مشکل یا سوال خود را با جزئیات بنویسید..."
+                    style="resize: vertical; font-family: inherit;"></textarea>
+        </div>
+
+      </div>
+
+      <div class="unit-modal-actions">
+        <button class="btn btn-cancel" id="ticketCancelBtn">انصراف</button>
+        <button class="btn btn-primary" id="ticketSaveBtn">📤 ارسال تیکت</button>
       </div>
 
     </div>
