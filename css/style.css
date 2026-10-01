@@ -3454,3 +3454,28 @@ input[type="number"] {
     font-size: 13.5px;
   }
 }
+
+
+/* ============================================================
+   🆘 تیکت‌ها — استایل اضافی
+   ============================================================ */
+#ticketMessagesBox::-webkit-scrollbar {
+  width: 6px;
+}
+
+#ticketMessagesBox::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+#ticketMessagesBox::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 10px;
+}
+
+#ticketMessagesBox {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+}
