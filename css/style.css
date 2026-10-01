@@ -3387,3 +3387,70 @@ input[type="number"] {
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
   box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5) !important;
 }
+
+
+/* ============================================================
+   🆘 صفحه پشتیبانی
+   ============================================================ */
+.support-hero {
+  background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+  border-radius: 20px;
+  padding: 36px 28px;
+  color: #fff;
+  text-align: center;
+  margin-bottom: 24px;
+  box-shadow: 0 12px 40px rgba(15, 118, 110, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.support-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+  animation: subGlow 6s infinite;
+}
+
+.support-hero-icon {
+  font-size: 64px;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.support-hero-title {
+  font-size: 28px;
+  font-weight: 900;
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.support-hero-desc {
+  font-size: 15px;
+  line-height: 1.9;
+  max-width: 650px;
+  margin: 0 auto;
+  opacity: 0.95;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 640px) {
+  .support-hero {
+    padding: 24px 18px;
+  }
+  .support-hero-icon {
+    font-size: 48px;
+  }
+  .support-hero-title {
+    font-size: 22px;
+  }
+  .support-hero-desc {
+    font-size: 13.5px;
+  }
+}
