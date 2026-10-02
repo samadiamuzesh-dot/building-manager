@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="theme-color" content="#5b4cdb">
+  <title>آپارتمان پلاس | اپلیکیشن ساکنین</title>
+  <link rel="manifest" href="resident-manifest.json">
+  <link rel="stylesheet" href="css/resident-style.css?v=1">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap">
+</head>
+<body>
+
+<!-- ============ صفحه ورود ============ -->
+<div id="residentLoginPage" class="resident-login-page">
+
+  <div class="resident-login-box">
+
+    <div class="resident-brand">
+      <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none" width="70" height="70">
+        <rect width="512" height="512" rx="110" fill="#5b4cdb"/>
+        <path d="M370 380H142V200c0-8 5-15 12-17l140-33c6-1 12 0 17 3s8 9 8 15v212zM392 165c0-6 4-12 9-15s12-4 18-2l48 11c8 2 13 9 13 17v204h-88V165zM320 80c0-7 5-12 12-12h72c7 0 12 5 12 12v64h-96V80z" fill="#ffffff"/>
+        <rect x="238" y="300" width="24" height="80" rx="12" fill="#5b4cdb"/>
+      </svg>
+      <h1>آپارتمان پلاس</h1>
+      <p>اپلیکیشن ساکنین</p>
+    </div>
+
+    <!-- مرحله ۱: کد ساختمان -->
+    <div id="residentStep1" class="resident-step">
+      <h2 class="resident-step-title">ورود به ساختمان</h2>
+      <p class="resident-step-desc">کد ساختمان رو وارد کن تا به واحدت متصل بشی</p>
+
+      <div class="resident-form-group">
+        <label for="residentBuildingCode">🏢 کد ساختمان</label>
+        <input type="text" id="residentBuildingCode" class="resident-form-input"
+               placeholder="مثلاً: M-123456" dir="ltr" />
+        <div class="resident-error-msg" id="residentCodeError"></div>
+      </div>
+
+      <button class="resident-submit-btn" id="residentVerifyCodeBtn">
+        ادامه ←
+      </button>
+    </div>
+
+    <!-- مرحله ۲: انتخاب واحد -->
+    <div id="residentStep2" class="resident-step" style="display:none;">
+      <h2 class="resident-step-title">انتخاب واحد</h2>
+      <p class="resident-step-desc">واحد خودت رو انتخاب کن</p>
+
+      <div class="resident-form-group" id="residentBlockGroup" style="display:none;">
+        <label for="residentBlockSelect">🏢 بلوک</label>
+        <select id="residentBlockSelect" class="resident-form-input"></select>
+      </div>
+
+      <div class="resident-form-group">
+        <label for="residentUnitSelect">🏠 شماره واحد</label>
+        <select id="residentUnitSelect" class="resident-form-input"></select>
+        <div class="resident-error-msg" id="residentUnitError"></div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="resident-cancel-btn" id="residentBackToStep1">→ برگشت</button>
+        <button class="resident-submit-btn" id="residentVerifyUnitBtn" style="flex: 1;">ادامه ←</button>
+      </div>
+    </div>
+
+    <!-- مرحله ۳: ثبت‌نام -->
+    <div id="residentStep3" class="resident-step" style="display:none;">
+      <h2 class="resident-step-title">ثبت‌نام</h2>
+      <p class="resident-step-desc">اطلاعات خودت رو وارد کن</p>
+
+      <div class="resident-form-group">
+        <label for="residentName">👤 نام و نام خانوادگی <span class="resident-required">*</span></label>
+        <input type="text" id="residentName" class="resident-form-input"
+               placeholder="مثلاً: علی احمدی" />
+        <div class="resident-error-msg" id="residentNameError"></div>
+      </div>
+
+      <div class="resident-form-group">
+        <label for="residentPhone">📱 شماره موبایل <span class="resident-required">*</span></label>
+        <input type="tel" id="residentPhone" class="resident-form-input"
+               placeholder="۰۹۱۲۱۲۳۴۵۶۷" maxlength="11" dir="ltr" />
+        <div class="resident-error-msg" id="residentPhoneError"></div>
+      </div>
+
+      <div class="resident-form-group">
+        <label for="residentRole">نقش شما در این واحد <span class="resident-required">*</span></label>
+        <select id="residentRole" class="resident-form-input">
+          <option value="owner">👤 مالک</option>
+          <option value="tenant">🏘️ مستاجر</option>
+        </select>
+      </div>
+
+      <div class="resident-form-group">
+        <label for="residentPassword">🔒 رمز عبور <span class="resident-required">*</span></label>
+        <input type="password" id="residentPassword" class="resident-form-input"
+               placeholder="حداقل ۶ کاراکتر" />
+        <div class="resident-error-msg" id="residentPasswordError"></div>
+      </div>
+
+      <div class="resident-form-group">
+        <label for="residentPasswordConfirm">🔒 تکرار رمز عبور <span class="resident-required">*</span></label>
+        <input type="password" id="residentPasswordConfirm" class="resident-form-input"
+               placeholder="رمز را دوباره وارد کن" />
+        <div class="resident-error-msg" id="residentPasswordConfirmError"></div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="resident-cancel-btn" id="residentBackToStep2">→ برگشت</button>
+        <button class="resident-submit-btn" id="residentRegisterBtn" style="flex: 1;">✨ ثبت‌نام</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ پنل ساکن ============ -->
+<div id="residentPanel" class="resident-panel" style="display:none;">
+
+  <!-- هدر -->
+  <header class="resident-header">
+    <div class="resident-header-info">
+      <h2 id="residentHeaderName">—</h2>
+      <p id="residentHeaderUnit">—</p>
+    </div>
+    <button class="resident-logout-btn" id="residentLogoutBtn" title="خروج">🚪</button>
+  </header>
+
+  <!-- محتوای پنل -->
+  <main class="resident-content">
+
+    <!-- صفحه اصلی -->
+    <section id="resident-dashboard" class="resident-page active">
+      <div class="resident-welcome-card">
+        <div class="resident-welcome-icon">🏠</div>
+        <h3>خوش آمدید</h3>
+        <p id="residentWelcomeText">—</p>
+      </div>
+
+      <div class="resident-stats-grid">
+        <div class="resident-stat-card">
+          <div class="resident-stat-icon resident-icon-blue">💰</div>
+          <div class="resident-stat-body">
+            <p class="resident-stat-label">بدهی کل</p>
+            <h3 class="resident-stat-value" id="residentStatDebt">۰ تومان</h3>
+          </div>
+        </div>
+
+        <div class="resident-stat-card">
+          <div class="resident-stat-icon resident-icon-green">✅</div>
+          <div class="resident-stat-body">
+            <p class="resident-stat-label">پرداخت شده</p>
+            <h3 class="resident-stat-value" id="residentStatPaid">۰</h3>
+          </div>
+        </div>
+
+        <div class="resident-stat-card">
+          <div class="resident-stat-icon resident-icon-orange">📩</div>
+          <div class="resident-stat-body">
+            <p class="resident-stat-label">پیام‌های جدید</p>
+            <h3 class="resident-stat-value" id="residentStatMessages">۰</h3>
+          </div>
+        </div>
+
+        <div class="resident-stat-card">
+          <div class="resident-stat-icon resident-icon-purple">📢</div>
+          <div class="resident-stat-body">
+            <p class="resident-stat-label">اطلاعیه‌ها</p>
+            <h3 class="resident-stat-value" id="residentStatNotices">۰</h3>
+          </div>
+        </div>
+      </div>
+
+      <!-- آخرین شارژ -->
+      <div class="resident-card">
+        <div class="resident-card-header">
+          <h3>💰 آخرین شارژ</h3>
+        </div>
+        <div id="residentLastCharge">
+          <p style="text-align:center; color:#94a3b8; padding:20px;">هنوز شارژی صادر نشده</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- صفحه شارژها -->
+    <section id="resident-charges" class="resident-page">
+      <div class="resident-page-header">
+        <h2>💰 شارژهای من</h2>
+      </div>
+      <div id="residentChargesList"></div>
+    </section>
+
+    <!-- صفحه اطلاعیه‌ها -->
+    <section id="resident-notices" class="resident-page">
+      <div class="resident-page-header">
+        <h2>📢 اطلاعیه‌ها</h2>
+      </div>
+      <div id="residentNoticesList"></div>
+    </section>
+
+    <!-- صفحه پیام‌ها -->
+    <section id="resident-messages" class="resident-page">
+      <div class="resident-page-header">
+        <h2>💬 پیام‌ها</h2>
+      </div>
+      <div id="residentMessagesList"></div>
+    </section>
+
+    <!-- صفحه رأی‌گیری -->
+    <section id="resident-voting" class="resident-page">
+      <div class="resident-page-header">
+        <h2>🗳️ رأی‌گیری</h2>
+      </div>
+      <div id="residentVotingList"></div>
+    </section>
+
+    <!-- صفحه پروفایل -->
+    <section id="resident-profile" class="resident-page">
+      <div class="resident-page-header">
+        <h2>👤 پروفایل من</h2>
+      </div>
+      <div id="residentProfileContent"></div>
+    </section>
+
+  </main>
+
+  <!-- نوار پایین (تب‌بار) -->
+  <nav class="resident-bottom-nav">
+    <button class="resident-nav-item active" data-resident-page="dashboard">
+      <span class="resident-nav-icon">🏠</span>
+      <span class="resident-nav-text">خانه</span>
+    </button>
+    <button class="resident-nav-item" data-resident-page="charges">
+      <span class="resident-nav-icon">💰</span>
+      <span class="resident-nav-text">شارژها</span>
+    </button>
+    <button class="resident-nav-item" data-resident-page="notices">
+      <span class="resident-nav-icon">📢</span>
+      <span class="resident-nav-text">اطلاعیه</span>
+    </button>
+    <button class="resident-nav-item" data-resident-page="messages">
+      <span class="resident-nav-icon">💬</span>
+      <span class="resident-nav-text">پیام</span>
+    </button>
+    <button class="resident-nav-item" data-resident-page="voting">
+      <span class="resident-nav-icon">🗳️</span>
+      <span class="resident-nav-text">رأی</span>
+    </button>
+    <button class="resident-nav-item" data-resident-page="profile">
+      <span class="resident-nav-icon">👤</span>
+      <span class="resident-nav-text">پروفایل</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- Toast Container -->
+<div id="residentToastContainer" class="resident-toast-container"></div>
+
+<script src="js/resident-app.js?v=1"></script>
+</body>
+</html>
