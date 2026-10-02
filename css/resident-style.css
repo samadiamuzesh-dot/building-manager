@@ -1,0 +1,496 @@
+/* ============================================================
+   🏠 اپلیکیشن ساکنین — آپارتمان پلاس
+   ============================================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary: #5b4cdb;
+  --primary-dark: #4338ca;
+  --primary-light: #eef2ff;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --bg: #f8fafc;
+  --text: #1e293b;
+  --text-light: #64748b;
+  --border: #e2e8f0;
+  --radius: 14px;
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  direction: rtl;
+  line-height: 1.7;
+}
+
+/* ============ صفحه ورود ============ */
+.resident-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
+  padding: 20px;
+}
+
+.resident-login-box {
+  background: #fff;
+  border-radius: 22px;
+  padding: 32px 26px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
+}
+
+.resident-brand {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.resident-brand svg {
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 8px 24px rgba(91, 76, 219, 0.3);
+}
+
+.resident-brand h1 {
+  font-size: 22px;
+  font-weight: 900;
+  color: #5b4cdb;
+  margin-bottom: 4px;
+}
+
+.resident-brand p {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.resident-step {
+  animation: fadeInResident 0.35s ease;
+}
+
+@keyframes fadeInResident {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.resident-step-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.resident-step-desc {
+  font-size: 13.5px;
+  color: var(--text-light);
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.resident-form-group {
+  margin-bottom: 16px;
+}
+
+.resident-form-group label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.resident-form-input {
+  width: 100%;
+  padding: 13px 15px;
+  font-family: inherit;
+  font-size: 15px;
+  background: #f8fafc;
+  border: 1.5px solid var(--border);
+  border-radius: 11px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.resident-form-input:focus {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(91, 76, 219, 0.1);
+}
+
+.resident-form-input.input-error {
+  border-color: var(--danger) !important;
+  background: #fef2f2 !important;
+}
+
+.resident-error-msg {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 6px;
+  font-weight: 600;
+  display: none;
+}
+
+.resident-error-msg.show {
+  display: block;
+}
+
+.resident-required {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.resident-submit-btn {
+  width: 100%;
+  padding: 15px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 8px;
+}
+
+.resident-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(91, 76, 219, 0.35);
+}
+
+.resident-submit-btn:active {
+  transform: translateY(0);
+}
+
+.resident-cancel-btn {
+  padding: 15px 20px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light);
+  background: #f1f5f9;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resident-cancel-btn:hover {
+  background: #e2e8f0;
+}
+
+/* ============ پنل ساکن ============ */
+.resident-panel {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 80px;
+}
+
+.resident-header {
+  background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
+  color: #fff;
+  padding: 20px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 4px 20px rgba(91, 76, 219, 0.25);
+}
+
+.resident-header-info h2 {
+  font-size: 17px;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.resident-header-info p {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.resident-logout-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.resident-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.resident-content {
+  flex: 1;
+  padding: 18px 16px;
+}
+
+.resident-page {
+  display: none;
+}
+
+.resident-page.active {
+  display: block;
+  animation: fadeInResident 0.3s ease;
+}
+
+.resident-page-header {
+  margin-bottom: 16px;
+}
+
+.resident-page-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* کارت خوش‌آمد */
+.resident-welcome-card {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  border-radius: var(--radius);
+  padding: 22px 20px;
+  text-align: center;
+  margin-bottom: 18px;
+  border: 1px solid #c7d2fe;
+}
+
+.resident-welcome-icon {
+  font-size: 44px;
+  margin-bottom: 8px;
+}
+
+.resident-welcome-card h3 {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--primary-dark);
+  margin-bottom: 6px;
+}
+
+.resident-welcome-card p {
+  font-size: 13.5px;
+  color: var(--text-light);
+  line-height: 1.8;
+}
+
+/* کارت‌های آماری */
+.resident-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.resident-stat-card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 16px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.resident-stat-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.resident-icon-blue   { background: #dbeafe; }
+.resident-icon-green  { background: #dcfce7; }
+.resident-icon-orange { background: #ffedd5; }
+.resident-icon-purple { background: #eef2ff; }
+
+.resident-stat-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.resident-stat-label {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-bottom: 3px;
+}
+
+.resident-stat-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* کارت‌ها */
+.resident-card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+
+.resident-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.resident-card-header h3 {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* نوار پایین */
+.resident-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 4px;
+  z-index: 100;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.resident-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.resident-nav-item:hover {
+  background: var(--primary-light);
+}
+
+.resident-nav-item.active {
+  background: var(--primary-light);
+}
+
+.resident-nav-icon {
+  font-size: 20px;
+}
+
+.resident-nav-text {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.resident-nav-item.active .resident-nav-text {
+  color: var(--primary);
+}
+
+/* Toast */
+.resident-toast-container {
+  position: fixed;
+  bottom: 90px;
+  left: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.resident-toast {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border-right: 4px solid var(--primary);
+  pointer-events: auto;
+  transform: translateX(-120%);
+  opacity: 0;
+  transition: all 0.35s ease;
+}
+
+.resident-toast.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.resident-toast.success { border-right-color: #22c55e; }
+.resident-toast.error { border-right-color: #ef4444; }
+.resident-toast.warning { border-right-color: #f59e0b; }
+
+.resident-toast-icon {
+  font-size: 20px;
+}
+
+.resident-toast-body {
+  flex: 1;
+}
+
+.resident-toast-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.resident-toast-message {
+  font-size: 12.5px;
+  color: var(--text-light);
+}
+
+/* موبایل کوچک */
+@media (max-width: 400px) {
+  .resident-stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .resident-stat-value {
+    font-size: 13.5px;
+  }
+
+  .resident-nav-text {
+    font-size: 9.5px;
+  }
+}
