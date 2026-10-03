@@ -1,0 +1,26 @@
+{
+  "name": "آپارتمان پلاس | اپلیکیشن ساکنین",
+  "short_name": "آپارتمان پلاس",
+  "description": "اپلیکیشن ساکنین برای مدیریت ساختمان",
+  "start_url": "resident.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#5b4cdb",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
