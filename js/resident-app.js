@@ -790,7 +790,15 @@ function renderResidentMessages() {
   }).join('');
 
   setTimeout(() => {
-    container.scrollTop = container.scrollHeight;
+    const scrollBtn = document.getElementById('residentScrollBottomBtn');
+    const isBtnVisible = scrollBtn?.classList.contains('show');
+
+    if (!isBtnVisible) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, 50);
 }
 
@@ -858,12 +866,78 @@ allMessages.push({
     }
   }, 800);
 }
-
 function bindResidentMessagesPage() {
   document.getElementById('residentChatSendBtn')?.addEventListener('click', sendResidentMessage);
+
   document.getElementById('residentChatInput')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendResidentMessage();
   });
+
+  // ✅ دکمه برو به آخرین پیام
+  document.getElementById('residentScrollBottomBtn')?.addEventListener('click', () => {
+    const container = document.getElementById('residentChatMessages');
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+    hideScrollBottomBtn();
+    clearUnreadBadge();
+  });
+
+  // ✅ نمایش/مخفی کردن دکمه بر اساس موقعیت اسکرول
+  const chatContainer = document.getElementById('residentChatMessages');
+  if (chatContainer) {
+    chatContainer.addEventListener('scroll', () => {
+      const threshold = 100;
+      const isAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < threshold;
+
+      if (isAtBottom) {
+        hideScrollBottomBtn();
+        clearUnreadBadge();
+      } else {
+        showScrollBottomBtn();
+      }
+    });
+  }
+}
+
+function showScrollBottomBtn() {
+  const btn = document.getElementById('residentScrollBottomBtn');
+  if (btn && !btn.classList.contains('show')) {
+    btn.classList.add('show');
+  }
+}
+
+function hideScrollBottomBtn() {
+  const btn = document.getElementById('residentScrollBottomBtn');
+  if (btn) {
+    btn.classList.remove('show');
+  }
+}
+
+let residentUnreadCount = 0;
+
+function addUnreadBadge() {
+  residentUnreadCount++;
+  const btn = document.getElementById('residentScrollBottomBtn');
+  if (!btn) return;
+
+  let badge = btn.querySelector('.badge-count');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'badge-count';
+    btn.appendChild(badge);
+  }
+  badge.textContent = residentUnreadCount > 9 ? '۹+' : toPersianNumR(residentUnreadCount);
+}
+
+function clearUnreadBadge() {
+  residentUnreadCount = 0;
+  const btn = document.getElementById('residentScrollBottomBtn');
+  const badge = btn?.querySelector('.badge-count');
+  if (badge) badge.remove();
 }
 function renderResidentVoting() {
   const container = document.getElementById('residentVotingList');
@@ -992,13 +1066,38 @@ function initResidentApp() {
   document.getElementById('residentLogoutBtn')?.addEventListener('click', logoutResident);
 
   // ✅ چک دوره‌ای پیام‌های جدید هر ۲ ثانیه
+let lastMessageCount = 0;
+
   setInterval(() => {
     const session = getResidentSession();
     if (!session) return;
 
     const messagesPage = document.getElementById('resident-messages');
     if (messagesPage?.classList.contains('active')) {
-      renderResidentMessages();
+      const myUnitId = getUnitIdBySession();
+      if (!myUnitId) return;
+
+      const currentCount = loadMessages().filter(m =>
+        Number(m.unitId) === Number(myUnitId)
+      ).length;
+
+      if (currentCount !== lastMessageCount) {
+        // پیام جدید اومد
+        if (lastMessageCount > 0 && currentCount > lastMessageCount) {
+          // اگه کاربر پایین نیست، بج نشون بده
+          const container = document.getElementById('residentChatMessages');
+          const isAtBottom = container
+            ? container.scrollHeight - container.scrollTop - container.clientHeight < 100
+            : true;
+
+          if (!isAtBottom) {
+            addUnreadBadge();
+          }
+        }
+
+        lastMessageCount = currentCount;
+        renderResidentMessages();
+      }
     }
   }, 2000);
 }
