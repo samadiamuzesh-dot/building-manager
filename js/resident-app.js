@@ -413,7 +413,11 @@ function renderResidentDashboard() {
 
   document.getElementById('residentStatDebt').textContent = formatTomanR(totalDebt);
   document.getElementById('residentStatPaid').textContent = formatNumberR(paid.length);
-  document.getElementById('residentStatMessages').textContent = formatNumberR(messages.length);
+  const myMessages = messages.filter(m =>
+    String(m.unitId) !== 'undefined' &&
+    Number(m.unitId) === Number(getUnitIdBySession())
+  );
+  document.getElementById('residentStatMessages').textContent = formatNumberR(myMessages.length);
   document.getElementById('residentStatNotices').textContent = formatNumberR(notices.length);
 
   document.getElementById('residentWelcomeText').textContent =
@@ -444,6 +448,21 @@ function renderResidentDashboard() {
       </div>
     `;
   }
+}
+function getUnitIdBySession() {
+  const session = getResidentSession();
+  if (!session) return null;
+
+  const units = loadUnits();
+  const userUnit = units.find(u => {
+    if (session.block === '—' || !session.block) {
+      return (u.block === '—' || !u.block) && Number(u.number) === Number(session.unitNumber);
+    }
+    return String(u.block).trim() === String(session.block).trim()
+        && Number(u.number) === Number(session.unitNumber);
+  });
+
+  return userUnit ? userUnit.id : null;
 }
 
 function getUnitNumberById(unitId) {
@@ -554,7 +573,49 @@ function renderResidentMessages() {
   const container = document.getElementById('residentMessagesList');
   if (!container) return;
 
-  container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:40px;">به‌زودی: پیام‌های شما با مدیر</p>';
+  const session = getResidentSession();
+  if (!session) return;
+
+  const myUnitId = getUnitIdBySession();
+
+  const messages = loadMessages().filter(m =>
+    myUnitId && Number(m.unitId) === Number(myUnitId)
+  );
+
+  if (messages.length === 0) {
+    container.innerHTML = `
+      <div class="resident-card" style="text-align:center;">
+        <div style="font-size: 42px; margin-bottom: 10px;">💬</div>
+        <p style="color:#64748b; font-size:13.5px;">
+          هنوز پیامی از طرف مدیر دریافت نکرده‌اید.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = messages.map(m => {
+    const isSent = m.direction === 'sent';
+    const label = isSent ? '👤 مدیر' : '🆘 شما';
+    const bgColor = isSent ? '#5b4cdb' : '#0f766e';
+    const align = isSent ? 'flex-start' : 'flex-end';
+
+    return `
+      <div class="resident-card" style="display:flex; justify-content:${align}; background:transparent; box-shadow:none; border:none; padding:0; margin-bottom:10px;">
+        <div style="max-width:85%; padding:12px 16px; border-radius:14px; background:${bgColor}; color:#fff;">
+          <div style="font-size:11.5px; opacity:0.85; margin-bottom:6px; font-weight:700;">
+            ${label}
+          </div>
+          <div style="font-size:14px; line-height:1.7; word-wrap:break-word;">
+            ${(m.body || '').replace(/\n/g, '<br>')}
+          </div>
+          <div style="font-size:10.5px; margin-top:8px; opacity:0.75; text-align:left;">
+            ${m.time || ''} — ${m.date || ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderResidentVoting() {
