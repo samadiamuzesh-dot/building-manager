@@ -483,7 +483,11 @@ function switchResidentPage(pageKey) {
   if (pageKey === 'dashboard') renderResidentDashboard();
   if (pageKey === 'charges') renderResidentCharges();
   if (pageKey === 'notices') renderResidentNotices();
-  if (pageKey === 'messages') renderResidentMessages();
+    if (pageKey === 'messages') {
+    if (residentChatInterval) { clearInterval(residentChatInterval); residentChatInterval = null; }
+    residentCurrentChatUnitId = null;
+    renderResidentMessages();
+  }
   if (pageKey === 'voting') renderResidentVoting();
   if (pageKey === 'profile') renderResidentProfile();
 }
@@ -569,88 +573,241 @@ function renderResidentNotices() {
   `).join('');
 }
 
+/* ============ پیام‌ها (چت) ============ */
+let residentCurrentChatUnitId = null;
+let residentChatInterval = null;
+
 function renderResidentMessages() {
-  const container = document.getElementById('residentMessagesList');
+  const container = document.getElementById('residentConversationsList');
   if (!container) return;
 
   const session = getResidentSession();
   if (!session) return;
 
   const myUnitId = getUnitIdBySession();
+  if (!myUnitId) {
+    container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:40px;">واحد شما یافت نشد</p>';
+    return;
+  }
 
-  const messages = loadMessages().filter(m =>
-    myUnitId && Number(m.unitId) === Number(myUnitId)
+  const allMessages = loadMessages().filter(m =>
+    Number(m.unitId) === Number(myUnitId)
   );
+
+  if (allMessages.length === 0) {
+    container.innerHTML = `
+      <div class="resident-card" style="text-align:center; padding: 40px 20px;">
+        <div style="font-size: 56px; margin-bottom: 12px;">💬</div>
+        <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 8px;">هنوز پیامی نداری</h3>
+        <p style="color:#64748b; font-size:13.5px; margin-bottom: 16px;">
+          اولین پیام رو به مدیر ساختمان بفرست
+        </p>
+        <button class="resident-submit-btn" id="residentFirstChatBtn" style="max-width: 240px; margin: 0 auto;">
+          ➕ شروع گفتگو
+        </button>
+      </div>
+    `;
+
+    document.getElementById('residentFirstChatBtn')?.addEventListener('click', () => {
+      openResidentChat(myUnitId);
+    });
+
+    return;
+  }
+
+  // گروه‌بندی بر اساس موضوع (subject)
+  const groups = {};
+  allMessages.forEach(m => {
+    const key = m.subject || 'بدون موضوع';
+    if (!groups[key]) {
+      groups[key] = {
+        subject: key,
+        messages: [],
+        lastMessage: null,
+        unread: 0,
+      };
+    }
+    groups[key].messages.push(m);
+
+    if (m.direction === 'sent' && !m.read) {
+      groups[key].unread++;
+    }
+  });
+
+  Object.values(groups).forEach(g => {
+    g.messages.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+    g.lastMessage = g.messages[g.messages.length - 1];
+  });
+
+  const convList = Object.values(groups).sort((a, b) =>
+    (b.lastMessage?.createdAt || '').localeCompare(a.lastMessage?.createdAt || '')
+  );
+
+  container.innerHTML = convList.map(g => {
+    const lm = g.lastMessage;
+    const isFromMe = lm.direction === 'received';
+    const preview = (lm.body || '').substring(0, 50) + ((lm.body || '').length > 50 ? '...' : '');
+
+    return `
+      <div class="resident-conv-item" data-subject="${g.subject.replace(/"/g, '&quot;')}">
+        <div class="resident-conv-avatar">👨‍💼</div>
+        <div class="resident-conv-body">
+          <div class="resident-conv-top">
+            <strong class="resident-conv-title">${g.subject}</strong>
+            <span class="resident-conv-time">${lm.date || ''}</span>
+          </div>
+          <div class="resident-conv-preview">
+            ${isFromMe ? '👤 شما: ' : ''}${preview || '—'}
+          </div>
+        </div>
+        ${g.unread > 0 ? `<span class="resident-conv-badge">${formatNumberR(g.unread)}</span>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.resident-conv-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const subject = item.dataset.subject;
+      openResidentChat(myUnitId, subject);
+    });
+  });
+}
+
+function openResidentChat(unitId, subject = null) {
+  residentCurrentChatUnitId = unitId;
+
+  document.querySelectorAll('.resident-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('resident-chat').classList.add('active');
+
+  document.querySelectorAll('.resident-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.residentPage === 'messages');
+  });
+
+  const title = document.getElementById('residentChatTitle');
+  const subtitle = document.getElementById('residentChatSubtitle');
+
+  if (subject) {
+    title.textContent = subject;
+  } else {
+    title.textContent = 'گفتگوی جدید';
+  }
+
+  subtitle.textContent = 'پاسخگویی توسط مدیر ساختمان';
+
+  renderResidentChatMessages(subject);
+
+  // پاک کردن فرم
+  const input = document.getElementById('residentChatInput');
+  if (input) input.value = '';
+
+  // فوکوس
+  setTimeout(() => input?.focus(), 200);
+
+  // شروع چک خودکار
+  if (residentChatInterval) clearInterval(residentChatInterval);
+  residentChatInterval = setInterval(() => {
+    renderResidentChatMessages(subject);
+  }, 2000);
+}
+
+function closeResidentChat() {
+  if (residentChatInterval) {
+    clearInterval(residentChatInterval);
+    residentChatInterval = null;
+  }
+  residentCurrentChatUnitId = null;
+
+  document.querySelectorAll('.resident-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('resident-messages').classList.add('active');
+  renderResidentMessages();
+}
+
+function renderResidentChatMessages(subject = null) {
+  const container = document.getElementById('residentChatMessages');
+  if (!container) return;
+
+  if (!residentCurrentChatUnitId) return;
+
+  let messages = loadMessages().filter(m =>
+    Number(m.unitId) === Number(residentCurrentChatUnitId)
+  );
+
+  if (subject) {
+    messages = messages.filter(m => (m.subject || 'بدون موضوع') === subject);
+  } else {
+    messages = messages.filter(m => !m.subject || m.subject === 'بدون موضوع');
+  }
+
+  messages.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+
+  // علامت‌گذاری خوانده‌شده
+  let changed = false;
+  const allMsgs = loadMessages();
+  allMsgs.forEach(m => {
+    if (Number(m.unitId) === Number(residentCurrentChatUnitId)
+        && m.direction === 'sent'
+        && !m.read
+        && ((subject && (m.subject || 'بدون موضوع') === subject)
+            || (!subject && (!m.subject || m.subject === 'بدون موضوع')))) {
+      m.read = true;
+      changed = true;
+    }
+  });
+  if (changed) {
+    localStorage.setItem('ham_sakhteman_messages', JSON.stringify(allMsgs));
+  }
 
   if (messages.length === 0) {
     container.innerHTML = `
-      <div class="resident-card" style="text-align:center;">
-        <div style="font-size: 42px; margin-bottom: 10px;">💬</div>
-        <p style="color:#64748b; font-size:13.5px;">
-          هنوز پیامی رد و بدل نشده. اولین پیام رو به مدیر بفرست.
-        </p>
+      <div style="text-align:center; color:#94a3b8; padding:40px 20px; font-size: 13.5px;">
+        هنوز پیامی توی این گفتگو نیست.<br>اولین پیام رو بنویس.
       </div>
     `;
     return;
   }
 
-  const sorted = [...messages].sort((a, b) =>
-    (a.createdAt || '').localeCompare(b.createdAt || '')
-  );
-
-  container.innerHTML = sorted.map(m => {
+  container.innerHTML = messages.map(m => {
     const isFromManager = m.direction === 'sent';
-    const label = isFromManager ? '👨‍💼 مدیر ساختمان' : '👤 شما';
-    const bgColor = isFromManager ? '#5b4cdb' : '#0f766e';
     const align = isFromManager ? 'flex-start' : 'flex-end';
-    const borderRad = isFromManager
-      ? 'border-top-right-radius: 4px;'
-      : 'border-top-left-radius: 4px;';
+    const bubbleClass = isFromManager ? 'resident-bubble-manager' : 'resident-bubble-me';
 
     return `
-      <div class="resident-card" style="display:flex; justify-content:${align}; background:transparent; box-shadow:none; border:none; padding:0; margin-bottom:10px;">
-        <div style="max-width:85%; padding:12px 16px; border-radius:14px; ${borderRad} background:${bgColor}; color:#fff;">
-          <div style="font-size:11.5px; opacity:0.85; margin-bottom:6px; font-weight:700;">
-            ${label}
-          </div>
-          ${m.subject ? `<div style="font-size:13px; font-weight:800; margin-bottom:6px; opacity:0.95;">📌 ${m.subject}</div>` : ''}
-          <div style="font-size:14px; line-height:1.7; word-wrap:break-word;">
-            ${(m.body || '').replace(/\n/g, '<br>')}
-          </div>
-          <div style="font-size:10.5px; margin-top:8px; opacity:0.75; text-align:left;">
-            ${m.time || ''} — ${m.date || ''}
-          </div>
+      <div class="resident-chat-row" style="justify-content: ${align};">
+        <div class="resident-chat-bubble ${bubbleClass}">
+          <div class="resident-bubble-text">${(m.body || '').replace(/\n/g, '<br>')}</div>
+          <div class="resident-bubble-time">${m.time || ''}</div>
         </div>
       </div>
     `;
   }).join('');
 
-  // اسکرول به آخرین پیام
   setTimeout(() => {
-    container.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, 100);
+    container.scrollTop = container.scrollHeight;
+  }, 50);
 }
 
-function sendResidentMessage() {
+function sendResidentChatMessage() {
+  if (!residentCurrentChatUnitId) return;
+
+  const input = document.getElementById('residentChatInput');
+  if (!input) return;
+
+  const body = input.value.trim();
+  if (!body) return;
+
   const session = getResidentSession();
-  if (!session) return;
+  const units = loadUnits();
+  const userUnit = units.find(u => u.id === residentCurrentChatUnitId);
+  const unitLabel = userUnit
+    ? (userUnit.block && userUnit.block !== '—'
+        ? `${userUnit.block}-${toPersianNumR(userUnit.number)}`
+        : `واحد ${toPersianNumR(userUnit.number)}`)
+    : '—';
 
-  const myUnitId = getUnitIdBySession();
-  if (!myUnitId) {
-    showResidentToast('واحد شما یافت نشد.', 'error');
-    return;
-  }
-
-  const subjectInput = document.getElementById('residentMessageSubject');
-  const bodyInput = document.getElementById('residentMessageBody');
-
-  const subject = subjectInput.value.trim();
-  const body = bodyInput.value.trim();
-
-  if (!body) {
-    showResidentToast('لطفاً متن پیام را وارد کنید.', 'warning');
-    return;
-  }
+  // پیدا کردن subject فعلی
+  const title = document.getElementById('residentChatTitle');
+  let subject = title?.textContent || 'بدون موضوع';
+  if (subject === 'گفتگوی جدید') subject = 'بدون موضوع';
 
   const allMessages = loadMessages();
   const newId = allMessages.length > 0
@@ -661,21 +818,12 @@ function sendResidentMessage() {
   const persianDate = now.toLocaleDateString('fa-IR');
   const persianTime = now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
 
-  // پیدا کردن واحد برای نمایش بلوک و شماره
-  const units = loadUnits();
-  const userUnit = units.find(u => u.id === myUnitId);
-  const unitLabel = userUnit
-    ? (userUnit.block && userUnit.block !== '—'
-        ? `${userUnit.block}-${toPersianNumR(userUnit.number)}`
-        : `واحد ${toPersianNumR(userUnit.number)}`)
-    : '—';
-
   allMessages.push({
     id: newId,
-    unitId: myUnitId,
+    unitId: residentCurrentChatUnitId,
     unitLabel: unitLabel,
-    ownerName: session.name,
-    subject: subject || 'بدون موضوع',
+    ownerName: session?.name || '—',
+    subject: subject,
     body: body,
     direction: 'received',
     read: false,
@@ -686,14 +834,25 @@ function sendResidentMessage() {
 
   localStorage.setItem('ham_sakhteman_messages', JSON.stringify(allMessages));
 
-  subjectInput.value = '';
-  bodyInput.value = '';
-
-  showResidentToast('پیام شما به مدیر ارسال شد.', 'success');
-  renderResidentMessages();
-  renderResidentDashboard();
+  input.value = '';
+  renderResidentChatMessages(subject === 'بدون موضوع' ? null : subject);
+  showResidentToast('پیام ارسال شد', 'success');
 }
 
+function startNewResidentChat() {
+  const subject = prompt('موضوع گفتگو را وارد کنید (اختیاری):', '');
+  if (subject === null) return;
+
+  const finalSubject = subject.trim() || 'بدون موضوع';
+  const unitId = getUnitIdBySession();
+
+  if (!unitId) {
+    showResidentToast('واحد شما یافت نشد', 'error');
+    return;
+  }
+
+  openResidentChat(unitId, finalSubject === 'بدون موضوع' ? null : finalSubject);
+}
 function renderResidentVoting() {
   const container = document.getElementById('residentVotingList');
   if (!container) return;
@@ -806,10 +965,17 @@ function initResidentApp() {
   });
 
   document.getElementById('residentRegisterBtn')?.addEventListener('click', registerResident);
-     document.getElementById('residentSendMessageBtn')?.addEventListener('click', sendResidentMessage);
+     
 
   // نوار پایین
   document.querySelectorAll('.resident-nav-item').forEach(btn => {
+       // چت
+  document.getElementById('residentChatBackBtn')?.addEventListener('click', closeResidentChat);
+  document.getElementById('residentChatSendBtn')?.addEventListener('click', sendResidentChatMessage);
+  document.getElementById('residentChatInput')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendResidentChatMessage();
+  });
+  document.getElementById('residentNewChatBtn')?.addEventListener('click', startNewResidentChat);
     btn.addEventListener('click', () => {
       switchResidentPage(btn.dataset.residentPage);
     });
