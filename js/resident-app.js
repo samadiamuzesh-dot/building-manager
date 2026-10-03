@@ -766,11 +766,24 @@ function renderResidentMessages() {
     const align = isFromManager ? 'flex-end' : 'flex-start';
     const bubbleClass = isFromManager ? 'resident-bubble-manager' : 'resident-bubble-me';
 
+    // تیک‌ها فقط برای پیام‌های خود ساکن (نه مدیر)
+    let checkHtml = '';
+    if (!isFromManager) {
+      if (m.delivered) {
+        checkHtml = '<span class="resident-bubble-checks delivered">✓✓</span>';
+      } else {
+        checkHtml = '<span class="resident-bubble-checks sent">✓</span>';
+      }
+    }
+
     return `
       <div class="resident-chat-row" style="justify-content: ${align};">
         <div class="resident-chat-bubble ${bubbleClass}">
           <div class="resident-bubble-text">${(m.body || '').replace(/\n/g, '<br>')}</div>
-          <div class="resident-bubble-time">${m.time || ''}</div>
+          <div class="resident-bubble-footer">
+            <span class="resident-bubble-time">${m.time || ''}</span>
+            ${checkHtml}
+          </div>
         </div>
       </div>
     `;
@@ -814,7 +827,7 @@ function sendResidentMessage() {
   const persianDate = now.toLocaleDateString('fa-IR');
   const persianTime = now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
 
-  allMessages.push({
+allMessages.push({
     id: newId,
     unitId: myUnitId,
     unitLabel: unitLabel,
@@ -823,6 +836,7 @@ function sendResidentMessage() {
     body: body,
     direction: 'received',
     read: false,
+    delivered: false,
     date: persianDate,
     time: persianTime,
     createdAt: now.toISOString(),
@@ -832,7 +846,17 @@ function sendResidentMessage() {
 
   input.value = '';
   renderResidentMessages();
-  showResidentToast('پیام ارسال شد', 'success');
+
+  // ✅ بعد از ۸۰۰ میلی‌ثانیه، تیک دوم (آبی) اضافه بشه
+  setTimeout(() => {
+    const msgs = loadMessages();
+    const target = msgs.find(x => x.id === newId);
+    if (target) {
+      target.delivered = true;
+      localStorage.setItem('ham_sakhteman_messages', JSON.stringify(msgs));
+      renderResidentMessages();
+    }
+  }, 800);
 }
 
 function bindResidentMessagesPage() {
