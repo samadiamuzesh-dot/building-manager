@@ -200,12 +200,36 @@
       <div id="residentNoticesList"></div>
     </section>
 
-    <!-- صفحه پیام‌ها -->
+       <!-- صفحه پیام‌ها -->
     <section id="resident-messages" class="resident-page">
       <div class="resident-page-header">
         <h2>💬 پیام‌ها</h2>
       </div>
+
       <div id="residentMessagesList"></div>
+
+      <!-- فرم ارسال پیام جدید -->
+      <div class="resident-card" style="margin-top: 14px;">
+        <div class="resident-card-header" style="margin-bottom: 10px;">
+          <h3 style="font-size: 14px;">✏️ ارسال پیام به مدیر</h3>
+        </div>
+
+        <div class="resident-form-group" style="margin-bottom: 10px;">
+          <input type="text" id="residentMessageSubject" class="resident-form-input"
+                 placeholder="موضوع (اختیاری)" />
+        </div>
+
+        <div class="resident-form-group" style="margin-bottom: 10px;">
+          <textarea id="residentMessageBody" class="resident-form-input" rows="4"
+                    placeholder="متن پیام خود را بنویسید..."
+                    style="resize: vertical; font-family: inherit;"></textarea>
+        </div>
+
+        <button class="resident-submit-btn" id="residentSendMessageBtn">
+          📤 ارسال پیام
+        </button>
+      </div>
+
     </section>
 
     <!-- صفحه رأی‌گیری -->
