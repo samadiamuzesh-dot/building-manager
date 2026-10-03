@@ -494,3 +494,290 @@ html, body {
     font-size: 9.5px;
   }
 }
+
+
+/* ============================================================
+   💬 چت ساکنین (مثل واتساپ)
+   ============================================================ */
+
+/* دکمه گفتگوی جدید */
+.resident-new-chat-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resident-new-chat-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+/* لیست گفتگوها */
+.resident-conv-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: #fff;
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  position: relative;
+}
+
+.resident-conv-item:hover {
+  background: #f8fafc;
+  transform: translateY(-2px);
+  border-color: var(--primary-light);
+}
+
+.resident-conv-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.resident-conv-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.resident-conv-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  gap: 8px;
+}
+
+.resident-conv-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resident-conv-time {
+  font-size: 11px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.resident-conv-preview {
+  font-size: 12.5px;
+  color: var(--text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resident-conv-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* صفحه چت */
+#resident-chat {
+  display: none;
+  flex-direction: column;
+  height: calc(100vh - 80px);
+  padding: 0;
+}
+
+#resident-chat.active {
+  display: flex;
+}
+
+.resident-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.resident-chat-back {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: none;
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.resident-chat-back:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.resident-chat-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.resident-chat-header-info h3 {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+
+.resident-chat-header-info p {
+  font-size: 11.5px;
+  color: #22c55e;
+  font-weight: 600;
+}
+
+/* بدنه چت */
+.resident-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resident-chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.resident-chat-messages::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 10px;
+}
+
+.resident-chat-row {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.resident-chat-bubble {
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  word-wrap: break-word;
+}
+
+.resident-bubble-manager {
+  background: #fff;
+  color: var(--text);
+  border-bottom-right-radius: 4px;
+}
+
+.resident-bubble-me {
+  background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
+  color: #fff;
+  border-bottom-left-radius: 4px;
+}
+
+.resident-bubble-text {
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.resident-bubble-time {
+  font-size: 10px;
+  margin-top: 5px;
+  opacity: 0.65;
+  text-align: left;
+}
+
+/* فرم ارسال */
+.resident-chat-input-box {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.resident-chat-input {
+  flex: 1;
+  padding: 12px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  outline: none;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+}
+
+.resident-chat-input:focus {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(91, 76, 219, 0.1);
+}
+
+.resident-chat-send {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
+  color: #fff;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.resident-chat-send:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(91, 76, 219, 0.4);
+}
+
+.resident-chat-send:active {
+  transform: scale(0.95);
+}
