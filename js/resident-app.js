@@ -768,7 +768,7 @@ function renderResidentChatMessages(subject = null) {
 
   container.innerHTML = messages.map(m => {
     const isFromManager = m.direction === 'sent';
-    const align = isFromManager ? 'flex-start' : 'flex-end';
+       const align = isFromManager ? 'flex-start' : 'flex-end';
     const bubbleClass = isFromManager ? 'resident-bubble-manager' : 'resident-bubble-me';
 
     return `
