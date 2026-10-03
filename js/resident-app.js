@@ -587,25 +587,33 @@ function renderResidentMessages() {
       <div class="resident-card" style="text-align:center;">
         <div style="font-size: 42px; margin-bottom: 10px;">💬</div>
         <p style="color:#64748b; font-size:13.5px;">
-          هنوز پیامی از طرف مدیر دریافت نکرده‌اید.
+          هنوز پیامی رد و بدل نشده. اولین پیام رو به مدیر بفرست.
         </p>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = messages.map(m => {
-    const isSent = m.direction === 'sent';
-    const label = isSent ? '👤 مدیر' : '🆘 شما';
-    const bgColor = isSent ? '#5b4cdb' : '#0f766e';
-    const align = isSent ? 'flex-start' : 'flex-end';
+  const sorted = [...messages].sort((a, b) =>
+    (a.createdAt || '').localeCompare(b.createdAt || '')
+  );
+
+  container.innerHTML = sorted.map(m => {
+    const isFromManager = m.direction === 'sent';
+    const label = isFromManager ? '👨‍💼 مدیر ساختمان' : '👤 شما';
+    const bgColor = isFromManager ? '#5b4cdb' : '#0f766e';
+    const align = isFromManager ? 'flex-start' : 'flex-end';
+    const borderRad = isFromManager
+      ? 'border-top-right-radius: 4px;'
+      : 'border-top-left-radius: 4px;';
 
     return `
       <div class="resident-card" style="display:flex; justify-content:${align}; background:transparent; box-shadow:none; border:none; padding:0; margin-bottom:10px;">
-        <div style="max-width:85%; padding:12px 16px; border-radius:14px; background:${bgColor}; color:#fff;">
+        <div style="max-width:85%; padding:12px 16px; border-radius:14px; ${borderRad} background:${bgColor}; color:#fff;">
           <div style="font-size:11.5px; opacity:0.85; margin-bottom:6px; font-weight:700;">
             ${label}
           </div>
+          ${m.subject ? `<div style="font-size:13px; font-weight:800; margin-bottom:6px; opacity:0.95;">📌 ${m.subject}</div>` : ''}
           <div style="font-size:14px; line-height:1.7; word-wrap:break-word;">
             ${(m.body || '').replace(/\n/g, '<br>')}
           </div>
@@ -616,6 +624,74 @@ function renderResidentMessages() {
       </div>
     `;
   }).join('');
+
+  // اسکرول به آخرین پیام
+  setTimeout(() => {
+    container.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, 100);
+}
+
+function sendResidentMessage() {
+  const session = getResidentSession();
+  if (!session) return;
+
+  const myUnitId = getUnitIdBySession();
+  if (!myUnitId) {
+    showResidentToast('واحد شما یافت نشد.', 'error');
+    return;
+  }
+
+  const subjectInput = document.getElementById('residentMessageSubject');
+  const bodyInput = document.getElementById('residentMessageBody');
+
+  const subject = subjectInput.value.trim();
+  const body = bodyInput.value.trim();
+
+  if (!body) {
+    showResidentToast('لطفاً متن پیام را وارد کنید.', 'warning');
+    return;
+  }
+
+  const allMessages = loadMessages();
+  const newId = allMessages.length > 0
+    ? Math.max(...allMessages.map(m => m.id || 0)) + 1
+    : 1;
+
+  const now = new Date();
+  const persianDate = now.toLocaleDateString('fa-IR');
+  const persianTime = now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+
+  // پیدا کردن واحد برای نمایش بلوک و شماره
+  const units = loadUnits();
+  const userUnit = units.find(u => u.id === myUnitId);
+  const unitLabel = userUnit
+    ? (userUnit.block && userUnit.block !== '—'
+        ? `${userUnit.block}-${toPersianNumR(userUnit.number)}`
+        : `واحد ${toPersianNumR(userUnit.number)}`)
+    : '—';
+
+  allMessages.push({
+    id: newId,
+    unitId: myUnitId,
+    unitLabel: unitLabel,
+    ownerName: session.name,
+    subject: subject || 'بدون موضوع',
+    body: body,
+    direction: 'received',
+    read: false,
+    date: persianDate,
+    time: persianTime,
+    createdAt: now.toISOString(),
+  });
+
+  localStorage.setItem('ham_sakhteman_messages', JSON.stringify(allMessages));
+
+  subjectInput.value = '';
+  bodyInput.value = '';
+
+  showResidentToast('پیام شما به مدیر ارسال شد.', 'success');
+  renderResidentMessages();
+  renderResidentDashboard();
 }
 
 function renderResidentVoting() {
@@ -730,6 +806,7 @@ function initResidentApp() {
   });
 
   document.getElementById('residentRegisterBtn')?.addEventListener('click', registerResident);
+     document.getElementById('residentSendMessageBtn')?.addEventListener('click', sendResidentMessage);
 
   // نوار پایین
   document.querySelectorAll('.resident-nav-item').forEach(btn => {
