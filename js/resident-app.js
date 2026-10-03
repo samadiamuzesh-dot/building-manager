@@ -794,10 +794,7 @@ function renderResidentMessages() {
     const isBtnVisible = scrollBtn?.classList.contains('show');
 
     if (!isBtnVisible) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      });
+ container.scrollTop = container.scrollHeight;
     }
   }, 50);
 }
