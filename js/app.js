@@ -248,8 +248,12 @@ function buildDemoUnits(building) {
             registered: false,
             approved: false,
           },
-          debt: 0,
+                debt: 0,
           chargeAmount: 0,
+          area: 100 + (i * 5),
+          peopleCount: i % 3 === 0 ? 0 : 2 + (i % 4),
+          parkingCount: i % 2 === 0 ? 1 : 0,
+          status: 'auto',
         });
       }
     });
@@ -1801,8 +1805,12 @@ function openUnitModal(unitId = null) {
     document.getElementById('ownerPhone').value = unit.owner?.phone || '';
     document.getElementById('tenantName').value = unit.tenant?.name || '';
     document.getElementById('tenantPhone').value = unit.tenant?.phone || '';
-    document.getElementById('unitCharge').value = unit.chargeAmount || 500000;
+       document.getElementById('unitCharge').value = unit.chargeAmount || 500000;
     document.getElementById('unitDebt').value = unit.debt || 0;
+    document.getElementById('unitArea').value = unit.area || 100;
+    document.getElementById('unitPeopleCount').value = unit.peopleCount || 0;
+    document.getElementById('unitParkingCount').value = unit.parkingCount || 0;
+    document.getElementById('unitStatus').value = unit.status || 'auto';
   } else {
     if (title) title.textContent = 'افزودن واحد جدید';
     if (subtitle) subtitle.textContent = 'اطلاعات واحد را وارد کنید';
@@ -1815,6 +1823,10 @@ function openUnitModal(unitId = null) {
     document.getElementById('tenantPhone').value = '';
     document.getElementById('unitCharge').value = 500000;
     document.getElementById('unitDebt').value = 0;
+    document.getElementById('unitArea').value = 100;
+    document.getElementById('unitPeopleCount').value = 0;
+    document.getElementById('unitParkingCount').value = 0;
+    document.getElementById('unitStatus').value = 'auto';
   }
 
   modal.classList.add('open');
@@ -1834,6 +1846,14 @@ function saveUnit() {
   const tenantPhone = document.getElementById('tenantPhone').value.trim();
   const charge = parseInt(document.getElementById('unitCharge').value) || 500000;
   const debt = parseInt(document.getElementById('unitDebt').value) || 0;
+  const area = parseFloat(document.getElementById('unitArea').value) || 100;
+  const peopleCount = parseInt(document.getElementById('unitPeopleCount').value) || 0;
+  const parkingCount = parseInt(document.getElementById('unitParkingCount').value) || 0;
+  const status = document.getElementById('unitStatus').value || 'auto';
+  if (!area || area < 1) {
+    toastWarning('لطفاً متراژ واحد را وارد کنید.');
+    return;
+  }
 
   if (!block) { toastWarning('لطفاً بلوک را انتخاب کنید.'); return; }
   if (!number || number < 1) { toastWarning('لطفاً شماره واحد را وارد کنید.'); return; }
@@ -1875,8 +1895,12 @@ function saveUnit() {
         name: tenantName || null, phone: tenantPhone || null,
         registered: !!tenantName, approved: !!tenantName,
       };
-      unit.chargeAmount = charge;
+           unit.chargeAmount = charge;
       unit.debt = debt;
+      unit.area = area;
+      unit.peopleCount = peopleCount;
+      unit.parkingCount = parkingCount;
+      unit.status = status;
     }
   } else {
     const newId = UNITS.length > 0 ? Math.max(...UNITS.map(u => u.id)) + 1 : 1;
@@ -1890,7 +1914,11 @@ function saveUnit() {
         name: tenantName || null, phone: tenantPhone || null,
         registered: !!tenantName, approved: !!tenantName,
       },
-      chargeAmount: charge, debt: debt,
+        chargeAmount: charge, debt: debt,
+      area: area,
+      peopleCount: peopleCount,
+      parkingCount: parkingCount,
+      status: status,
     });
   }
 
