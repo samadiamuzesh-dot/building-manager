@@ -781,8 +781,10 @@ function renderResidentChatMessages(subject = null) {
     `;
   }).join('');
 
-  setTimeout(() => {
-    container.scrollTop = container.scrollHeight;
+setTimeout(() => {
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, 50);
 }
 
