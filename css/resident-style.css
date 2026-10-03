@@ -693,6 +693,8 @@ html, body {
   flex-direction: column;
   gap: 6px;
   min-height: 0;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
 }
 .resident-chat-messages::-webkit-scrollbar {
   width: 6px;
