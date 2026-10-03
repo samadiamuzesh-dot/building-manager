@@ -200,37 +200,35 @@
       <div id="residentNoticesList"></div>
     </section>
 
-       <!-- صفحه پیام‌ها -->
+        <!-- صفحه پیام‌ها - لیست گفتگوها -->
     <section id="resident-messages" class="resident-page">
-      <div class="resident-page-header">
+      <div class="resident-page-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h2>💬 پیام‌ها</h2>
+        <button class="resident-new-chat-btn" id="residentNewChatBtn">➕ گفتگوی جدید</button>
       </div>
 
-      <div id="residentMessagesList"></div>
-
-      <!-- فرم ارسال پیام جدید -->
-      <div class="resident-card" style="margin-top: 14px;">
-        <div class="resident-card-header" style="margin-bottom: 10px;">
-          <h3 style="font-size: 14px;">✏️ ارسال پیام به مدیر</h3>
-        </div>
-
-        <div class="resident-form-group" style="margin-bottom: 10px;">
-          <input type="text" id="residentMessageSubject" class="resident-form-input"
-                 placeholder="موضوع (اختیاری)" />
-        </div>
-
-        <div class="resident-form-group" style="margin-bottom: 10px;">
-          <textarea id="residentMessageBody" class="resident-form-input" rows="4"
-                    placeholder="متن پیام خود را بنویسید..."
-                    style="resize: vertical; font-family: inherit;"></textarea>
-        </div>
-
-        <button class="resident-submit-btn" id="residentSendMessageBtn">
-          📤 ارسال پیام
-        </button>
-      </div>
-
+      <div id="residentConversationsList"></div>
     </section>
+
+    <!-- صفحه چت (وقتی روی یه گفتگو کلیک میشه) -->
+    <section id="resident-chat" class="resident-page">
+      <div class="resident-chat-header">
+        <button class="resident-chat-back" id="residentChatBackBtn">→</button>
+        <div class="resident-chat-header-info">
+          <h3 id="residentChatTitle">گفتگو با مدیر</h3>
+          <p id="residentChatSubtitle">آنلاین</p>
+        </div>
+      </div>
+
+      <div id="residentChatMessages" class="resident-chat-messages"></div>
+
+      <div class="resident-chat-input-box">
+        <input type="text" id="residentChatInput" class="resident-chat-input"
+               placeholder="پیام خود را بنویسید..." />
+        <button class="resident-chat-send" id="residentChatSendBtn">📤</button>
+      </div>
+    </section>
+
 
     <!-- صفحه رأی‌گیری -->
     <section id="resident-voting" class="resident-page">
