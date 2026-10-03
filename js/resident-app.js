@@ -983,6 +983,28 @@ function initResidentApp() {
 
   // خروج
   document.getElementById('residentLogoutBtn')?.addEventListener('click', logoutResident);
+
+  // ✅ چک دوره‌ای پیام‌های جدید هر ۲ ثانیه
+  setInterval(() => {
+    const session = getResidentSession();
+    if (!session) return;
+
+    const chatPage = document.getElementById('resident-chat');
+    const messagesPage = document.getElementById('resident-messages');
+
+    if (chatPage?.classList.contains('active') && residentCurrentChatUnitId) {
+      // توی صفحه چتیم → پیام‌های چت رو آپدیت کن
+      const title = document.getElementById('residentChatTitle');
+      let subject = title?.textContent || 'بدون موضوع';
+      if (subject === 'گفتگوی جدید') subject = 'بدون موضوع';
+      renderResidentChatMessages(subject === 'بدون موضوع' ? null : subject);
+    } else if (messagesPage?.classList.contains('active')) {
+      // توی صفحه لیست گفتگوها → لیست رو آپدیت کن
+      renderResidentMessages();
+    }
+  }, 2000);
+}
+}
 }
 
 document.addEventListener('DOMContentLoaded', initResidentApp);
