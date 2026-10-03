@@ -874,10 +874,7 @@ function bindResidentMessagesPage() {
   document.getElementById('residentScrollBottomBtn')?.addEventListener('click', () => {
     const container = document.getElementById('residentChatMessages');
     if (container) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      });
+           container.scrollTop = container.scrollHeight;
     }
     hideScrollBottomBtn();
     clearUnreadBadge();
