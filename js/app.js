@@ -2430,22 +2430,18 @@ function bindChargesPage() {
 function openIssueChargeModal() {
   const modal = document.getElementById('issueChargeModal');
 
-  // ✅ پر کردن سال و ماه
   fillYearMonthDropdowns('issueYear', 'issueMonth');
 
-  // ✅ تنظیم مقدار پیش‌فرض
   const issueMonth = document.getElementById('issueMonth');
   const issueYear = document.getElementById('issueYear');
   if (issueMonth) issueMonth.value = currentChargeMonth;
   if (issueYear) issueYear.value = currentChargeYear;
 
-  // پر کردن لیست بلوک
+  // پر کردن بلوک‌ها
   const blockSelect = document.getElementById('issueBlockSelect');
   const data = loadData();
-
   if (blockSelect && data?.building) {
     blockSelect.innerHTML = '<option value="all">🏢 همه بلوک‌ها</option>';
-
     if (data.building.type === 'complex') {
       data.building.blocks.forEach(b => {
         const opt = document.createElement('option');
@@ -2456,31 +2452,123 @@ function openIssueChargeModal() {
     }
   }
 
-  const blockSection = document.getElementById('issueBlockSection');
-  if (blockSection) {
-    if (data?.building?.type === 'complex') {
-      blockSection.style.display = 'block';
-    } else {
-      blockSection.style.display = 'none';
-    }
-  }
+  // ریست کردن
+  document.getElementById('chargeCalcType').value = 'combined';
+  document.getElementById('issueUnitStatusFilter').value = 'all';
+  document.getElementById('issueBaseCharge').value = 500000;
+  document.getElementById('issuePricePerMeter').value = 5000;
+  document.getElementById('issueBaseChargeForArea').value = 100000;
+  document.getElementById('issuePricePerPerson').value = 50000;
+  document.getElementById('issueBaseChargeCombined').value = 300000;
+  document.getElementById('issuePricePerMeterCombined').value = 2000;
+  document.getElementById('issuePricePerPersonCombined').value = 50000;
+  document.getElementById('issueExtraChargeCombined').value = 0;
+  document.getElementById('issueDefaultCustomAmount').value = 500000;
+  document.getElementById('includeBaseCharge').checked = true;
+  document.getElementById('includeAreaCharge').checked = true;
+  document.getElementById('includeWaterCharge').checked = true;
+  document.getElementById('includeExtraCharge').checked = false;
+  document.getElementById('issueDueDate').value = '';
+  document.getElementById('issueDescription').value = '';
 
-  const baseCharge = document.getElementById('issueBaseCharge');
-  const extra = document.getElementById('issueExtra');
-  const dueDate = document.getElementById('issueDueDate');
-  const description = document.getElementById('issueDescription');
-
-  if (baseCharge) baseCharge.value = 500000;
-  if (extra) extra.value = 0;
-  if (dueDate) dueDate.value = '';
-  if (description) description.value = '';
-
+  toggleChargeSections();
   updateIssuePreview();
   modal.classList.add('open');
 }
 
+function toggleChargeSections() {
+  const type = document.getElementById('chargeCalcType')?.value || 'combined';
+
+  document.getElementById('fixedSection').style.display = (type === 'fixed') ? 'block' : 'none';
+  document.getElementById('areaSection').style.display = (type === 'area') ? 'block' : 'none';
+  document.getElementById('peopleSection').style.display = (type === 'people') ? 'block' : 'none';
+  document.getElementById('combinedSection').style.display = (type === 'combined') ? 'block' : 'none';
+  document.getElementById('customSection').style.display = (type === 'custom') ? 'block' : 'none';
+}
+
 function closeIssueChargeModal() {
   document.getElementById('issueChargeModal').classList.remove('open');
+}
+function calculateUnitCharge(unit, chargeConfig) {
+  const type = chargeConfig.type;
+
+  if (type === 'custom') {
+    return chargeConfig.defaultCustomAmount || 0;
+  }
+
+  if (type === 'fixed') {
+    return chargeConfig.baseCharge || 0;
+  }
+
+  if (type === 'area') {
+    return (unit.area || 0) * (chargeConfig.pricePerMeter || 0) + (chargeConfig.baseChargeForArea || 0);
+  }
+
+  if (type === 'people') {
+    return (unit.peopleCount || 0) * (chargeConfig.pricePerPerson || 0);
+  }
+
+  if (type === 'combined') {
+    let total = 0;
+
+    if (chargeConfig.includeBaseCharge) {
+      total += chargeConfig.baseChargeCombined || 0;
+    }
+
+    if (chargeConfig.includeAreaCharge) {
+      total += (unit.area || 0) * (chargeConfig.pricePerMeterCombined || 0);
+    }
+
+    if (chargeConfig.includeWaterCharge) {
+      // اگه واحد خالیه، آب نمی‌گیریم
+      const peopleCount = isUnitEmpty(unit) ? 0 : (unit.peopleCount || 0);
+      total += peopleCount * (chargeConfig.pricePerPersonCombined || 0);
+    }
+
+    if (chargeConfig.includeExtraCharge) {
+      total += chargeConfig.extraChargeCombined || 0;
+    }
+
+    return total;
+  }
+
+  return 0;
+}
+
+function isUnitEmpty(unit) {
+  // اگه وضعیت دستی "خالی" باشه
+  if (unit.status === 'empty') return true;
+
+  // اگه وضعیت دستی "پر" باشه
+  if (unit.status === 'occupied') return false;
+
+  // اگه "خودکار" باشه: اگه مالک یا مستاجر داره → پر، وگرنه → خالی
+  const hasOwner = unit.owner?.name && unit.owner.name.trim() !== '';
+  const hasTenant = unit.tenant?.name && unit.tenant.name.trim() !== '';
+  const hasPeople = (unit.peopleCount || 0) > 0;
+
+  return !hasOwner && !hasTenant && !hasPeople;
+}
+
+function getChargeConfigFromForm() {
+  const type = document.getElementById('chargeCalcType')?.value || 'combined';
+
+  return {
+    type: type,
+    baseCharge: parseInt(document.getElementById('issueBaseCharge')?.value) || 0,
+    pricePerMeter: parseInt(document.getElementById('issuePricePerMeter')?.value) || 0,
+    baseChargeForArea: parseInt(document.getElementById('issueBaseChargeForArea')?.value) || 0,
+    pricePerPerson: parseInt(document.getElementById('issuePricePerPerson')?.value) || 0,
+    baseChargeCombined: parseInt(document.getElementById('issueBaseChargeCombined')?.value) || 0,
+    pricePerMeterCombined: parseInt(document.getElementById('issuePricePerMeterCombined')?.value) || 0,
+    pricePerPersonCombined: parseInt(document.getElementById('issuePricePerPersonCombined')?.value) || 0,
+    extraChargeCombined: parseInt(document.getElementById('issueExtraChargeCombined')?.value) || 0,
+    defaultCustomAmount: parseInt(document.getElementById('issueDefaultCustomAmount')?.value) || 0,
+    includeBaseCharge: document.getElementById('includeBaseCharge')?.checked || false,
+    includeAreaCharge: document.getElementById('includeAreaCharge')?.checked || false,
+    includeWaterCharge: document.getElementById('includeWaterCharge')?.checked || false,
+    includeExtraCharge: document.getElementById('includeExtraCharge')?.checked || false,
+  };
 }
 
 function updateIssuePreview() {
@@ -2488,83 +2576,31 @@ function updateIssuePreview() {
   if (!data?.building) return;
 
   const blockFilter = document.getElementById('issueBlockSelect')?.value || 'all';
-  const baseCharge = parseInt(document.getElementById('issueBaseCharge')?.value) || 0;
-  const extra = parseInt(document.getElementById('issueExtra')?.value) || 0;
+  const statusFilter = document.getElementById('issueUnitStatusFilter')?.value || 'all';
+  const chargeConfig = getChargeConfigFromForm();
 
   let units = UNITS;
   if (blockFilter !== 'all') {
     units = units.filter(u => String(u.block).trim() === String(blockFilter).trim());
   }
 
-  const count = units.length;
-  const total = count * (baseCharge + extra);
+  if (statusFilter === 'occupied') {
+    units = units.filter(u => !isUnitEmpty(u));
+  } else if (statusFilter === 'empty') {
+    units = units.filter(u => isUnitEmpty(u));
+  }
+
+  let total = 0;
+  units.forEach(u => {
+    total += calculateUnitCharge(u, chargeConfig);
+  });
 
   const elCount = document.getElementById('issueUnitCount');
   const elTotal = document.getElementById('issueTotalAmount');
 
-  if (elCount) elCount.textContent = formatNumber(count);
+  if (elCount) elCount.textContent = formatNumber(units.length);
   if (elTotal) elTotal.textContent = formatToman(total);
 }
-
-function issueChargeConfirm() {
-  const month = document.getElementById('issueMonth')?.value;
-  const year = document.getElementById('issueYear')?.value;
-  const baseCharge = parseInt(document.getElementById('issueBaseCharge')?.value) || 0;
-  const extra = parseInt(document.getElementById('issueExtra')?.value) || 0;
-  const blockFilter = document.getElementById('issueBlockSelect')?.value || 'all';
-  const dueDate = document.getElementById('issueDueDate')?.value || '';
-  const description = document.getElementById('issueDescription')?.value || '';
-
-  if (!month || !year) {
-    toastWarning('لطفاً ماه و سال را انتخاب کنید.');
-    return;
-  }
-
-  if (!baseCharge || baseCharge < 0) {
-    toastWarning('لطفاً مبلغ شارژ پایه را وارد کنید.');
-    return;
-  }
-
-  let units = UNITS;
-  if (blockFilter !== 'all') {
-    units = units.filter(u => String(u.block).trim() === String(blockFilter).trim());
-  }
-
-  if (units.length === 0) {
-    toastWarning('واحدی برای صدور شارژ وجود ندارد.');
-    return;
-  }
-
-  let charges = loadCharges();
-
-  let existing;
-  if (blockFilter === 'all') {
-    existing = charges.filter(c => c.month === month && c.year === year);
-  } else {
-    existing = charges.filter(c =>
-      c.month === month &&
-      c.year === year &&
-      String(c.block).trim() === String(blockFilter).trim()
-    );
-  }
-
-  if (existing.length > 0) {
-    const msg = blockFilter === 'all'
-      ? `⚠️ برای ${month} ${toPersianNum(year)} قبلاً شارژ صادر شده است.\n\nآیا مطمئن هستید؟`
-      : `⚠️ برای بلوک ${blockFilter} در ${month} ${toPersianNum(year)} قبلاً شارژ صادر شده است.\n\nآیا مطمئن هستید؟`;
-
-    if (!confirm(msg)) return;
-
-    if (blockFilter === 'all') {
-      charges = charges.filter(c => !(c.month === month && c.year === year));
-    } else {
-      charges = charges.filter(c => !(
-        c.month === month &&
-        c.year === year &&
-        String(c.block).trim() === String(blockFilter).trim()
-      ));
-    }
-  }
 
   let lastId = charges.length > 0 ? Math.max(...charges.map(c => c.id || 0)) : 0;
 
@@ -2626,7 +2662,24 @@ function bindIssueChargeModal() {
   document.getElementById('issueCancelBtn')?.addEventListener('click', closeIssueChargeModal);
   document.getElementById('issueConfirmBtn')?.addEventListener('click', issueChargeConfirm);
 
-  ['issueMonth', 'issueYear', 'issueBaseCharge', 'issueExtra', 'issueBlockSelect'].forEach(id => {
+  // تغییر نوع محاسبه
+  document.getElementById('chargeCalcType')?.addEventListener('change', () => {
+    toggleChargeSections();
+    updateIssuePreview();
+  });
+
+  // همه input‌ها و selectها → آپدیت پیش‌نمایش
+  const inputs = [
+    'issueMonth', 'issueYear', 'issueBlockSelect', 'issueUnitStatusFilter',
+    'issueBaseCharge', 'issuePricePerMeter', 'issueBaseChargeForArea',
+    'issuePricePerPerson',
+    'issueBaseChargeCombined', 'issuePricePerMeterCombined',
+    'issuePricePerPersonCombined', 'issueExtraChargeCombined',
+    'issueDefaultCustomAmount',
+    'includeBaseCharge', 'includeAreaCharge', 'includeWaterCharge', 'includeExtraCharge',
+  ];
+
+  inputs.forEach(id => {
     document.getElementById(id)?.addEventListener('input', updateIssuePreview);
     document.getElementById(id)?.addEventListener('change', updateIssuePreview);
   });
