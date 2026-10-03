@@ -2734,67 +2734,195 @@
   </div>
 
   <!-- ============ مودال صدور شارژ ============ -->
+   <!-- ============ مودال صدور شارژ پیشرفته ============ -->
   <div class="modal-backdrop" id="issueChargeModal">
-    <div class="modal modal-unit">
+    <div class="modal modal-unit" style="max-width: 700px; max-height: 92vh; overflow-y: auto;">
 
       <div class="unit-modal-header">
         <div class="unit-modal-icon">📤</div>
         <div>
           <h2>صدور شارژ ماهانه</h2>
-          <p id="issueChargeSubtitle">برای همه واحدها</p>
+          <p id="issueChargeSubtitle">اطلاعات شارژ را وارد کنید</p>
         </div>
       </div>
 
       <div class="unit-form">
 
+        <!-- مرحله ۱: اطلاعات پایه -->
         <div class="form-row">
           <div class="form-group">
             <label for="issueMonth">ماه <span class="required">*</span></label>
-            <select id="issueMonth" class="form-input">
-              <!-- با JS پر می‌شه -->
-            </select>
+            <select id="issueMonth" class="form-input"></select>
           </div>
 
           <div class="form-group">
             <label for="issueYear">سال <span class="required">*</span></label>
-            <select id="issueYear" class="form-input">
-              <!-- با JS پر می‌شه -->
+            <select id="issueYear" class="form-input"></select>
+          </div>
+        </div>
+
+        <!-- نوع محاسبه شارژ -->
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>📊 نوع محاسبه شارژ</span>
+          </div>
+
+          <div class="form-group">
+            <select id="chargeCalcType" class="form-input">
+              <option value="fixed">💰 مبلغ ثابت (برای همه)</option>
+              <option value="area">📐 بر اساس متراژ</option>
+              <option value="people">👥 بر اساس تعداد نفرات</option>
+              <option value="combined" selected>📊 ترکیبی (متراژ + نفرات + ثابت)</option>
+              <option value="custom">✏️ مبلغ دلخواه (برای هر واحد)</option>
             </select>
           </div>
         </div>
 
-        <div class="form-section">
+        <!-- بخش مبلغ ثابت -->
+        <div class="form-section" id="fixedSection">
           <div class="form-section-title">
-            <span>💰 مبلغ شارژ</span>
+            <span>💰 مبلغ ثابت</span>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="issueBaseCharge">مبلغ شارژ ثابت (تومان)</label>
+            <input type="number" id="issueBaseCharge" class="form-input"
+                   placeholder="مثلاً: ۵۰۰۰۰۰" value="500000" min="0" step="10000" />
+          </div>
+        </div>
+
+        <!-- بخش متراژ -->
+        <div class="form-section" id="areaSection" style="display:none;">
+          <div class="form-section-title">
+            <span>📐 محاسبه بر اساس متراژ</span>
+          </div>
+
+          <div class="form-group">
+            <label for="issuePricePerMeter">قیمت هر متر مربع (تومان)</label>
+            <input type="number" id="issuePricePerMeter" class="form-input"
+                   placeholder="مثلاً: ۵۰۰۰" value="5000" min="0" step="1000" />
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="issueBaseChargeForArea">مبلغ شارژ ثابت اضافه (تومان)</label>
+            <input type="number" id="issueBaseChargeForArea" class="form-input"
+                   placeholder="مثلاً: ۱۰۰۰۰۰" value="100000" min="0" step="10000" />
+            <p class="hint-text">این مبلغ به همه واحدها اضافه میشه.</p>
+          </div>
+        </div>
+
+        <!-- بخش نفرات -->
+        <div class="form-section" id="peopleSection" style="display:none;">
+          <div class="form-section-title">
+            <span>👥 محاسبه بر اساس نفرات (مثلاً آب)</span>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="issuePricePerPerson">تعرفه هر نفر (تومان)</label>
+            <input type="number" id="issuePricePerPerson" class="form-input"
+                   placeholder="مثلاً: ۵۰۰۰۰" value="50000" min="0" step="1000" />
+            <p class="hint-text">تعداد نفرات هر واحد × این مبلغ</p>
+          </div>
+        </div>
+
+        <!-- بخش ترکیبی - تنظیمات -->
+        <div class="form-section" id="combinedSection">
+          <div class="form-section-title">
+            <span>📊 اجزای شارژ (کدوم رو حساب کنم؟)</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <label class="checkbox-row">
+              <input type="checkbox" id="includeBaseCharge" checked />
+              <span>💰 شارژ ثابت پایه</span>
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="includeAreaCharge" checked />
+              <span>📐 شارژ بر اساس متراژ</span>
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="includeWaterCharge" checked />
+              <span>💧 پول آب بر اساس نفرات</span>
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="includeExtraCharge" />
+              <span>➕ هزینه اضافی ثابت</span>
+            </label>
+          </div>
+
+          <div class="form-row" style="margin-top: 14px;">
+            <div class="form-group">
+              <label for="issueBaseChargeCombined">💰 شارژ ثابت پایه (تومان)</label>
+              <input type="number" id="issueBaseChargeCombined" class="form-input"
+                     value="300000" min="0" step="10000" />
+            </div>
+
+            <div class="form-group">
+              <label for="issuePricePerMeterCombined">📐 قیمت هر متر (تومان)</label>
+              <input type="number" id="issuePricePerMeterCombined" class="form-input"
+                     value="2000" min="0" step="500" />
+            </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="issueBaseCharge">شارژ پایه ماهانه (تومان) <span class="required">*</span></label>
-              <input type="number" id="issueBaseCharge" class="form-input"
-                     placeholder="مثلاً: ۵۰۰۰۰۰" value="500000" min="0" step="10000" />
+              <label for="issuePricePerPersonCombined">💧 تعرفه آب هر نفر (تومان)</label>
+              <input type="number" id="issuePricePerPersonCombined" class="form-input"
+                     value="50000" min="0" step="1000" />
             </div>
 
             <div class="form-group">
-              <label for="issueExtra">هزینه اضافی (تومان)</label>
-              <input type="number" id="issueExtra" class="form-input"
-                     placeholder="مثلاً: ۰" value="0" min="0" step="10000" />
+              <label for="issueExtraChargeCombined">➕ هزینه اضافی (تومان)</label>
+              <input type="number" id="issueExtraChargeCombined" class="form-input"
+                     value="0" min="0" step="10000" />
             </div>
           </div>
         </div>
 
-        <div class="form-section" id="issueBlockSection">
+        <!-- بخش مبلغ دلخواه -->
+        <div class="form-section" id="customSection" style="display:none;">
           <div class="form-section-title">
-            <span>🏢 صدور برای</span>
+            <span>✏️ مبلغ دلخواه برای هر واحد</span>
           </div>
-
-          <div class="form-group">
-            <select id="issueBlockSelect" class="form-input">
-              <option value="all">🏢 همه بلوک‌ها</option>
-            </select>
+          <p class="hint-text" style="margin-bottom: 14px;">
+            بعد از صدور، می‌تونید برای هر واحد مبلغ رو دستی تنظیم کنید.
+          </p>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="issueDefaultCustomAmount">مبلغ پیش‌فرض (تومان)</label>
+            <input type="number" id="issueDefaultCustomAmount" class="form-input"
+                   value="500000" min="0" step="10000" />
           </div>
         </div>
 
+        <!-- فیلتر صدور -->
+        <div class="form-section">
+          <div class="form-section-title">
+            <span>🎯 صدور برای</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="issueBlockSelect">🏢 بلوک</label>
+              <select id="issueBlockSelect" class="form-input">
+                <option value="all">🏢 همه بلوک‌ها</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="issueUnitStatusFilter">🏠 وضعیت واحد</label>
+              <select id="issueUnitStatusFilter" class="form-input">
+                <option value="all">📋 همه واحدها</option>
+                <option value="occupied">🟢 فقط پر (سکونت دارد)</option>
+                <option value="empty">⚪ فقط خالی</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- جزئیات -->
         <div class="form-section">
           <div class="form-section-title">
             <span>📅 جزئیات</span>
@@ -2815,6 +2943,7 @@
           </div>
         </div>
 
+        <!-- پیش‌نمایش -->
         <div class="issue-preview">
           <div class="issue-preview-row">
             <span>تعداد واحدها:</span>
@@ -2835,6 +2964,7 @@
 
     </div>
   </div>
+
 
   <!-- ============ مودال جزئیات واحد ============ -->
   <div class="modal-backdrop" id="unitDetailModal">
