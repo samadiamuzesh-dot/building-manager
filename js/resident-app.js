@@ -483,11 +483,7 @@ function switchResidentPage(pageKey) {
   if (pageKey === 'dashboard') renderResidentDashboard();
   if (pageKey === 'charges') renderResidentCharges();
   if (pageKey === 'notices') renderResidentNotices();
-    if (pageKey === 'messages') {
-    if (residentChatInterval) { clearInterval(residentChatInterval); residentChatInterval = null; }
-    residentCurrentChatUnitId = null;
-    renderResidentMessages();
-  }
+   if (pageKey === 'messages') renderResidentMessages();
   if (pageKey === 'voting') renderResidentVoting();
   if (pageKey === 'profile') renderResidentProfile();
 }
@@ -722,33 +718,30 @@ function closeResidentChat() {
   renderResidentMessages();
 }
 
-function renderResidentChatMessages(subject = null) {
+/* ============ پیام‌ها — چت مستقیم با مدیر ============ */
+
+function renderResidentMessages() {
   const container = document.getElementById('residentChatMessages');
   if (!container) return;
 
-  if (!residentCurrentChatUnitId) return;
+  const session = getResidentSession();
+  if (!session) return;
 
-  let messages = loadMessages().filter(m =>
-    Number(m.unitId) === Number(residentCurrentChatUnitId)
-  );
-
-  if (subject) {
-    messages = messages.filter(m => (m.subject || 'بدون موضوع') === subject);
-  } else {
-    messages = messages.filter(m => !m.subject || m.subject === 'بدون موضوع');
+  const myUnitId = getUnitIdBySession();
+  if (!myUnitId) {
+    container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:40px;">واحد شما یافت نشد</p>';
+    return;
   }
 
-  messages.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+  const messages = loadMessages()
+    .filter(m => Number(m.unitId) === Number(myUnitId))
+    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
 
   // علامت‌گذاری خوانده‌شده
   let changed = false;
   const allMsgs = loadMessages();
   allMsgs.forEach(m => {
-    if (Number(m.unitId) === Number(residentCurrentChatUnitId)
-        && m.direction === 'sent'
-        && !m.read
-        && ((subject && (m.subject || 'بدون موضوع') === subject)
-            || (!subject && (!m.subject || m.subject === 'بدون موضوع')))) {
+    if (Number(m.unitId) === Number(myUnitId) && m.direction === 'sent' && !m.read) {
       m.read = true;
       changed = true;
     }
@@ -759,8 +752,10 @@ function renderResidentChatMessages(subject = null) {
 
   if (messages.length === 0) {
     container.innerHTML = `
-      <div style="text-align:center; color:#94a3b8; padding:40px 20px; font-size: 13.5px;">
-        هنوز پیامی توی این گفتگو نیست.<br>اولین پیام رو بنویس.
+      <div style="text-align:center; color:#94a3b8; padding:60px 20px; font-size: 14px;">
+        <div style="font-size: 56px; margin-bottom: 14px;">💬</div>
+        هنوز پیامی بین شما و مدیر رد و بدل نشده.<br>
+        اولین پیام رو بنویس و بفرست.
       </div>
     `;
     return;
@@ -768,7 +763,7 @@ function renderResidentChatMessages(subject = null) {
 
   container.innerHTML = messages.map(m => {
     const isFromManager = m.direction === 'sent';
-          const align = isFromManager ? 'flex-end' : 'flex-start';
+    const align = isFromManager ? 'flex-end' : 'flex-start';
     const bubbleClass = isFromManager ? 'resident-bubble-manager' : 'resident-bubble-me';
 
     return `
@@ -781,15 +776,20 @@ function renderResidentChatMessages(subject = null) {
     `;
   }).join('');
 
-setTimeout(() => {
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
+  setTimeout(() => {
+    container.scrollTop = container.scrollHeight;
   }, 50);
 }
 
-function sendResidentChatMessage() {
-  if (!residentCurrentChatUnitId) return;
+function sendResidentMessage() {
+  const session = getResidentSession();
+  if (!session) return;
+
+  const myUnitId = getUnitIdBySession();
+  if (!myUnitId) {
+    showResidentToast('واحد شما یافت نشد.', 'error');
+    return;
+  }
 
   const input = document.getElementById('residentChatInput');
   if (!input) return;
@@ -797,19 +797,13 @@ function sendResidentChatMessage() {
   const body = input.value.trim();
   if (!body) return;
 
-  const session = getResidentSession();
   const units = loadUnits();
-  const userUnit = units.find(u => u.id === residentCurrentChatUnitId);
+  const userUnit = units.find(u => u.id === myUnitId);
   const unitLabel = userUnit
     ? (userUnit.block && userUnit.block !== '—'
         ? `${userUnit.block}-${toPersianNumR(userUnit.number)}`
         : `واحد ${toPersianNumR(userUnit.number)}`)
     : '—';
-
-  // پیدا کردن subject فعلی
-  const title = document.getElementById('residentChatTitle');
-  let subject = title?.textContent || 'بدون موضوع';
-  if (subject === 'گفتگوی جدید') subject = 'بدون موضوع';
 
   const allMessages = loadMessages();
   const newId = allMessages.length > 0
@@ -822,10 +816,10 @@ function sendResidentChatMessage() {
 
   allMessages.push({
     id: newId,
-    unitId: residentCurrentChatUnitId,
+    unitId: myUnitId,
     unitLabel: unitLabel,
-    ownerName: session?.name || '—',
-    subject: subject,
+    ownerName: session.name,
+    subject: 'بدون موضوع',
     body: body,
     direction: 'received',
     read: false,
@@ -837,23 +831,15 @@ function sendResidentChatMessage() {
   localStorage.setItem('ham_sakhteman_messages', JSON.stringify(allMessages));
 
   input.value = '';
-  renderResidentChatMessages(subject === 'بدون موضوع' ? null : subject);
+  renderResidentMessages();
   showResidentToast('پیام ارسال شد', 'success');
 }
 
-function startNewResidentChat() {
-  const subject = prompt('موضوع گفتگو را وارد کنید (اختیاری):', '');
-  if (subject === null) return;
-
-  const finalSubject = subject.trim() || 'بدون موضوع';
-  const unitId = getUnitIdBySession();
-
-  if (!unitId) {
-    showResidentToast('واحد شما یافت نشد', 'error');
-    return;
-  }
-
-  openResidentChat(unitId, finalSubject === 'بدون موضوع' ? null : finalSubject);
+function bindResidentMessagesPage() {
+  document.getElementById('residentChatSendBtn')?.addEventListener('click', sendResidentMessage);
+  document.getElementById('residentChatInput')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendResidentMessage();
+  });
 }
 function renderResidentVoting() {
   const container = document.getElementById('residentVotingList');
@@ -971,13 +957,8 @@ function initResidentApp() {
 
   // نوار پایین
   document.querySelectorAll('.resident-nav-item').forEach(btn => {
-       // چت
-  document.getElementById('residentChatBackBtn')?.addEventListener('click', closeResidentChat);
-  document.getElementById('residentChatSendBtn')?.addEventListener('click', sendResidentChatMessage);
-  document.getElementById('residentChatInput')?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendResidentChatMessage();
-  });
-  document.getElementById('residentNewChatBtn')?.addEventListener('click', startNewResidentChat);
+  // چت
+  bindResidentMessagesPage();
     btn.addEventListener('click', () => {
       switchResidentPage(btn.dataset.residentPage);
     });
@@ -991,20 +972,11 @@ function initResidentApp() {
     const session = getResidentSession();
     if (!session) return;
 
-    const chatPage = document.getElementById('resident-chat');
     const messagesPage = document.getElementById('resident-messages');
-
-    if (chatPage?.classList.contains('active') && residentCurrentChatUnitId) {
-      // توی صفحه چتیم → پیام‌های چت رو آپدیت کن
-      const title = document.getElementById('residentChatTitle');
-      let subject = title?.textContent || 'بدون موضوع';
-      if (subject === 'گفتگوی جدید') subject = 'بدون موضوع';
-      renderResidentChatMessages(subject === 'بدون موضوع' ? null : subject);
-    } else if (messagesPage?.classList.contains('active')) {
-      // توی صفحه لیست گفتگوها → لیست رو آپدیت کن
+    if (messagesPage?.classList.contains('active')) {
       renderResidentMessages();
     }
-    }, 2000);
+  }, 2000);
 }
 
 document.addEventListener('DOMContentLoaded', initResidentApp);
