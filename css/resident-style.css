@@ -856,24 +856,27 @@ html, body {
    ⬇️ دکمه برو به آخرین پیام
    ============================================================ */
 .resident-scroll-bottom-btn {
-  position: fixed;
-  bottom: 130px;
-  left: 20px;
-  width: 44px;
-  height: 44px;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
-  color: #fff;
-  border: none;
-  font-size: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #5b4cdb;
+  border: 1.5px solid #e2e8f0;
+  font-size: 16px;
   cursor: pointer;
   display: none;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 20px rgba(91, 76, 219, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 100;
   transition: all 0.25s ease;
+  backdrop-filter: blur(10px);
   animation: scrollBtnPop 0.3s ease;
+  padding: 0;
+  line-height: 1;
 }
 
 .resident-scroll-bottom-btn.show {
@@ -881,8 +884,10 @@ html, body {
 }
 
 .resident-scroll-bottom-btn:hover {
+  background: #5b4cdb;
+  color: #fff;
   transform: scale(1.1);
-  box-shadow: 0 8px 24px rgba(91, 76, 219, 0.7);
+  box-shadow: 0 4px 14px rgba(91, 76, 219, 0.4);
 }
 
 .resident-scroll-bottom-btn:active {
@@ -905,7 +910,9 @@ html, body {
   align-items: center;
   justify-content: center;
   border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
 }
+
 
 @keyframes scrollBtnPop {
   0% { transform: scale(0); opacity: 0; }
