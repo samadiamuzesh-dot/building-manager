@@ -850,3 +850,88 @@ html, body {
   letter-spacing: -5px;
   padding-right: 5px;
 }
+
+
+/* ============================================================
+   ⬇️ دکمه برو به آخرین پیام
+   ============================================================ */
+.resident-scroll-bottom-btn {
+  position: fixed;
+  bottom: 130px;
+  left: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
+  color: #fff;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(91, 76, 219, 0.5);
+  z-index: 100;
+  transition: all 0.25s ease;
+  animation: scrollBtnPop 0.3s ease;
+}
+
+.resident-scroll-bottom-btn.show {
+  display: flex;
+}
+
+.resident-scroll-bottom-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 8px 24px rgba(91, 76, 219, 0.7);
+}
+
+.resident-scroll-bottom-btn:active {
+  transform: scale(0.95);
+}
+
+.resident-scroll-bottom-btn .badge-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+}
+
+@keyframes scrollBtnPop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ✅ اسکرول نرم و کنترل‌شده */
+.resident-chat-messages {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+.resident-chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.resident-chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.resident-chat-messages::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 10px;
+}
+
+.resident-chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #a5b4fc;
+}
