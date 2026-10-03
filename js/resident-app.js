@@ -1002,9 +1002,7 @@ function initResidentApp() {
       // توی صفحه لیست گفتگوها → لیست رو آپدیت کن
       renderResidentMessages();
     }
-  }, 2000);
-}
-}
+    }, 2000);
 }
 
 document.addEventListener('DOMContentLoaded', initResidentApp);
