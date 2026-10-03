@@ -5290,6 +5290,37 @@ function openConversation(unitId) {
 
   const modal = document.getElementById('conversationModal');
   if (modal) modal.classList.add('open');
+
+  // ✅ شروع چک خودکار پیام‌های جدید
+  startManagerChatWatcher(unitId);
+}
+
+/* ✅ چک دوره‌ای پیام‌های جدید (توی پنل مدیر) */
+let managerChatInterval = null;
+
+function startManagerChatWatcher(unitId) {
+  if (managerChatInterval) clearInterval(managerChatInterval);
+  managerChatInterval = setInterval(() => {
+    const convModal = document.getElementById('conversationModal');
+    if (!convModal?.classList.contains('open')) {
+      clearInterval(managerChatInterval);
+      managerChatInterval = null;
+      return;
+    }
+
+    const messages = loadMessages();
+    const convMessages = messages
+      .filter(m => String(m.unitId) === String(unitId))
+      .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+
+    const container = document.getElementById('conversationMessages');
+    if (container) {
+      const currentCount = container.querySelectorAll('div[style*="display:flex"]').length;
+      if (currentCount !== convMessages.length) {
+        renderConversationMessages(convMessages);
+      }
+    }
+  }, 2000);
 }
 
 function closeConversation() {
