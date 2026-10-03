@@ -942,3 +942,16 @@ html, body {
 .resident-chat-messages::-webkit-scrollbar-thumb:hover {
   background: #a5b4fc;
 }
+
+
+/* ============================================================
+   📦 Wrapper چت برای دکمه‌ی شناور
+   ============================================================ */
+.resident-chat-area {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
