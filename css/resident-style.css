@@ -861,24 +861,28 @@ html, body {
   position: absolute;
   top: 12px;
   left: 12px;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.95);
+  background: #ffffff;
   color: #5b4cdb;
-  border: 1.5px solid #e2e8f0;
-  font-size: 16px;
+  border: 2px solid #5b4cdb;
   cursor: pointer;
   display: none;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 14px rgba(91, 76, 219, 0.25);
   z-index: 100;
   transition: all 0.25s ease;
-  backdrop-filter: blur(10px);
   animation: scrollBtnPop 0.3s ease;
   padding: 0;
   line-height: 1;
+}
+
+.resident-scroll-bottom-btn svg {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .resident-scroll-bottom-btn.show {
@@ -887,9 +891,9 @@ html, body {
 
 .resident-scroll-bottom-btn:hover {
   background: #5b4cdb;
-  color: #fff;
+  color: #ffffff;
   transform: scale(1.1);
-  box-shadow: 0 4px 14px rgba(91, 76, 219, 0.4);
+  box-shadow: 0 6px 20px rgba(91, 76, 219, 0.5);
 }
 
 .resident-scroll-bottom-btn:active {
