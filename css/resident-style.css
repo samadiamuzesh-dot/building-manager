@@ -748,7 +748,7 @@ html, body {
 /* ✅ فرم ارسال — sticky و همیشه پایین */
 .resident-chat-input-box {
   position: fixed;
-  bottom: 80px;
+  bottom: 85px;
   left: 0;
   right: 0;
   display: flex;
