@@ -611,11 +611,23 @@ html, body {
 #resident-chat {
   display: none;
   flex-direction: column;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 70px);
   padding: 0;
+  overflow: hidden;
+  position: relative;
 }
 
-#resident-chat.active {
+/* ✅ صفحه پیام‌ها (صفحه جدید) */
+#resident-messages {
+  display: none;
+  flex-direction: column;
+  height: calc(100vh - 70px);
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+#resident-messages.active {
   display: flex;
 }
 
@@ -675,14 +687,13 @@ html, body {
 .resident-chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 16px 16px 90px 16px;
   background: #f8fafc;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-height: 0;
 }
-
 .resident-chat-messages::-webkit-scrollbar {
   width: 6px;
 }
@@ -736,14 +747,18 @@ html, body {
 
 /* ✅ فرم ارسال — sticky و همیشه پایین */
 .resident-chat-input-box {
+  position: fixed;
+  bottom: 70px;
+  left: 0;
+  right: 0;
   display: flex;
   gap: 8px;
   padding: 12px 16px;
   background: #fff;
   border-top: 1px solid var(--border);
-  flex-shrink: 0;
-  z-index: 5;
+  z-index: 99;
   flex-direction: row-reverse;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
 }
 .resident-chat-input {
   flex: 1;
