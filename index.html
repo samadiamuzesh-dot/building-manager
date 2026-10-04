@@ -3527,6 +3527,139 @@
 
   </div>
 </div>
+  <!-- ============ مودال ثبت درآمد جانبی ============ -->
+<div class="modal-backdrop" id="sideIncomeModal">
+  <div class="modal modal-unit">
+
+    <div class="unit-modal-header">
+      <div class="unit-modal-icon">🏪</div>
+      <div>
+        <h2 id="sideIncomeModalTitle">ثبت درآمد جانبی</h2>
+        <p id="sideIncomeModalSubtitle">اطلاعات درآمد را وارد کنید</p>
+      </div>
+    </div>
+
+    <div class="unit-form">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="sideIncomeTitle">عنوان درآمد <span class="required">*</span></label>
+          <input type="text" id="sideIncomeTitle" class="form-input"
+                 placeholder="مثلاً: اجاره مغازه" />
+        </div>
+
+        <div class="form-group">
+          <label for="sideIncomeCategory">دسته‌بندی</label>
+          <select id="sideIncomeCategory" class="form-input">
+            <option value="اجاره مغازه">🏪 اجاره مغازه</option>
+            <option value="اجاره پارکینگ">🚗 اجاره پارکینگ</option>
+            <option value="اجاره آنتن">📡 اجاره آنتن</option>
+            <option value="تبلیغات">📢 تبلیغات</option>
+            <option value="اجاره سالن">🎉 اجاره سالن اجتماعات</option>
+            <option value="اجاره استخر">🏊 اجاره استخر</option>
+            <option value="اجاره باشگاه">🏋️ اجاره باشگاه</option>
+            <option value="اجاره سالن ورزش">🏀 اجاره سالن ورزش</option>
+            <option value="سپرده">🗝️ سپرده</option>
+            <option value="سایر">📦 سایر</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section" id="sideIncomeSessionSection">
+        <div class="form-section-title">
+          <span>🕐 سانس / بازه زمانی</span>
+          <span style="font-size:11.5px; color:#94a3b8; font-weight:500;">(اختیاری)</span>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <select id="sideIncomeSessionSelect" class="form-input">
+            <option value="">— بدون سانس —</option>
+          </select>
+
+          <input type="text" id="sideIncomeSessionCustom" class="form-input"
+                 placeholder="سانس دلخواه را وارد کنید..."
+                 style="display:none; margin-top:8px;" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="sideIncomeAmount">مبلغ (تومان) <span class="required">*</span></label>
+          <input type="number" id="sideIncomeAmount" class="form-input"
+                 placeholder="مثلاً: ۵۰۰۰۰۰۰" value="0" min="0" step="10000" />
+        </div>
+
+        <div class="form-group">
+          <label for="sideIncomeDate">تاریخ دریافت</label>
+          <input type="text" id="sideIncomeDate" class="form-input"
+                 placeholder="مثلاً: ۱۴۰۴/۰۷/۰۵" />
+        </div>
+      </div>
+
+      <div class="form-section" id="sideIncomeBlockSection">
+        <div class="form-section-title">
+          <span>🏢 مربوط به</span>
+        </div>
+
+        <div class="form-group">
+          <select id="sideIncomeBlockSelect" class="form-input">
+            <option value="all">🏢 کل ساختمان</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">
+          <span>📅 دوره</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="sideIncomeModalMonth">ماه</label>
+            <select id="sideIncomeModalMonth" class="form-input"></select>
+          </div>
+
+          <div class="form-group">
+            <label for="sideIncomeModalYear">سال</label>
+            <select id="sideIncomeModalYear" class="form-input"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="sideIncomePayer">پرداخت‌کننده</label>
+          <input type="text" id="sideIncomePayer" class="form-input"
+                 placeholder="مثلاً: آقای رضایی" />
+        </div>
+
+        <div class="form-group">
+          <label for="sideIncomeMethod">روش دریافت</label>
+          <select id="sideIncomeMethod" class="form-input">
+            <option value="نقدی">💵 نقدی</option>
+            <option value="کارت به کارت">💳 کارت به کارت</option>
+            <option value="انتقال بانکی">🏦 انتقال بانکی</option>
+            <option value="چک">📝 چک</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="sideIncomeDescription">توضیحات</label>
+        <input type="text" id="sideIncomeDescription" class="form-input"
+               placeholder="توضیحات اختیاری" />
+      </div>
+
+    </div>
+
+    <div class="unit-modal-actions">
+      <button class="btn btn-cancel" id="sideIncomeCancelBtn">انصراف</button>
+      <button class="btn btn-primary" id="sideIncomeSaveBtn">💾 ذخیره</button>
+    </div>
+
+  </div>
+</div>
+
   <!-- ============ مودال ارسال تیکت ============ -->
   <div class="modal-backdrop" id="ticketModal">
     <div class="modal modal-unit">
