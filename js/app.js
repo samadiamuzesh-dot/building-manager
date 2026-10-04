@@ -1981,12 +1981,12 @@ function exportToExcel() {
     const ownerName = u.owner?.name || '—';
     const ownerPhone = u.owner?.phone || '—';
     const ownerNationalId = u.owner?.nationalId || '—';
-    const ownerType = u.owner?.type === 'creditor' ? 'بستانکار' : (u.owner?.type ? 'بدهکار' : '—');
+    const ownerType = getPartyTypeExcel(u.owner?.type);
 
     const tenantName = u.tenant?.name || '—';
     const tenantPhone = u.tenant?.phone || '—';
     const tenantNationalId = u.tenant?.nationalId || '—';
-    const tenantType = u.tenant?.type === 'creditor' ? 'بستانکار' : (u.tenant?.type ? 'بدهکار' : '—');
+   const tenantType = getPartyTypeExcel(u.tenant?.type);
 
     const status = (typeof isUnitEmpty === 'function' && !isUnitEmpty(u)) ? 'پر' : 'خالی';
     const charge = Number(u.chargeAmount || 0).toLocaleString('en-US');
@@ -2229,6 +2229,13 @@ function switchUnitTab(tabName) {
    مودال جزئیات واحد
    ============================================================ */
 let currentDetailUnitId = null;
+/* ✅ برچسب ماهیت (مالک / ساکن) */
+function getPartyTypeLabel(type) {
+  if (type === 'creditor') return ' بستانکار';
+  if (type === 'settled') return ' تسویه';
+  if (type === 'debtor') return ' بدهکار';
+  return '—';
+}
 
 function openUnitDetail(unitId) {
   const unit = UNITS.find(u => u.id === unitId);
@@ -2279,8 +2286,7 @@ function openUnitDetail(unitId) {
     document.getElementById('detailOwnerPhone').textContent = unit.owner.phone || '—';
     document.getElementById('detailOwnerNationalId').textContent = unit.owner.nationalId || '—';
     document.getElementById('detailOwnerBirthDate').textContent = unit.owner.birthDate || '—';
-    document.getElementById('detailOwnerType').textContent = 
-      unit.owner.type === 'creditor' ? ' بستانکار' : ' بدهکار';
+   document.getElementById('detailOwnerType').textContent = getPartyTypeLabel(unit.owner.type);
     document.getElementById('detailOwnerDefaultCharge').textContent = 
       unit.defaultChargeOwner ? formatToman(unit.defaultChargeOwner) : '—';
   } else {
@@ -2303,8 +2309,7 @@ function openUnitDetail(unitId) {
     document.getElementById('detailTenantPhone').textContent = unit.tenant.phone || '—';
     document.getElementById('detailTenantNationalId').textContent = unit.tenant.nationalId || '—';
     document.getElementById('detailTenantBirthDate').textContent = unit.tenant.birthDate || '—';
-    document.getElementById('detailTenantType').textContent = 
-      unit.tenant.type === 'creditor' ? ' بستانکار' : ' بدهکار';
+   document.getElementById('detailTenantType').textContent = getPartyTypeLabel(unit.tenant.type);
     document.getElementById('detailTenantDefaultCharge').textContent = 
       unit.defaultChargeTenant ? formatToman(unit.defaultChargeTenant) : '—';
   } else {
