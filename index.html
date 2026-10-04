@@ -3052,266 +3052,359 @@
   </div>
 
   <!-- ============ مودال افزودن/ویرایش واحد ============ -->
-  <div class="modal-backdrop" id="unitModal">
-    <div class="modal modal-unit">
+ <!-- ============ مودال افزودن/ویرایش واحد (نسخه دو تب) ============ -->
+<div class="modal-backdrop" id="unitModal">
+  <div class="modal modal-unit modal-tabs">
 
-      <div class="unit-modal-header">
-        <div class="unit-modal-icon">🏠</div>
-        <div>
-          <h2 id="unitModalTitle">افزودن واحد جدید</h2>
-          <p id="unitModalSubtitle">اطلاعات واحد را وارد کنید</p>
+    <div class="unit-modal-header">
+      <div class="unit-modal-icon">🏠</div>
+      <div style="flex:1;">
+        <h2 id="unitModalTitle">افزودن واحد جدید</h2>
+        <p id="unitModalSubtitle">اطلاعات واحد را وارد کنید</p>
+      </div>
+      <button class="detail-close" id="unitModalCloseBtn" title="بستن">✖</button>
+    </div>
+
+    <!-- تب‌ها -->
+    <div class="unit-tabs">
+      <button class="unit-tab active" data-unit-tab="main">
+        <span>📋</span>
+        <span>اطلاعات واحد</span>
+      </button>
+      <button class="unit-tab" data-unit-tab="extra">
+        <span>📎</span>
+        <span>اطلاعات تکمیلی</span>
+      </button>
+    </div>
+
+    <!-- محتوای تب‌ها -->
+    <div class="unit-tab-content-wrapper">
+
+      <!-- ============ تب ۱: اطلاعات اصلی ============ -->
+      <div class="unit-tab-content active" data-unit-tab-content="main">
+        <div class="unit-form">
+
+          <!-- بخش ۱: اطلاعات پایه واحد -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span>🏢 اطلاعات پایه</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="unitBlock">بلوک <span class="required">*</span></label>
+                <select id="unitBlock" class="form-input">
+                  <option value="">— انتخاب کنید —</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="unitNumber">شماره واحد <span class="required">*</span></label>
+                <input type="number" id="unitNumber" class="form-input"
+                       placeholder="مثلاً: ۱" min="1" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="unitFloor">طبقه</label>
+                <input type="text" id="unitFloor" class="form-input"
+                       placeholder="مثلاً: همکف، ۱، ۲" />
+              </div>
+
+              <div class="form-group">
+                <label for="unitArea">📐 متراژ (متر مربع) <span class="required">*</span></label>
+                <input type="number" id="unitArea" class="form-input"
+                       placeholder="مثلاً: ۱۲۶" min="1" step="0.01" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="unitPeopleCount">👥 تعداد افراد</label>
+                <input type="number" id="unitPeopleCount" class="form-input"
+                       placeholder="مثلاً: ۳" min="0" />
+              </div>
+
+              <div class="form-group">
+                <label for="unitParkingCount">🚗 تعداد پارکینگ</label>
+                <input type="number" id="unitParkingCount" class="form-input"
+                       placeholder="مثلاً: ۱" min="0" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="unitStorageCount">📦 تعداد انباری</label>
+                <input type="number" id="unitStorageCount" class="form-input"
+                       placeholder="مثلاً: ۱" min="0" />
+              </div>
+
+              <div class="form-group">
+                <label for="unitStatus">🏠 وضعیت واحد</label>
+                <select id="unitStatus" class="form-input">
+                  <option value="auto">🔄 خودکار (بر اساس ساکن/مالک)</option>
+                  <option value="occupied">🟢 پر (سکونت دارد)</option>
+                  <option value="empty">⚪ خالی</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- بخش ۲: مالک -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span>👤 اطلاعات مالک</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="ownerName">نام و نام خانوادگی مالک</label>
+                <input type="text" id="ownerName" class="form-input"
+                       placeholder="مثلاً: علی احمدی" />
+              </div>
+
+              <div class="form-group">
+                <label for="ownerPhone">موبایل مالک</label>
+                <input type="tel" id="ownerPhone" class="form-input"
+                       placeholder="۰۹۱۲۱۲۳۴۵۶۷" maxlength="11" dir="ltr" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="ownerBirthDate">تاریخ تولد مالک</label>
+                <input type="text" id="ownerBirthDate" class="form-input"
+                       placeholder="مثلاً: ۱۳۶۰/۰۵/۱۲" />
+              </div>
+
+              <div class="form-group">
+                <label for="ownerNationalId">کد ملی مالک</label>
+                <input type="text" id="ownerNationalId" class="form-input"
+                       placeholder="۱۰ رقم" maxlength="10" dir="ltr" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="ownerType">ماهیت مالک</label>
+                <select id="ownerType" class="form-input">
+                  <option value="owner">مالک</option>
+                  <option value="heir">وارث</option>
+                  <option value="representative">نماینده</option>
+                  <option value="other">سایر</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="defaultChargeOwner">💰 شارژ پیش‌فرض مالک (تومان)</label>
+                <input type="number" id="defaultChargeOwner" class="form-input"
+                       placeholder="مثلاً: ۲۰۰۰۰۰" min="0" step="10000" value="0" />
+              </div>
+            </div>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="ownerInAccounting" />
+              <span>💼 حساب مالک در حسابداری محک</span>
+            </label>
+          </div>
+
+          <!-- بخش ۳: ساکن / مستاجر -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span>🏘️ اطلاعات ساکن / مستاجر</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="tenantName">نام و نام خانوادگی ساکن</label>
+                <input type="text" id="tenantName" class="form-input"
+                       placeholder="مثلاً: لیلا کرمی" />
+              </div>
+
+              <div class="form-group">
+                <label for="tenantPhone">موبایل ساکن</label>
+                <input type="tel" id="tenantPhone" class="form-input"
+                       placeholder="۰۹۱۲۰۰۰۰۰۰۱" maxlength="11" dir="ltr" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="tenantBirthDate">تاریخ تولد ساکن</label>
+                <input type="text" id="tenantBirthDate" class="form-input"
+                       placeholder="مثلاً: ۱۳۷۰/۰۳/۲۰" />
+              </div>
+
+              <div class="form-group">
+                <label for="tenantNationalId">کد ملی ساکن</label>
+                <input type="text" id="tenantNationalId" class="form-input"
+                       placeholder="۱۰ رقم" maxlength="10" dir="ltr" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="tenantType">ماهیت ساکن</label>
+                <select id="tenantType" class="form-input">
+                  <option value="tenant">مستاجر</option>
+                  <option value="family">خانواده مالک</option>
+                  <option value="guest">مهمان</option>
+                  <option value="other">سایر</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="defaultChargeTenant">💰 شارژ پیش‌فرض ساکن (تومان)</label>
+                <input type="number" id="defaultChargeTenant" class="form-input"
+                       placeholder="مثلاً: ۲۰۰۰۰۰" min="0" step="10000" value="0" />
+              </div>
+            </div>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="tenantInAccounting" />
+              <span>💼 حساب ساکن در حسابداری محک</span>
+            </label>
+          </div>
+
+          <!-- بخش ۴: اطلاعات مالی -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span>💰 اطلاعات مالی</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="unitCharge">شارژ ماهانه عمومی (تومان)</label>
+                <input type="number" id="unitCharge" class="form-input"
+                       placeholder="مثلاً: ۵۰۰۰۰۰" value="500000" min="0" step="10000" />
+              </div>
+
+              <div class="form-group">
+                <label for="unitDebt">بدهی فعلی (تومان)</label>
+                <input type="number" id="unitDebt" class="form-input"
+                       placeholder="مثلاً: ۰" value="0" min="0" step="10000" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="unitNotes">توضیحات</label>
+              <textarea id="unitNotes" class="form-input" rows="3"
+                        placeholder="توضیحات اختیاری..."
+                        style="resize:vertical; font-family:inherit;"></textarea>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <div class="unit-form">
+      <!-- ============ تب ۲: اطلاعات تکمیلی ============ -->
+      <div class="unit-tab-content" data-unit-tab-content="extra">
+        <div class="unit-form">
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="unitBlock">بلوک <span class="required">*</span></label>
-            <select id="unitBlock" class="form-input">
-              <option value="">— انتخاب کنید —</option>
-            </select>
+          <!-- بخش ۱: شناسه‌های تسویه -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span>🔖 شناسه‌های تسویه</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="ownerSettlementId">شناسه تسویه مالک</label>
+                <input type="text" id="ownerSettlementId" class="form-input"
+                       placeholder="کد شناسه..." dir="ltr" />
+              </div>
+
+              <div class="form-group">
+                <label for="tenantSettlementId">شناسه تسویه ساکن</label>
+                <input type="text" id="tenantSettlementId" class="form-input"
+                       placeholder="کد شناسه..." dir="ltr" />
+              </div>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="unitNumber">شماره واحد <span class="required">*</span></label>
-            <input type="number" id="unitNumber" class="form-input"
-                   placeholder="مثلاً: ۱" min="1" />
-          </div>
-        </div>
+          <!-- بخش ۲: شناسه‌های قبض -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span>🧾 شناسه‌های قبض</span>
+            </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="unitArea">📐 متراژ (متر مربع) <span class="required">*</span></label>
-            <input type="number" id="unitArea" class="form-input"
-                   placeholder="مثلاً: ۱۰۰" min="1" step="0.1" />
-          </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="waterBillId">💧 شناسه قبض آب</label>
+                <input type="text" id="waterBillId" class="form-input"
+                       placeholder="شناسه قبض آب..." dir="ltr" />
+              </div>
 
-          <div class="form-group">
-            <label for="unitPeopleCount">👥 تعداد افراد</label>
-            <input type="number" id="unitPeopleCount" class="form-input"
-                   placeholder="مثلاً: ۳" min="0" />
-          </div>
-        </div>
+              <div class="form-group">
+                <label for="electricityBillId">💡 شناسه قبض برق</label>
+                <input type="text" id="electricityBillId" class="form-input"
+                       placeholder="شناسه قبض برق..." dir="ltr" />
+              </div>
+            </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="unitParkingCount">🚗 تعداد پارکینگ</label>
-            <input type="number" id="unitParkingCount" class="form-input"
-                   placeholder="مثلاً: ۱" min="0" />
-          </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="gasBillId">🔥 شناسه قبض گاز</label>
+                <input type="text" id="gasBillId" class="form-input"
+                       placeholder="شناسه قبض گاز..." dir="ltr" />
+              </div>
 
-          <div class="form-group">
-            <label for="unitStatus">🏠 وضعیت واحد</label>
-            <select id="unitStatus" class="form-input">
-              <option value="auto">🔄 خودکار</option>
-              <option value="occupied">🟢 پر (سکونت دارد)</option>
-              <option value="empty">⚪ خالی</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <div class="form-section-title">
-            <span>👤 مالک</span>
+              <div class="form-group">
+                <label for="phoneBillId">☎️ شناسه قبض تلفن</label>
+                <input type="text" id="phoneBillId" class="form-input"
+                       placeholder="شناسه قبض تلفن..." dir="ltr" />
+              </div>
+            </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="ownerName">نام مالک</label>
-              <input type="text" id="ownerName" class="form-input"
-                     placeholder="مثلاً: علی احمدی" />
+          <!-- بخش ۳: پارکینگ و انباری -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span>🚗 پارکینگ و انباری</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="parkingNumber">شماره پارکینگ</label>
+                <input type="text" id="parkingNumber" class="form-input"
+                       placeholder="مثلاً: P-۱۲" dir="ltr" />
+              </div>
+
+              <div class="form-group">
+                <label for="storageNumber">شماره انباری</label>
+                <input type="text" id="storageNumber" class="form-input"
+                       placeholder="مثلاً: A-۵" dir="ltr" />
+              </div>
+            </div>
+          </div>
+
+          <!-- بخش ۴: تماس -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span>☎️ اطلاعات تماس</span>
             </div>
 
             <div class="form-group">
-              <label for="ownerPhone">موبایل مالک</label>
-              <input type="tel" id="ownerPhone" class="form-input"
-                     placeholder="مثلاً: ۰۹۱۲۱۲۳۴۵۶۷" maxlength="11" />
+              <label for="landlinePhone">تلفن ثابت واحد</label>
+              <input type="tel" id="landlinePhone" class="form-input"
+                     placeholder="مثلاً: ۰۲۱۸۸۷۷۶۶۵۵" dir="ltr" />
             </div>
           </div>
+
         </div>
-
-        <div class="form-section">
-          <div class="form-section-title">
-            <span>🏘️ مستاجر</span>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="tenantName">نام مستاجر</label>
-              <input type="text" id="tenantName" class="form-input"
-                     placeholder="مثلاً: لیلا کرمی" />
-            </div>
-
-            <div class="form-group">
-              <label for="tenantPhone">موبایل مستاجر</label>
-              <input type="tel" id="tenantPhone" class="form-input"
-                     placeholder="مثلاً: ۰۹۱۲۰۰۰۰۰۰۱" maxlength="11" />
-            </div>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <div class="form-section-title">
-            <span>💰 اطلاعات مالی</span>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="unitCharge">شارژ ماهانه (تومان)</label>
-              <input type="number" id="unitCharge" class="form-input"
-                     placeholder="مثلاً: ۵۰۰۰۰۰" value="500000" min="0" step="10000" />
-            </div>
-
-            <div class="form-group">
-              <label for="unitDebt">بدهی فعلی (تومان)</label>
-              <input type="number" id="unitDebt" class="form-input"
-                     placeholder="مثلاً: ۰" value="0" min="0" step="10000" />
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="unit-modal-actions">
-        <button class="btn btn-cancel" id="unitCancelBtn">انصراف</button>
-        <button class="btn btn-primary" id="unitSaveBtn">💾 ذخیره</button>
       </div>
 
     </div>
-  </div>
-  <!-- ============ مودال ثبت درآمد جانبی ============ -->
-  <div class="modal-backdrop" id="sideIncomeModal">
-    <div class="modal modal-unit">
 
-      <div class="unit-modal-header">
-        <div class="unit-modal-icon">🏪</div>
-        <div>
-          <h2 id="sideIncomeModalTitle">ثبت درآمد جانبی</h2>
-          <p id="sideIncomeModalSubtitle">اطلاعات درآمد را وارد کنید</p>
-        </div>
-      </div>
-
-      <div class="unit-form">
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="sideIncomeTitle">عنوان درآمد <span class="required">*</span></label>
-            <input type="text" id="sideIncomeTitle" class="form-input"
-                   placeholder="مثلاً: اجاره مغازه" />
-          </div>
-
-          <div class="form-group">
-            <label for="sideIncomeCategory">دسته‌بندی</label>
-            <select id="sideIncomeCategory" class="form-input">
-              <option value="اجاره مغازه">🏪 اجاره مغازه</option>
-              <option value="اجاره پارکینگ">🚗 اجاره پارکینگ</option>
-              <option value="اجاره آنتن">📡 اجاره آنتن</option>
-              <option value="تبلیغات">📢 تبلیغات</option>
-              <option value="اجاره سالن">🎉 اجاره سالن اجتماعات</option>
-              <option value="اجاره استخر">🏊 اجاره استخر</option>
-              <option value="اجاره باشگاه">🏋️ اجاره باشگاه</option>
-              <option value="اجاره سالن ورزش">🏀 اجاره سالن ورزش</option>
-              <option value="سپرده">🗝️ سپرده</option>
-              <option value="سایر">📦 سایر</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-section" id="sideIncomeSessionSection">
-          <div class="form-section-title">
-            <span>🕐 سانس / بازه زمانی</span>
-            <span style="font-size:11.5px; color:#94a3b8; font-weight:500;">(اختیاری)</span>
-          </div>
-
-          <div class="form-group" style="margin-bottom:0;">
-            <select id="sideIncomeSessionSelect" class="form-input">
-              <option value="">— بدون سانس —</option>
-            </select>
-
-            <input type="text" id="sideIncomeSessionCustom" class="form-input"
-                   placeholder="سانس دلخواه را وارد کنید..."
-                   style="display:none; margin-top:8px;" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="sideIncomeAmount">مبلغ (تومان) <span class="required">*</span></label>
-            <input type="number" id="sideIncomeAmount" class="form-input"
-                   placeholder="مثلاً: ۵۰۰۰۰۰۰" value="0" min="0" step="10000" />
-          </div>
-
-          <div class="form-group">
-            <label for="sideIncomeDate">تاریخ دریافت</label>
-            <input type="text" id="sideIncomeDate" class="form-input"
-                   placeholder="مثلاً: ۱۴۰۴/۰۷/۰۵" />
-          </div>
-        </div>
-
-        <div class="form-section" id="sideIncomeBlockSection">
-          <div class="form-section-title">
-            <span>🏢 مربوط به</span>
-          </div>
-
-          <div class="form-group">
-            <select id="sideIncomeBlockSelect" class="form-input">
-              <option value="all">🏢 کل ساختمان</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <div class="form-section-title">
-            <span>📅 دوره</span>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="sideIncomeModalMonth">ماه</label>
-              <select id="sideIncomeModalMonth" class="form-input"></select>
-            </div>
-
-            <div class="form-group">
-              <label for="sideIncomeModalYear">سال</label>
-              <select id="sideIncomeModalYear" class="form-input"></select>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="sideIncomePayer">پرداخت‌کننده</label>
-            <input type="text" id="sideIncomePayer" class="form-input"
-                   placeholder="مثلاً: آقای رضایی" />
-          </div>
-
-          <div class="form-group">
-            <label for="sideIncomeMethod">روش دریافت</label>
-            <select id="sideIncomeMethod" class="form-input">
-              <option value="نقدی">💵 نقدی</option>
-              <option value="کارت به کارت">💳 کارت به کارت</option>
-              <option value="انتقال بانکی">🏦 انتقال بانکی</option>
-              <option value="چک">📝 چک</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="sideIncomeDescription">توضیحات</label>
-          <input type="text" id="sideIncomeDescription" class="form-input"
-                 placeholder="توضیحات اختیاری" />
-        </div>
-
-      </div>
-
-      <div class="unit-modal-actions">
-        <button class="btn btn-cancel" id="sideIncomeCancelBtn">انصراف</button>
-        <button class="btn btn-primary" id="sideIncomeSaveBtn">💾 ذخیره</button>
-      </div>
-
+    <!-- دکمه‌های پایین -->
+    <div class="unit-modal-actions sticky-actions">
+      <button class="btn btn-cancel" id="unitCancelBtn">انصراف</button>
+      <button class="btn btn-primary" id="unitSaveBtn">💾 ذخیره</button>
     </div>
+
   </div>
+</div>
   <!-- ============ مودال ارسال تیکت ============ -->
   <div class="modal-backdrop" id="ticketModal">
     <div class="modal modal-unit">
