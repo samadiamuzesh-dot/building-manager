@@ -1953,16 +1953,25 @@ function exportToExcel() {
             <th>ردیف</th>
             <th>بلوک</th>
             <th>واحد</th>
+            <th>طبقه</th>
             <th>مالک</th>
             <th>موبایل مالک</th>
-            <th>مستاجر</th>
-            <th>موبایل مستاجر</th>
+            <th>کد ملی مالک</th>
+            <th>ماهیت مالک</th>
+            <th>ساکن</th>
+            <th>موبایل ساکن</th>
+            <th>کد ملی ساکن</th>
+            <th>ماهیت ساکن</th>
             <th>متراژ</th>
-            <th>تعداد افراد</th>
-            <th>تعداد پارکینگ</th>
+            <th>نفرات</th>
+            <th>پارکینگ</th>
+            <th>انباری</th>
+            <th>وضعیت</th>
             <th>شارژ ماهانه</th>
             <th>بدهی</th>
-            <th>وضعیت</th>
+            <th>شماره پارکینگ</th>
+            <th>شماره انباری</th>
+            <th>تلفن ثابت</th>
           </tr>
         </thead>
         <tbody>
@@ -1971,30 +1980,42 @@ function exportToExcel() {
   units.forEach((u, idx) => {
     const ownerName = u.owner?.name || '—';
     const ownerPhone = u.owner?.phone || '—';
+    const ownerNationalId = u.owner?.nationalId || '—';
+    const ownerType = u.owner?.type === 'creditor' ? 'بستانکار' : (u.owner?.type ? 'بدهکار' : '—');
+
     const tenantName = u.tenant?.name || '—';
     const tenantPhone = u.tenant?.phone || '—';
+    const tenantNationalId = u.tenant?.nationalId || '—';
+    const tenantType = u.tenant?.type === 'creditor' ? 'بستانکار' : (u.tenant?.type ? 'بدهکار' : '—');
+
+    const status = (typeof isUnitEmpty === 'function' && !isUnitEmpty(u)) ? 'پر' : 'خالی';
     const charge = Number(u.chargeAmount || 0).toLocaleString('en-US');
     const debt = Number(u.debt || 0).toLocaleString('en-US');
-    const status = u.debt > 0 ? 'بدهکار' : 'تسویه';
-    const area = u.area || '—';
-    const peopleCount = u.peopleCount || 0;
-    const parkingCount = u.parkingCount || 0;
 
     html += `
       <tr>
         <td>${idx + 1}</td>
         <td>${u.block || '—'}</td>
         <td>${u.number || '—'}</td>
+        <td>${u.floor || '—'}</td>
         <td>${ownerName}</td>
         <td>${ownerPhone}</td>
+        <td>${ownerNationalId}</td>
+        <td>${ownerType}</td>
         <td>${tenantName}</td>
         <td>${tenantPhone}</td>
-        <td>${area}</td>
-        <td>${peopleCount}</td>
-        <td>${parkingCount}</td>
+        <td>${tenantNationalId}</td>
+        <td>${tenantType}</td>
+        <td>${u.area || '—'}</td>
+        <td>${u.peopleCount || 0}</td>
+        <td>${u.parkingCount || 0}</td>
+        <td>${u.storageCount || 0}</td>
+        <td>${status}</td>
         <td>${charge}</td>
         <td>${debt}</td>
-        <td>${status}</td>
+        <td>${u.parkingNumber || '—'}</td>
+        <td>${u.storageNumber || '—'}</td>
+        <td>${u.landlinePhone || '—'}</td>
       </tr>
     `;
   });
@@ -2038,10 +2059,7 @@ function printUnitsPdf() {
     const tenantName = u.tenant?.name || '—';
     const debt = Number(u.debt || 0);
     const debtStr = debt > 0 ? formatToman(debt) : '—';
-    const status = debt > 0 ? 'بدهکار' : 'تسویه';
-    const area = u.area || '—';
-    const peopleCount = u.peopleCount || 0;
-    const parkingCount = u.parkingCount || 0;
+    const status = (typeof isUnitEmpty === 'function' && !isUnitEmpty(u)) ? 'پر' : 'خالی';
 
     rows += `
       <tr>
@@ -2051,11 +2069,12 @@ function printUnitsPdf() {
         <td>${ownerName}</td>
         <td>${ownerPhone}</td>
         <td>${tenantName}</td>
-        <td>${area}</td>
-        <td>${peopleCount}</td>
-        <td>${parkingCount}</td>
-        <td>${debtStr}</td>
+        <td>${u.area || '—'}</td>
+        <td>${u.peopleCount || 0}</td>
+        <td>${u.parkingCount || 0}</td>
+        <td>${u.storageCount || 0}</td>
         <td>${status}</td>
+        <td>${debtStr}</td>
       </tr>
     `;
   });
@@ -2108,7 +2127,8 @@ function printUnitsPdf() {
           <tr>
             <th>ردیف</th><th>بلوک</th><th>واحد</th><th>مالک</th>
             <th>موبایل</th><th>مستاجر</th><th>متراژ</th>
-            <th>نفرات</th><th>پارکینگ</th><th>بدهی</th><th>وضعیت</th>
+            <th>نفرات</th><th>پارکینگ</th><th>انباری</th>
+            <th>وضعیت</th><th>بدهی</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
