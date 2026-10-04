@@ -3479,3 +3479,269 @@ input[type="number"] {
   padding: 16px;
   border: 1px solid var(--border);
 }
+/* ============================================================
+   🎯 فاز ۱: مودال دو تب واحد
+   ============================================================ */
+
+.modal-tabs {
+  padding: 0 !important;
+  max-width: 720px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-tabs .unit-modal-header {
+  padding: 22px 24px 18px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+/* ============ تب‌ها ============ */
+.unit-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 20px;
+  background: #fff;
+  border-bottom: 2px solid var(--border);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.unit-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.unit-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.unit-tab span:first-child {
+  font-size: 16px;
+}
+
+.unit-tab:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+  border-radius: 8px 8px 0 0;
+}
+
+.unit-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ============ محتوای تب‌ها ============ */
+.unit-tab-content-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 24px;
+  background: #fafbfc;
+  scroll-behavior: smooth;
+}
+
+.unit-tab-content-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.unit-tab-content-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.unit-tab-content-wrapper::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 10px;
+}
+
+.unit-tab-content-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a5b4fc;
+}
+
+.unit-tab-content {
+  display: none;
+  animation: tabFadeIn 0.3s ease;
+}
+
+.unit-tab-content.active {
+  display: block;
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============ دکمه‌های پایین (چسبیده) ============ */
+.sticky-actions {
+  padding: 16px 24px !important;
+  margin-top: 0 !important;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* ============ مودال واحد — فشرده‌تر ============ */
+.modal-tabs .unit-form {
+  gap: 14px;
+}
+
+.modal-tabs .form-section {
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.modal-tabs .form-section-title {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-tabs .checkbox-row {
+  margin-bottom: 0;
+  margin-top: 10px;
+}
+
+/* ============ ریسپانسیو: تبلت ============ */
+@media (max-width: 900px) {
+  .modal-tabs {
+    max-width: 92vw;
+  }
+}
+
+/* ============ ریسپانسیو: موبایل ============ */
+@media (max-width: 640px) {
+  .modal-backdrop {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+
+  .modal-tabs {
+    max-width: 100%;
+    width: 100%;
+    max-height: 95vh;
+    border-radius: 22px 22px 0 0 !important;
+  }
+
+  .modal-tabs .unit-modal-header {
+    padding: 18px 18px 14px;
+  }
+
+  .unit-modal-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+    border-radius: 12px;
+  }
+
+  .unit-modal-header h2 {
+    font-size: 16px;
+  }
+
+  .unit-modal-header p {
+    font-size: 12px;
+  }
+
+  .unit-tabs {
+    padding: 0 12px;
+  }
+
+  .unit-tab {
+    padding: 12px 14px;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .unit-tab span:first-child {
+    font-size: 14px;
+  }
+
+  .unit-tab-content-wrapper {
+    padding: 16px 14px;
+  }
+
+  .modal-tabs .form-section {
+    padding: 14px 12px;
+    border-radius: 12px;
+  }
+
+  .modal-tabs .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .modal-tabs .form-group {
+    margin-bottom: 0;
+  }
+
+  .modal-tabs .form-input {
+    font-size: 14px;
+    padding: 11px 12px;
+  }
+
+  .sticky-actions {
+    padding: 12px 14px !important;
+  }
+
+  .sticky-actions .btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+}
+
+/* ============ ریسپانسیو: موبایل کوچک ============ */
+@media (max-width: 400px) {
+  .unit-tab span:last-child {
+    font-size: 12px;
+  }
+
+  .unit-tab {
+    padding: 11px 12px;
+  }
+}
+
+/* ============ حالت شب ============ */
+body.dark-mode .modal-tabs {
+  background: #1e293b;
+}
+
+body.dark-mode .unit-tabs {
+  background: #1e293b;
+  border-bottom-color: #334155;
+}
+
+body.dark-mode .unit-tab-content-wrapper {
+  background: #0f172a;
+}
+
+body.dark-mode .modal-tabs .form-section {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark-mode .sticky-actions {
+  background: #1e293b;
+  border-top-color: #334155;
+}
