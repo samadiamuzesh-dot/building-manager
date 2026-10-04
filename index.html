@@ -382,6 +382,11 @@
             <select id="unitsBlockFilter" class="block-select">
               <option value="all">🏢 همه بلوک‌ها</option>
             </select>
+            <select id="unitsOccupancyFilter" class="block-select">
+  <option value="all">📋 همه واحدها</option>
+  <option value="occupied">🟢 ساکن دارد</option>
+  <option value="empty">⚪ تخلیه</option>
+</select>
 
             <input type="text" id="unitsSearch" class="search-input"
                    placeholder="🔍 جستجو (نام، شماره، موبایل)" />
@@ -400,28 +405,33 @@
           </div>
         </div>
 
-        <div class="table-box">
-          <div class="table-header">
-            <h3>لیست واحدها</h3>
-            <span id="unitsCountLabel" class="table-count">۰ واحد</span>
-          </div>
+      <div class="table-box">
+  <div class="table-header">
+    <h3>لیست واحدها</h3>
+    <span id="unitsCountLabel" class="table-count">۰ واحد</span>
+  </div>
 
-          <table>
-            <thead>
-              <tr>
-                <th class="sortable" data-sort="block">بلوک <span class="sort-icon"></span></th>
-                <th class="sortable" data-sort="number">واحد <span class="sort-icon"></span></th>
-                <th class="sortable" data-sort="owner">مالک <span class="sort-icon"></span></th>
-                <th class="sortable" data-sort="tenant">مستاجر <span class="sort-icon"></span></th>
-                <th class="sortable" data-sort="phone">موبایل <span class="sort-icon"></span></th>
-                <th class="sortable" data-sort="debt">بدهی <span class="sort-icon"></span></th>
-                <th class="sortable" data-sort="status">وضعیت <span class="sort-icon"></span></th>
-                <th>عملیات</th>
-              </tr>
-            </thead>
-            <tbody id="unitsTableBody"></tbody>
-          </table>
-        </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="block">بلوک <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="number">واحد <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="owner">مالک <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="tenant">مستاجر <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="phone">موبایل <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="area">متراژ <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="people">نفرات <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="parking">پارکینگ <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="occupancy">وضعیت <span class="sort-icon"></span></th>
+          <th class="sortable" data-sort="debt">بدهی <span class="sort-icon"></span></th>
+          <th>عملیات</th>
+        </tr>
+      </thead>
+      <tbody id="unitsTableBody"></tbody>
+    </table>
+  </div>
+</div>
 
       </section>
 
@@ -3144,8 +3154,8 @@
                 <label for="unitStatus">🏠 وضعیت واحد</label>
                 <select id="unitStatus" class="form-input">
                   <option value="auto">🔄 خودکار (بر اساس ساکن/مالک)</option>
-                  <option value="occupied">🟢 پر (سکونت دارد)</option>
-                  <option value="empty">⚪ خالی</option>
+                  <option value="occupied">🟢 ساکن دارد</option>
+                  <option value="empty">⚪ تخلیه</option>
                 </select>
               </div>
             </div>
