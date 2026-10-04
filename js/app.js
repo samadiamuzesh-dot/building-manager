@@ -6327,6 +6327,10 @@ function renderReportsPage() {
   const chargesIncome = paidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
   const chargesDebt = unpaidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
 
+  // ✅ درآمد جانبی
+  const allSideIncomes = loadSideIncomes().filter(range.filterFn);
+  const sideIncomesSum = allSideIncomes.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
   const allExpenses = loadExpenses().filter(range.filterFn);
   const expensesSum = allExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
   const expensesAvg = allExpenses.length > 0 ? Math.round(expensesSum / allExpenses.length) : 0;
@@ -6334,10 +6338,11 @@ function renderReportsPage() {
     ? Math.max(...allExpenses.map(e => Number(e.amount) || 0))
     : 0;
 
-  const balance = chargesIncome - expensesSum;
+  // ✅ کل درآمد = شارژ + جانبی
+  const totalIncome = chargesIncome + sideIncomesSum;
+  const balance = totalIncome - expensesSum;
   const totalDebt = UNITS.reduce((s, u) => s + (Number(u.debt) || 0), 0);
-
-  document.getElementById('reportIncome').textContent = formatToman(chargesIncome);
+  document.getElementById('reportIncome').textContent = formatToman(totalIncome);
   document.getElementById('reportExpense').textContent = formatToman(expensesSum);
   document.getElementById('reportBalance').textContent = formatToman(balance);
   document.getElementById('reportDebt').textContent = formatToman(totalDebt);
@@ -8125,18 +8130,28 @@ let profitPeriod = 'year';
 function calcMonthProfit(monthName, year) {
   const charges = loadCharges();
   const expenses = loadExpenses();
+  const sideIncomes = loadSideIncomes();
 
+  // ===== شارژها (درآمد) =====
   let monthCharges = charges.filter(c =>
     c.month === monthName &&
     c.year === String(year) &&
     c.paid === true
   );
 
+  // ===== هزینه‌ها =====
   let monthExpenses = expenses.filter(e =>
     e.month === monthName &&
     e.year === String(year)
   );
 
+  // ===== درآمد جانبی =====
+  let monthSideIncomes = sideIncomes.filter(i =>
+    i.month === monthName &&
+    i.year === String(year)
+  );
+
+  // ===== فیلتر بلوک =====
   if (profitBlock !== 'all') {
     monthCharges = monthCharges.filter(c =>
       String(c.block || '').trim() === String(profitBlock).trim()
@@ -8146,18 +8161,32 @@ function calcMonthProfit(monthName, year) {
         ? String(e.block).trim() === String(profitBlock).trim()
         : true
     );
+    monthSideIncomes = monthSideIncomes.filter(i =>
+      (i.block && i.block !== 'all')
+        ? String(i.block).trim() === String(profitBlock).trim()
+        : true
+    );
   }
 
-  const income = monthCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
+  const chargesIncome = monthCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
+  const sideIncomeSum = monthSideIncomes.reduce((s, i) => s + (Number(i.amount) || 0), 0);
   const expense = monthExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+  const income = chargesIncome + sideIncomeSum;
   const profit = income - expense;
 
   return {
     month: monthName,
-    income, expense, profit,
+    income,                 // کل درآمد (شارژ + جانبی)
+    chargesIncome,          // فقط شارژ
+    sideIncomeSum,          // فقط جانبی
+    expense,
+    profit,
     chargesCount: monthCharges.length,
+    sideIncomesCount: monthSideIncomes.length,
     expensesCount: monthExpenses.length,
     expenses: monthExpenses,
+    sideIncomes: monthSideIncomes,
   };
 }
 
@@ -8547,9 +8576,13 @@ function renderProfitIncomeBreakdown() {
   const periodMonths = getPeriodMonths();
   const monthsData = periodMonths.map(m => calcMonthProfit(m, profitYear));
 
-  const totalIncome = monthsData.reduce((s, m) => s + m.income, 0);
-  const totalCharges = monthsData.reduce((s, m) => s + m.chargesCount, 0);
+  const totalCharges = monthsData.reduce((s, m) => s + (m.chargesIncome || 0), 0);
+  const totalSideIncomes = monthsData.reduce((s, m) => s + (m.sideIncomeSum || 0), 0);
+  const totalIncome = totalCharges + totalSideIncomes;
+  const totalChargesCount = monthsData.reduce((s, m) => s + m.chargesCount, 0);
+  const totalSideIncomesCount = monthsData.reduce((s, m) => s + m.sideIncomesCount, 0);
 
+  // محاسبه اجزای شارژ
   const charges = loadCharges().filter(c => {
     const inPeriod = periodMonths.includes(c.month) && c.year === String(profitYear) && c.paid;
     if (!inPeriod) return false;
@@ -8560,12 +8593,14 @@ function renderProfitIncomeBreakdown() {
   });
 
   const extraIncome = charges.reduce((s, c) => s + (Number(c.extra) || 0), 0);
-  const baseIncome = totalIncome - extraIncome;
+  const baseIncome = totalCharges - extraIncome;
 
   const rows = [
-    { label: '💰 شارژ پایه', value: baseIncome, icon: '💰' },
-    { label: '➕ هزینه اضافی', value: extraIncome, icon: '➕' },
-    { label: '📋 تعداد شارژهای پرداخت‌شده', value: totalCharges, isCount: true, icon: '📋' },
+    { icon: '💰', label: 'شارژ پایه', value: baseIncome, isCount: false },
+    { icon: '➕', label: 'هزینه اضافی شارژ', value: extraIncome, isCount: false },
+    { icon: '🏪', label: 'درآمد جانبی', value: totalSideIncomes, isCount: false },
+    { icon: '📋', label: 'تعداد شارژهای پرداخت‌شده', value: totalChargesCount, isCount: true },
+    { icon: '🏪', label: 'تعداد درآمدهای جانبی', value: totalSideIncomesCount, isCount: true },
   ];
 
   container.innerHTML = rows.map(r => `
@@ -8733,7 +8768,12 @@ function exportProfitToExcel() {
     </head>
     <body>
       <h2>گزارش سود و زیان — ${blockLabel} — سال ${toPersianNum(profitYear)}</h2>
-
+      <h3>خلاصه درآمد</h3>
+      <table>
+        <tr><td>شارژ دریافتی</td><td>${chargesTotal.toLocaleString('en-US')} تومان</td></tr>
+        <tr><td>درآمد جانبی</td><td>${sideIncomesTotal.toLocaleString('en-US')} تومان</td></tr>
+        <tr><td><strong>کل درآمد</strong></td><td class="positive"><strong>${totalIncome.toLocaleString('en-US')} تومان</strong></td></tr>
+      </table>
       <h3>خلاصه کلی</h3>
       <table>
         <tr><td>کل درآمد</td><td class="positive">${totalIncome.toLocaleString('en-US')} تومان</td></tr>
@@ -8788,6 +8828,8 @@ function printProfitPdf() {
   const monthsData = periodMonths.map(m => calcMonthProfit(m, profitYear));
 
   const totalIncome = monthsData.reduce((s, m) => s + m.income, 0);
+  const chargesTotal = monthsData.reduce((s, m) => s + (m.chargesIncome || 0), 0);
+  const sideIncomesTotal = monthsData.reduce((s, m) => s + (m.sideIncomeSum || 0), 0);
   const totalExpense = monthsData.reduce((s, m) => s + m.expense, 0);
   const netProfit = totalIncome - totalExpense;
   const margin = totalIncome > 0 ? Math.round((netProfit / totalIncome) * 100) : 0;
