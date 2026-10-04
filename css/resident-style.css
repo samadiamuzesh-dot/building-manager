@@ -961,3 +961,282 @@ html, body {
   min-height: 0;
   overflow: hidden;
 }
+/* ============================================================
+   🎯 پنل ساکن — ریسپانسیو کامل
+   ============================================================ */
+
+/* کارت پروفایل ریسپانسیو */
+.resident-card {
+  word-wrap: break-word;
+}
+
+.resident-card strong {
+  word-break: break-word;
+}
+
+/* اسکرول افقی برای محتوا */
+.resident-content {
+  overflow-x: hidden;
+}
+
+/* ============ تبلت (بین ۶۴۰ تا ۹۰۰) ============ */
+@media (min-width: 641px) and (max-width: 900px) {
+  .resident-content {
+    padding: 20px;
+    max-width: 700px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .resident-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .resident-card {
+    padding: 20px;
+  }
+
+  .resident-header-info h2 {
+    font-size: 18px;
+  }
+
+  .resident-bottom-nav {
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .resident-nav-item {
+    flex: 0 1 auto;
+    min-width: 80px;
+  }
+}
+
+/* ============ موبایل بزرگ (۴۸۰-۶۴۰) ============ */
+@media (max-width: 640px) {
+  .resident-login-box {
+    padding: 26px 20px;
+    border-radius: 18px;
+  }
+
+  .resident-brand svg {
+    width: 60px;
+    height: 60px;
+  }
+
+  .resident-brand h1 {
+    font-size: 20px;
+  }
+
+  .resident-step-title {
+    font-size: 17px;
+  }
+
+  .resident-step-desc {
+    font-size: 13px;
+  }
+
+  .resident-form-input {
+    font-size: 14px;
+    padding: 12px 14px;
+  }
+
+  .resident-submit-btn {
+    padding: 14px;
+    font-size: 14.5px;
+  }
+
+  .resident-header {
+    padding: 16px 14px;
+  }
+
+  .resident-header-info h2 {
+    font-size: 16px;
+  }
+
+  .resident-header-info p {
+    font-size: 12px;
+  }
+
+  .resident-logout-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+  }
+
+  .resident-content {
+    padding: 14px 12px;
+  }
+
+  .resident-welcome-card {
+    padding: 18px 16px;
+  }
+
+  .resident-welcome-icon {
+    font-size: 38px;
+  }
+
+  .resident-welcome-card h3 {
+    font-size: 16px;
+  }
+
+  .resident-welcome-card p {
+    font-size: 12.5px;
+  }
+
+  .resident-stat-card {
+    padding: 14px 12px;
+  }
+
+  .resident-stat-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+
+  .resident-stat-value {
+    font-size: 14px;
+  }
+
+  .resident-stat-label {
+    font-size: 11.5px;
+  }
+
+  .resident-card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .resident-card h3 {
+    font-size: 14px;
+  }
+
+  .resident-page-header h2 {
+    font-size: 17px;
+  }
+
+  .resident-bottom-nav {
+    padding: 6px 2px;
+  }
+
+  .resident-nav-item {
+    padding: 6px 2px;
+  }
+
+  .resident-nav-icon {
+    font-size: 18px;
+  }
+
+  .resident-nav-text {
+    font-size: 9.5px;
+  }
+
+  .resident-chat-input-box {
+    padding: 10px 12px;
+  }
+
+  .resident-chat-send {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+}
+
+/* ============ موبایل کوچک (زیر ۴۸۰) ============ */
+@media (max-width: 480px) {
+  .resident-login-page {
+    padding: 14px;
+  }
+
+  .resident-login-box {
+    padding: 22px 16px;
+    border-radius: 16px;
+  }
+
+  .resident-brand svg {
+    width: 54px;
+    height: 54px;
+  }
+
+  .resident-brand h1 {
+    font-size: 18px;
+  }
+
+  .resident-brand p {
+    font-size: 12px;
+  }
+
+  .resident-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .resident-stat-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 12px 10px;
+    gap: 8px;
+  }
+
+  .resident-stat-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .resident-stat-value {
+    font-size: 13px;
+  }
+
+  .resident-card {
+    padding: 12px;
+  }
+
+  .resident-card-header h3 {
+    font-size: 13.5px;
+  }
+
+  .resident-nav-icon {
+    font-size: 16px;
+  }
+
+  .resident-nav-text {
+    font-size: 9px;
+  }
+
+  .resident-chat-bubble {
+    max-width: 88%;
+  }
+}
+
+/* ============ لپ‌تاپ / دسکتاپ بزرگ (بالای ۱۲۰۰) ============ */
+@media (min-width: 1200px) {
+  .resident-content {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .resident-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ============ ارتفاع کم (افقی موبایل) ============ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .resident-login-page {
+    align-items: flex-start;
+    padding-top: 20px;
+  }
+
+  .resident-login-box {
+    padding: 18px 20px;
+  }
+
+  .resident-brand svg {
+    width: 44px;
+    height: 44px;
+  }
+
+  .resident-brand h1 {
+    font-size: 16px;
+  }
+}
