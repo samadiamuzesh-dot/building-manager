@@ -1923,6 +1923,14 @@ function saveUnit() {
 
   toastSuccess(isEdit ? 'واحد ویرایش شد.' : 'واحد جدید اضافه شد.');
 }
+/* ✅ برچسب ماهیت برای اکسل (بدون ایموجی) */
+function getPartyTypeExcel(type) {
+  if (type === 'creditor') return 'بستانکار';
+  if (type === 'settled') return 'تسویه';
+  if (type === 'debtor') return 'بدهکار';
+  return '—';
+}
+
 
 /* ============ ۱۶) خروجی اکسل واحدها ============ */
 function exportToExcel() {
