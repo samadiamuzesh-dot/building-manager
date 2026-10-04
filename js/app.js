@@ -1710,7 +1710,7 @@ function openUnitModal(unitId = null) {
     document.getElementById('ownerPhone').value = unit.owner?.phone || '';
     document.getElementById('ownerBirthDate').value = unit.owner?.birthDate || '';
     document.getElementById('ownerNationalId').value = unit.owner?.nationalId || '';
-    document.getElementById('ownerType').value = unit.owner?.type || 'owner';
+    document.getElementById('ownerType').value = unit.owner?.type || 'debtor';
     document.getElementById('defaultChargeOwner').value = unit.defaultChargeOwner || 0;
     document.getElementById('ownerInAccounting').checked = unit.owner?.inAccounting || false;
 
@@ -1718,7 +1718,7 @@ function openUnitModal(unitId = null) {
     document.getElementById('tenantPhone').value = unit.tenant?.phone || '';
     document.getElementById('tenantBirthDate').value = unit.tenant?.birthDate || '';
     document.getElementById('tenantNationalId').value = unit.tenant?.nationalId || '';
-    document.getElementById('tenantType').value = unit.tenant?.type || 'tenant';
+   document.getElementById('tenantType').value = unit.tenant?.type || 'debtor';
     document.getElementById('defaultChargeTenant').value = unit.defaultChargeTenant || 0;
     document.getElementById('tenantInAccounting').checked = unit.tenant?.inAccounting || false;
 
@@ -1752,7 +1752,7 @@ function openUnitModal(unitId = null) {
     document.getElementById('ownerPhone').value = '';
     document.getElementById('ownerBirthDate').value = '';
     document.getElementById('ownerNationalId').value = '';
-    document.getElementById('ownerType').value = 'owner';
+   document.getElementById('ownerType').value = 'debtor';
     document.getElementById('defaultChargeOwner').value = 0;
     document.getElementById('ownerInAccounting').checked = false;
 
@@ -1760,7 +1760,7 @@ function openUnitModal(unitId = null) {
     document.getElementById('tenantPhone').value = '';
     document.getElementById('tenantBirthDate').value = '';
     document.getElementById('tenantNationalId').value = '';
-    document.getElementById('tenantType').value = 'tenant';
+    document.getElementById('tenantType').value = 'debtor';
     document.getElementById('defaultChargeTenant').value = 0;
     document.getElementById('tenantInAccounting').checked = false;
 
