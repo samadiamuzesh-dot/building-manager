@@ -1356,6 +1356,7 @@ function getUnitsPageFiltered() {
     });
   }
 
+    // اگر کاربر مرتب‌سازی دستی نکرده، به صورت پیش‌فرض بر اساس بلوک و شماره واحد مرتب کن
   if (unitsSortColumn) {
     list = [...list].sort((a, b) => {
       let valA, valB;
@@ -1413,6 +1414,17 @@ function getUnitsPageFiltered() {
       }
 
       return unitsSortDirection === 'asc' ? result : -result;
+    });
+  } else {
+    // ✅ مرتب‌سازی پیش‌فرض: اول بلوک، بعد شماره واحد
+    list = [...list].sort((a, b) => {
+      const blockA = String(a.block || '').trim();
+      const blockB = String(b.block || '').trim();
+      const blockCompare = blockA.localeCompare(blockB, 'fa');
+
+      if (blockCompare !== 0) return blockCompare;
+
+      return (Number(a.number) || 0) - (Number(b.number) || 0);
     });
   }
 
