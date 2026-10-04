@@ -419,17 +419,38 @@ function renderStats() {
   const paidUnits  = units.filter(u => u.debt === 0).length;
   const debtUnits  = units.filter(u => u.debt > 0).length;
 
-  const income = units
-    .filter(u => u.debt === 0)
-    .reduce((sum, u) => sum + (Number(u.chargeAmount) || 500000), 0);
+   // ✅ شارژ دریافتی این ماه (فقط شارژهای پرداخت‌شده)
+  const allCharges = loadCharges();
+  const currentMonth = getTodayPersianMonth();
+  const currentYear = String(getTodayPersianYear());
 
+  const paidChargesThisMonth = allCharges.filter(c =>
+    c.paid === true &&
+    c.month === currentMonth &&
+    c.year === currentYear
+  );
+  const chargesIncome = paidChargesThisMonth.reduce((s, c) => s + (Number(c.total) || 0), 0);
+
+  // ✅ درآمد جانبی این ماه
+  const allSideIncomes = loadSideIncomes();
+  const sideIncomesThisMonth = allSideIncomes.filter(i =>
+    i.month === currentMonth &&
+    i.year === currentYear
+  );
+  const sideIncomeSum = sideIncomesThisMonth.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+  // ✅ کل درآمد = شارژ + جانبی
+  const income = chargesIncome + sideIncomeSum;
+
+  // ✅ هزینه‌های این ماه
   const expensesThisMonth = loadExpenses().filter(e =>
-    e.month === getTodayPersianMonth()
+    e.month === currentMonth &&
+    e.year === currentYear
   );
   const expense = expensesThisMonth.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
+  // ✅ مانده
   const balance = income - expense;
-
   let blocksCount = 1;
   if (building.type === 'complex') {
     blocksCount = building.blocks.length;
