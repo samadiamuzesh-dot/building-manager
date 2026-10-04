@@ -2216,75 +2216,112 @@ function openUnitDetail(unitId) {
 
   currentDetailUnitId = unitId;
 
+  // عنوان
   const title = document.getElementById('detailUnitTitle');
   const subtitle = document.getElementById('detailUnitSubtitle');
   if (title) title.textContent = `جزئیات واحد ${unit.block}-${toPersianNum(unit.number)}`;
   if (subtitle) subtitle.textContent = `کد: ${unit.code || '—'}`;
 
-  const elBlock = document.getElementById('detailBlock');
-  const elNumber = document.getElementById('detailNumber');
-  const elCharge = document.getElementById('detailCharge');
-  const elDebt = document.getElementById('detailDebt');
-  const elArea = document.getElementById('detailArea');
-  const elPeople = document.getElementById('detailPeople');
-  const elParking = document.getElementById('detailParking');
-  const elStatus = document.getElementById('detailStatus');
+  // اطلاعات پایه
+  document.getElementById('detailBlock').textContent = unit.block || '—';
+  document.getElementById('detailNumber').textContent = toPersianNum(unit.number) || '—';
+  document.getElementById('detailFloor').textContent = unit.floor || '—';
+  document.getElementById('detailCode').textContent = unit.code || '—';
 
-  if (elBlock) elBlock.textContent = unit.block || '—';
-  if (elNumber) elNumber.textContent = toPersianNum(unit.number) || '—';
-  if (elCharge) elCharge.textContent = formatToman(unit.chargeAmount || 500000);
-  if (elDebt) elDebt.textContent = unit.debt > 0 ? formatToman(unit.debt) : '—';
-  if (elArea) elArea.textContent = unit.area ? formatNumber(unit.area) + ' متر' : '—';
-  if (elPeople) elPeople.textContent = unit.peopleCount ? formatNumber(unit.peopleCount) + ' نفر' : '—';
-  if (elParking) elParking.textContent = unit.parkingCount ? formatNumber(unit.parkingCount) : '—';
-  if (elStatus) {
-    elStatus.textContent = isUnitEmpty(unit) ? '🚪 خالی' : '🏠 پر';
+  // وضعیت
+  const statusEl = document.getElementById('detailStatus');
+  if (statusEl) {
+    if (typeof isUnitEmpty === 'function' && !isUnitEmpty(unit)) {
+      statusEl.textContent = '🏠 پر';
+      statusEl.style.color = '#15803d';
+    } else {
+      statusEl.textContent = '🚪 خالی';
+      statusEl.style.color = '#92400e';
+    }
   }
 
+  // متراژ / نفرات / پارکینگ / انباری
+  document.getElementById('detailArea').textContent = unit.area ? formatNumber(unit.area) + ' متر' : '—';
+  document.getElementById('detailPeople').textContent = unit.peopleCount ? formatNumber(unit.peopleCount) + ' نفر' : '—';
+  document.getElementById('detailParking').textContent = unit.parkingCount ? formatNumber(unit.parkingCount) : '—';
+  document.getElementById('detailStorage').textContent = unit.storageCount ? formatNumber(unit.storageCount) : '—';
+
+  // مالی
+  document.getElementById('detailCharge').textContent = formatToman(unit.chargeAmount || 500000);
+  document.getElementById('detailDebt').textContent = unit.debt > 0 ? formatToman(unit.debt) : '—';
+
+  // مالک
   const ownerStatus = document.getElementById('detailOwnerStatus');
-  const ownerName = document.getElementById('detailOwnerName');
-  const ownerPhone = document.getElementById('detailOwnerPhone');
-
   if (unit.owner?.name) {
-    if (ownerStatus) {
-      ownerStatus.textContent = 'ثبت‌نام کرده';
-      ownerStatus.className = 'detail-status active';
-    }
-    if (ownerName) ownerName.textContent = unit.owner.name;
-    if (ownerPhone) ownerPhone.textContent = unit.owner.phone || '—';
+    ownerStatus.textContent = 'ثبت‌نام کرده';
+    ownerStatus.className = 'detail-status active';
+    document.getElementById('detailOwnerName').textContent = unit.owner.name;
+    document.getElementById('detailOwnerPhone').textContent = unit.owner.phone || '—';
+    document.getElementById('detailOwnerNationalId').textContent = unit.owner.nationalId || '—';
+    document.getElementById('detailOwnerBirthDate').textContent = unit.owner.birthDate || '—';
+    document.getElementById('detailOwnerType').textContent = 
+      unit.owner.type === 'creditor' ? ' بستانکار' : ' بدهکار';
+    document.getElementById('detailOwnerDefaultCharge').textContent = 
+      unit.defaultChargeOwner ? formatToman(unit.defaultChargeOwner) : '—';
   } else {
-    if (ownerStatus) {
-      ownerStatus.textContent = 'ثبت‌نام نکرده';
-      ownerStatus.className = 'detail-status none';
-    }
-    if (ownerName) ownerName.textContent = '—';
-    if (ownerPhone) ownerPhone.textContent = '—';
+    ownerStatus.textContent = 'ثبت‌نام نکرده';
+    ownerStatus.className = 'detail-status none';
+    document.getElementById('detailOwnerName').textContent = '—';
+    document.getElementById('detailOwnerPhone').textContent = '—';
+    document.getElementById('detailOwnerNationalId').textContent = '—';
+    document.getElementById('detailOwnerBirthDate').textContent = '—';
+    document.getElementById('detailOwnerType').textContent = '—';
+    document.getElementById('detailOwnerDefaultCharge').textContent = '—';
   }
 
+  // ساکن
   const tenantStatus = document.getElementById('detailTenantStatus');
-  const tenantName = document.getElementById('detailTenantName');
-  const tenantPhone = document.getElementById('detailTenantPhone');
-
   if (unit.tenant?.name) {
-    if (tenantStatus) {
-      tenantStatus.textContent = 'دارد';
-      tenantStatus.className = 'detail-status active';
-    }
-    if (tenantName) tenantName.textContent = unit.tenant.name;
-    if (tenantPhone) tenantPhone.textContent = unit.tenant.phone || '—';
+    tenantStatus.textContent = 'دارد';
+    tenantStatus.className = 'detail-status active';
+    document.getElementById('detailTenantName').textContent = unit.tenant.name;
+    document.getElementById('detailTenantPhone').textContent = unit.tenant.phone || '—';
+    document.getElementById('detailTenantNationalId').textContent = unit.tenant.nationalId || '—';
+    document.getElementById('detailTenantBirthDate').textContent = unit.tenant.birthDate || '—';
+    document.getElementById('detailTenantType').textContent = 
+      unit.tenant.type === 'creditor' ? ' بستانکار' : ' بدهکار';
+    document.getElementById('detailTenantDefaultCharge').textContent = 
+      unit.defaultChargeTenant ? formatToman(unit.defaultChargeTenant) : '—';
   } else {
-    if (tenantStatus) {
-      tenantStatus.textContent = 'ندارد';
-      tenantStatus.className = 'detail-status none';
-    }
-    if (tenantName) tenantName.textContent = '—';
-    if (tenantPhone) tenantPhone.textContent = '—';
+    tenantStatus.textContent = 'ندارد';
+    tenantStatus.className = 'detail-status none';
+    document.getElementById('detailTenantName').textContent = '—';
+    document.getElementById('detailTenantPhone').textContent = '—';
+    document.getElementById('detailTenantNationalId').textContent = '—';
+    document.getElementById('detailTenantBirthDate').textContent = '—';
+    document.getElementById('detailTenantType').textContent = '—';
+    document.getElementById('detailTenantDefaultCharge').textContent = '—';
+  }
+
+  // اطلاعات تکمیلی
+  document.getElementById('detailOwnerSettlementId').textContent = unit.ownerSettlementId || '—';
+  document.getElementById('detailTenantSettlementId').textContent = unit.tenantSettlementId || '—';
+  document.getElementById('detailWaterBillId').textContent = unit.waterBillId || '—';
+  document.getElementById('detailElectricityBillId').textContent = unit.electricityBillId || '—';
+  document.getElementById('detailGasBillId').textContent = unit.gasBillId || '—';
+  document.getElementById('detailPhoneBillId').textContent = unit.phoneBillId || '—';
+  document.getElementById('detailParkingNumber').textContent = unit.parkingNumber || '—';
+  document.getElementById('detailStorageNumber').textContent = unit.storageNumber || '—';
+  document.getElementById('detailLandlinePhone').textContent = unit.landlinePhone || '—';
+
+  // توضیحات
+  const notesSection = document.getElementById('detailNotesSection');
+  const notesEl = document.getElementById('detailNotes');
+  if (unit.notes && unit.notes.trim()) {
+    notesSection.style.display = 'block';
+    notesEl.textContent = unit.notes;
+  } else {
+    notesSection.style.display = 'none';
   }
 
   const modal = document.getElementById('unitDetailModal');
   if (modal) modal.classList.add('open');
 }
-
 function closeUnitDetail() {
   const modal = document.getElementById('unitDetailModal');
   if (modal) modal.classList.remove('open');
