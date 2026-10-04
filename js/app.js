@@ -3288,11 +3288,21 @@ function openSideIncomeModal(incomeId = null) {
   currentEditSideIncomeId = incomeId;
 
   const modal = document.getElementById('sideIncomeModal');
+  if (!modal) {
+    console.error('❌ sideIncomeModal پیدا نشد!');
+    toastError('خطا در باز کردن مودال.');
+    return;
+  }
+
   const title = document.getElementById('sideIncomeModalTitle');
   const subtitle = document.getElementById('sideIncomeModalSubtitle');
 
-  fillYearMonthDropdowns('sideIncomeModalYear', 'sideIncomeModalMonth');
+  // پر کردن دراپ‌داون ماه و سال
+  if (typeof fillYearMonthDropdowns === 'function') {
+    fillYearMonthDropdowns('sideIncomeModalYear', 'sideIncomeModalMonth');
+  }
 
+  // پر کردن لیست بلوک
   const blockSelect = document.getElementById('sideIncomeBlockSelect');
   const blockSection = document.getElementById('sideIncomeBlockSection');
   const data = loadData();
@@ -3319,7 +3329,10 @@ function openSideIncomeModal(incomeId = null) {
   const categorySelect = document.getElementById('sideIncomeCategory');
 
   function fillSessions(category, selectedValue = '') {
-    const sessions = getSessionsForCategory(category);
+    const sessions = typeof getSessionsForCategory === 'function'
+      ? getSessionsForCategory(category)
+      : ['سانس صبح', 'سانس عصر', 'سانس شب'];
+
     if (!sessionSelect) return;
 
     sessionSelect.innerHTML = '<option value="">— بدون سانس —</option>';
@@ -3356,6 +3369,7 @@ function openSideIncomeModal(incomeId = null) {
   }
 
   if (incomeId) {
+    // ============ ویرایش ============
     const incomes = loadSideIncomes();
     const income = incomes.find(i => i.id === incomeId);
     if (!income) return;
@@ -3376,6 +3390,7 @@ function openSideIncomeModal(incomeId = null) {
 
     fillSessions(income.category, income.session || '');
   } else {
+    // ============ جدید ============
     if (title) title.textContent = 'ثبت درآمد جانبی';
     if (subtitle) subtitle.textContent = 'اطلاعات درآمد را وارد کنید';
 
@@ -3393,12 +3408,14 @@ function openSideIncomeModal(incomeId = null) {
     fillSessions('اجاره مغازه', '');
   }
 
+  // هندلر تغییر دسته
   if (categorySelect) {
     categorySelect.onchange = () => {
       fillSessions(categorySelect.value, '');
     };
   }
 
+  // هندلر تغییر سانس
   if (sessionSelect) {
     sessionSelect.onchange = () => {
       if (sessionSelect.value === '__custom__') {
@@ -3481,13 +3498,8 @@ function saveSideIncome() {
   closeSideIncomeModal();
   renderSideIncomesPage();
 
-  if (isEdit) {
-    toastSuccess('درآمد ویرایش شد.');
-  } else {
-    toastSuccess('درآمد جدید ثبت شد.');
-  }
+  toastSuccess(isEdit ? 'درآمد ویرایش شد.' : 'درآمد جدید ثبت شد.');
 }
-
 function deleteSideIncome(incomeId) {
   if (!confirm('⚠️ آیا از حذف این درآمد مطمئن هستید؟')) return;
 
@@ -3569,6 +3581,7 @@ function exportSideIncomesToExcel() {
 }
 
 function bindSideIncomesPage() {
+  // ============ فیلتر بلوک ============
   const blockFilter = document.getElementById('sideIncomeBlockFilter');
   const data = loadData();
 
@@ -3594,6 +3607,7 @@ function bindSideIncomesPage() {
     });
   }
 
+  // ============ فیلتر سانس ============
   const sessionFilter = document.getElementById('sideIncomeSessionFilter');
   if (sessionFilter) {
     const usedSessions = new Set();
@@ -3615,6 +3629,7 @@ function bindSideIncomesPage() {
     });
   }
 
+  // ============ فیلتر ماه ============
   const monthFilter = document.getElementById('sideIncomeMonthFilter');
   if (monthFilter) {
     monthFilter.innerHTML = '<option value="all">📅 همه ماه‌ها</option>';
@@ -3631,6 +3646,7 @@ function bindSideIncomesPage() {
     });
   }
 
+  // ============ فیلتر سال ============
   const yearFilter = document.getElementById('sideIncomeYearFilter');
   if (yearFilter) {
     yearFilter.innerHTML = '<option value="all">📆 همه سال‌ها</option>';
@@ -3650,18 +3666,29 @@ function bindSideIncomesPage() {
     });
   }
 
+  // ============ دکمه افزودن ============
   const btnAdd = document.getElementById('btnAddSideIncome');
-  if (btnAdd) btnAdd.onclick = () => openSideIncomeModal(null);
+  if (btnAdd) {
+    btnAdd.onclick = () => {
+      console.log('✅ دکمه ثبت درآمد کلیک شد');
+      openSideIncomeModal(null);
+    };
+  } else {
+    console.warn('⚠️ btnAddSideIncome پیدا نشد');
+  }
 
+  // ============ خروجی اکسل ============
   const btnExport = document.getElementById('btnExportSideIncomes');
   if (btnExport) btnExport.onclick = exportSideIncomesToExcel;
 
+  // ============ دکمه‌های مودال ============
   const btnCancel = document.getElementById('sideIncomeCancelBtn');
   if (btnCancel) btnCancel.onclick = closeSideIncomeModal;
 
   const btnSave = document.getElementById('sideIncomeSaveBtn');
   if (btnSave) btnSave.onclick = saveSideIncome;
 
+  // ============ جدول ============
   const tbody = document.getElementById('sideIncomesTableBody');
   if (tbody) {
     tbody.addEventListener('click', (e) => {
@@ -3679,6 +3706,7 @@ function bindSideIncomesPage() {
     });
   }
 
+  // ============ بستن مودال ============
   const modal = document.getElementById('sideIncomeModal');
   if (modal) {
     modal.addEventListener('click', (e) => {
