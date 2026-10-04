@@ -7,8 +7,8 @@
 
    ============================================================ */
 
-console.log('APP.JS VERSION: v17 — ApartmentPlus');
-console.log('%c🏢 آپارتمان پلاس | v17', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
+console.log('APP.JS VERSION: v18 — ApartmentPlus');
+console.log('%c🏢 آپارتمان پلاس | v18', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
 
 const STORAGE_KEY = 'ham_sakhteman_v3';
@@ -21,11 +21,20 @@ function toPersianNum(n) {
   const p = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
   return String(n).replace(/\d/g, d => p[d]);
 }
+function formatPrice(n) {
+  return new Intl.NumberFormat('fa-IR').format(Number(n) || 0) + ' تومان';
+}
+
+/* ============================================================
+   📅 ماه‌های شمسی
+   ============================================================ */
+const PERSIAN_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+                        'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+
 /* ============================================================
    🍞 Toast Notifications (پیام گوشه صفحه)
    ============================================================ */
 function showToast(message, type = 'success', title = null) {
-  // ساخت container اگه نباشه
   let container = document.getElementById('toastContainer');
   if (!container) {
     container = document.createElement('div');
@@ -34,21 +43,8 @@ function showToast(message, type = 'success', title = null) {
     document.body.appendChild(container);
   }
 
-  // آیکون‌ها
-  const icons = {
-    success: '✅',
-    error: '❌',
-    warning: '⚠️',
-    info: 'ℹ️'
-  };
-
-  // عنوان پیش‌فرض
-  const titles = {
-    success: 'موفق',
-    error: 'خطا',
-    warning: 'هشدار',
-    info: 'اطلاع'
-  };
+  const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+  const titles = { success: 'موفق', error: 'خطا', warning: 'هشدار', info: 'اطلاع' };
 
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
@@ -62,11 +58,7 @@ function showToast(message, type = 'success', title = null) {
   `;
 
   container.appendChild(toast);
-
-  // انیمیشن ورود
   setTimeout(() => toast.classList.add('show'), 10);
-
-  // حذف خودکار بعد از ۳.۵ ثانیه
   setTimeout(() => {
     toast.classList.remove('show');
     toast.classList.add('hide');
@@ -74,38 +66,28 @@ function showToast(message, type = 'success', title = null) {
   }, 3500);
 }
 
-// میان‌برهای سریع
 function toastSuccess(msg, title) { showToast(msg, 'success', title); }
 function toastError(msg, title) { showToast(msg, 'error', title); }
 function toastWarning(msg, title) { showToast(msg, 'warning', title); }
 function toastInfo(msg, title) { showToast(msg, 'info', title); }
 
 /* ============================================================
-   📅 تاریخ خودکار (شمسی) — نسخه واحد و تمیز
+   📅 تاریخ خودکار (شمسی)
    ============================================================ */
-
 function getTodayPersian() {
   const now = new Date();
-  const gregorianYear = now.getFullYear();
-  const gregorianMonth = now.getMonth() + 1;
-  const gregorianDay = now.getDate();
-  return gregorianToPersian(gregorianYear, gregorianMonth, gregorianDay);
+  return gregorianToPersian(now.getFullYear(), now.getMonth() + 1, now.getDate());
 }
 
 function getTodayPersianMonth() {
-  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-                  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
   const today = getTodayPersian();
-  return months[today.month - 1];
+  return PERSIAN_MONTHS[today.month - 1];
 }
 
-/* ✅ عدد انگلیسی برمی‌گردونه (برای محاسبات) */
 function getTodayPersianYear() {
-  const today = getTodayPersian();
-  return today.year;
+  return getTodayPersian().year;
 }
 
-/* ✅ رشته فارسی سال (برای نمایش) */
 function getTodayPersianYearFa() {
   return toPersianNum(getTodayPersianYear());
 }
@@ -117,7 +99,6 @@ function getTodayPersianDate() {
   return `${today.year}/${month}/${day}`;
 }
 
-// تبدیل میلادی به شمسی
 function gregorianToPersian(gy, gm, gd) {
   const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
   let jy = (gy <= 1600) ? 0 : 979;
@@ -138,20 +119,16 @@ function gregorianToPersian(gy, gm, gd) {
 }
 
 /* ============================================================
-   📅 پر کردن دراپ‌داون‌های سال و ماه — نسخه واحد
+   📅 پر کردن دراپ‌داون‌های سال و ماه
    ============================================================ */
 function fillYearMonthDropdowns(yearId, monthId) {
   const years = [];
-  const currentYear = getTodayPersianYear(); // عدد انگلیسی
+  const currentYear = getTodayPersianYear();
 
   for (let i = currentYear - 2; i <= currentYear + 2; i++) {
     years.push(String(i));
   }
 
-  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-                  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
-
-  // پر کردن سال
   if (yearId) {
     const yearSelect = document.getElementById(yearId);
     if (yearSelect) {
@@ -166,12 +143,11 @@ function fillYearMonthDropdowns(yearId, monthId) {
     }
   }
 
-  // پر کردن ماه
   if (monthId) {
     const monthSelect = document.getElementById(monthId);
     if (monthSelect) {
       monthSelect.innerHTML = '';
-      months.forEach(m => {
+      PERSIAN_MONTHS.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m;
         opt.textContent = m;
@@ -219,6 +195,59 @@ function loadUnits() {
 }
 function saveUnits() { localStorage.setItem(UNITS_KEY, JSON.stringify(UNITS)); }
 
+/* ============================================================
+   💎 پلن‌ها (Plan Management) — اضافه‌شده
+   ============================================================ */
+const PLAN_KEY = 'ham_sakhteman_plan';
+
+function loadPlan() {
+  const raw = localStorage.getItem(PLAN_KEY);
+  if (raw) { try { return JSON.parse(raw); } catch (e) { return null; } }
+  return null;
+}
+
+function savePlan(plan) {
+  localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+}
+
+function activatePlan(type, totalUnits, payment) {
+  const now = new Date();
+  const expiresAt = type === 'pro'
+    ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()).toISOString()
+    : null;
+
+  const plan = {
+    type: type,
+    totalUnits: totalUnits,
+    startedAt: now.toISOString(),
+    expiresAt: expiresAt,
+    payment: payment || { amount: 0, status: type === 'free' ? 'free' : 'paid' },
+  };
+
+  savePlan(plan);
+  return plan;
+}
+
+function calculatePrice(totalUnits) {
+  const units = Number(totalUnits) || 0;
+
+  if (units <= 10) {
+    return {
+      price: 0,
+      breakdown: 'پلن رایگان برای ساختمان‌های تا ۱۰ واحد',
+    };
+  }
+
+  // قیمت: هر واحد ۱۰۰,۰۰۰ تومان (به‌صورت پله‌ای)
+  const pricePerUnit = 100000;
+  const price = units * pricePerUnit;
+
+  return {
+    price: price,
+    breakdown: `${toPersianNum(units)} واحد × ۱۰۰,۰۰۰ تومان = ${formatPrice(price)}`,
+  };
+}
+
 /* ============ ۴) ساخت واحدهای خالی ============ */
 function buildDemoUnits(building) {
   UNITS = [];
@@ -236,19 +265,9 @@ function buildDemoUnits(building) {
           block: blockName,
           number: i,
           code: `${blockName}-${toPersianNum(i)}`,
-          owner: {
-            name: null,
-            phone: null,
-            registered: false,
-            approved: false,
-          },
-          tenant: {
-            name: null,
-            phone: null,
-            registered: false,
-            approved: false,
-          },
-                debt: 0,
+          owner: { name: null, phone: null, registered: false, approved: false },
+          tenant: { name: null, phone: null, registered: false, approved: false },
+          debt: 0,
           chargeAmount: 0,
           area: 100 + (i * 5),
           peopleCount: i % 3 === 0 ? 0 : 2 + (i % 4),
@@ -267,21 +286,21 @@ function buildDemoUnits(building) {
         block: '—',
         number: i,
         code: `${building.code}-${toPersianNum(i)}`,
-        owner: {
-          name: null,
-          phone: null,
-          registered: false,
-          approved: false,
-        },
+        owner: { name: null, phone: null, registered: false, approved: false },
         tenant: { name: null, phone: null, registered: false, approved: false },
         debt: 0,
         chargeAmount: 0,
+        area: 100 + (i * 5),
+        peopleCount: i % 3 === 0 ? 0 : 2 + (i % 4),
+        parkingCount: i % 2 === 0 ? 1 : 0,
+        status: 'auto',
       });
     }
   }
 
   saveUnits();
 }
+
 /* ============ ۵) کارت ساختمان ============ */
 function renderBuildingCard() {
   const data = loadData();
@@ -293,12 +312,9 @@ function renderBuildingCard() {
     if (codeEl) codeEl.textContent = '—';
     return;
   }
-   const b = data.building;
+  const b = data.building;
   if (nameEl) nameEl.textContent = b.name || '—';
-
-  if (codeEl) {
-    codeEl.textContent = b.code || '—';
-  }
+  if (codeEl) codeEl.textContent = b.code || '—';
 }
 
 /* ============ ۶) اطلاعات صفحات ============ */
@@ -317,16 +333,16 @@ const PAGE_INFO = {
   profit:    { title: 'سود و زیان', subtitle: 'تحلیل درآمد و هزینه' },
   profile:   { title: 'پروفایل من', subtitle: 'اطلاعات شخصی و امنیتی' },
   settings:  { title: 'تنظیمات', subtitle: 'تنظیمات ساختمان و حساب' },
-     subscription: { title: 'اشتراکی', subtitle: 'مدیریت پلن و اشتراک' },
-     support: { title: 'پشتیبانی', subtitle: 'ارسال تیکت و پیگیری' },
+  subscription: { title: 'اشتراکی', subtitle: 'مدیریت پلن و اشتراک' },
+  support: { title: 'پشتیبانی', subtitle: 'ارسال تیکت و پیگیری' },
 };
+
 function switchPage(pageKey) {
-  // ✅ چک دسترسی به صفحه
   if (isPageLocked(pageKey)) {
     showUpgradeModal(pageKey);
     return;
   }
-  
+
   document.querySelectorAll('#menu > li').forEach(li => {
     const liPage = li.dataset.page;
     const isActive = liPage === pageKey ||
@@ -374,8 +390,8 @@ function switchPage(pageKey) {
   if (pageKey === 'profit') renderProfitPage();
   if (pageKey === 'profile') { fillProfileForm(); }
   if (pageKey === 'settings') renderSettingsPage();
-     if (pageKey === 'subscription') renderSubscriptionPage();
-     if (pageKey === 'support') renderSupportPage();
+  if (pageKey === 'subscription') renderSubscriptionPage();
+  if (pageKey === 'support') renderSupportPage();
 }
 
 /* ============ ۷) فیلتر بلوک داشبورد ============ */
@@ -677,9 +693,9 @@ let wizardStep = 1;
 let selectedBuildingType = null;
 let blockNames = [];
 let selectedPlanType = null;
-let wizardAuthData = { name: '', phone: '', password: '' };  // ← این خط جدید
+let wizardAuthData = { name: '', phone: '', password: '' };
+
 function openWelcomeModal() {
-   
   wizardStep = 1;
   selectedBuildingType = null;
   blockNames = [];
@@ -694,7 +710,7 @@ function updateWizardUI() {
   document.querySelectorAll('.wizard-page').forEach(p => {
     p.classList.toggle('active', Number(p.dataset.page) === wizardStep);
   });
-  
+
   document.querySelectorAll('.wizard-step').forEach(s => {
     const n = Number(s.dataset.step);
     s.classList.toggle('active', n === wizardStep);
@@ -707,7 +723,6 @@ function updateWizardUI() {
   if (next) next.style.display = wizardStep < 4 ? 'block' : 'none';
   if (next) next.textContent = wizardStep < 3 ? 'بعدی ←' : 'ادامه ←';
 
-  // مرحله ۳: نمایش فرم مجتمع یا تک‌بلوک
   if (wizardStep === 3) {
     const cf = document.getElementById('complexForm');
     const sf = document.getElementById('singleForm');
@@ -716,51 +731,42 @@ function updateWizardUI() {
     if (selectedBuildingType === 'complex') buildBlockInputs();
   }
 
-  // مرحله ۴: محاسبه قیمت و نمایش
   if (wizardStep === 4) {
     updatePlanPage();
   }
 }
-/* ✅ محاسبه و نمایش اطلاعات توی مرحله ۴ */
+
 function updatePlanPage() {
   const bn = document.getElementById('buildingNameInput')?.value.trim() || '—';
-  
-  // محاسبه تعداد کل واحد
+
   let totalUnits = 0;
   let blocksCount = 1;
-  
+
   if (selectedBuildingType === 'complex') {
     blocksCount = blockNames.length;
     totalUnits = blockNames.reduce((s, b) => s + (parseInt(b.units) || 0), 0);
   } else {
     totalUnits = parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
   }
-  
-  // نمایش خلاصه
+
   const elBuilding = document.getElementById('planSummaryBuilding');
   const elUnits = document.getElementById('planSummaryUnits');
   const elBlocks = document.getElementById('planSummaryBlocks');
-  
+
   if (elBuilding) elBuilding.textContent = bn;
   if (elUnits) elUnits.textContent = toPersianNum(totalUnits) + ' واحد';
-  if (elBlocks) elBlocks.textContent = selectedBuildingType === 'complex' 
-    ? toPersianNum(blocksCount) + ' بلوک' 
+  if (elBlocks) elBlocks.textContent = selectedBuildingType === 'complex'
+    ? toPersianNum(blocksCount) + ' بلوک'
     : 'تک‌بلوک';
-  
-  // محاسبه قیمت (فقط برای نمایش توی کارت حرفه‌ای)
+
   const result = calculatePrice(totalUnits);
-  
+
   const elProPrice = document.getElementById('planProPrice');
   if (elProPrice) {
-    // اگه ساختمان ≤ ۱۰ واحد، قیمت پایه ۱۰ واحد رو نشون بده
     const displayPrice = result.price > 0 ? result.price : (10 * 100000);
     elProPrice.textContent = (displayPrice / 1000000).toFixed(1).replace('.0', '');
   }
-  
-  // ✅ حذف بخش قیمت پیشنهادی قدیمی
-  // دیگه کادر آبی بالای پلن‌ها نمایش داده نمی‌شه
-  
-  // ذخیره‌ی موقت
+
   window._calculatedPrice = result;
 }
 
@@ -787,7 +793,7 @@ function renderBlockInputs() {
       <span class="block-index">${toPersianNum(i + 1)}.</span>
       <input type="text" class="form-input block-name-input"
              data-index="${i}" placeholder="اسم بلوک (A, B, مینا, سینا)" value="${b.name}" />
-         <input type="number" class="form-input units-input"
+      <input type="number" class="form-input units-input"
              data-index="${i}" placeholder="واحد" min="1" value="${b.units}" dir="ltr" />
     </div>
   `).join('');
@@ -803,8 +809,8 @@ function renderBlockInputs() {
     });
   });
 }
+
 function wizardValidateStep(step) {
-  // پاک کردن خطاهای قبلی
   document.querySelectorAll('.form-input').forEach(el => {
     el.classList.remove('input-error', 'input-success');
   });
@@ -818,80 +824,30 @@ function wizardValidateStep(step) {
     const pass = document.getElementById('managerPassword')?.value || '';
     const passConfirm = document.getElementById('managerPasswordConfirm')?.value || '';
 
-    // نام
-    if (!n) {
-      showFieldError('managerName', 'لطفاً نام و نام خانوادگی را وارد کنید.');
-      return false;
-    }
+    if (!n) { showFieldError('managerName', 'لطفاً نام و نام خانوادگی را وارد کنید.'); return false; }
+    if (n.length < 3) { showFieldError('managerName', 'نام باید حداقل ۳ کاراکتر باشد.'); return false; }
+    if (!p) { showFieldError('managerPhone', 'لطفاً شماره تماس را وارد کنید.'); return false; }
+    if (!isValidIranMobile(p)) { showFieldError('managerPhone', 'شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.'); return false; }
+    if (!pass) { showFieldError('managerPassword', 'لطفاً رمز عبور را وارد کنید.'); return false; }
+    if (pass.length < 6) { showFieldError('managerPassword', 'رمز عبور باید حداقل ۶ کاراکتر باشد.'); return false; }
+    if (!passConfirm) { showFieldError('managerPasswordConfirm', 'لطفاً تکرار رمز عبور را وارد کنید.'); return false; }
+    if (pass !== passConfirm) { showFieldError('managerPasswordConfirm', 'رمز عبور و تکرار آن یکسان نیستند.'); return false; }
 
-    if (n.length < 3) {
-      showFieldError('managerName', 'نام باید حداقل ۳ کاراکتر باشد.');
-      return false;
-    }
-
-    // شماره موبایل
-    if (!p) {
-      showFieldError('managerPhone', 'لطفاً شماره تماس را وارد کنید.');
-      return false;
-    }
-
-    if (!isValidIranMobile(p)) {
-      showFieldError('managerPhone', 'شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
-      return false;
-    }
-
-    // رمز عبور
-    if (!pass) {
-      showFieldError('managerPassword', 'لطفاً رمز عبور را وارد کنید.');
-      return false;
-    }
-
-    if (pass.length < 6) {
-      showFieldError('managerPassword', 'رمز عبور باید حداقل ۶ کاراکتر باشد.');
-      return false;
-    }
-
-    // تکرار رمز
-    if (!passConfirm) {
-      showFieldError('managerPasswordConfirm', 'لطفاً تکرار رمز عبور را وارد کنید.');
-      return false;
-    }
-
-    if (pass !== passConfirm) {
-      showFieldError('managerPasswordConfirm', 'رمز عبور و تکرار آن یکسان نیستند.');
-      return false;
-    }
-
-       // ✅ ذخیره موقت نام، موبایل و رمز برای پایان ثبت‌نام
-    wizardAuthData = {
-      name: n,
-      phone: p,
-      password: pass
-    };
-
+    wizardAuthData = { name: n, phone: p, password: pass };
     return true;
   }
 
   if (step === 2) {
     const bn = document.getElementById('buildingNameInput')?.value.trim();
-    if (!bn) {
-      toastWarning('نام ساختمان را وارد کنید.');
-      return false;
-    }
-    if (!selectedBuildingType) {
-      toastWarning('نوع را انتخاب کنید.');
-      return false;
-    }
+    if (!bn) { toastWarning('نام ساختمان را وارد کنید.'); return false; }
+    if (!selectedBuildingType) { toastWarning('نوع را انتخاب کنید.'); return false; }
     return true;
   }
 
   if (step === 3) {
     if (selectedBuildingType === 'complex') {
       const b = parseInt(document.getElementById('blocksCount')?.value);
-      if (!b || b < 1) {
-        toastWarning('تعداد بلوک‌ها را وارد کنید.');
-        return false;
-      }
+      if (!b || b < 1) { toastWarning('تعداد بلوک‌ها را وارد کنید.'); return false; }
       for (let i = 0; i < blockNames.length; i++) {
         if (!blockNames[i].name || !blockNames[i].name.trim()) {
           toastWarning(`اسم بلوک ${toPersianNum(i + 1)} را وارد کنید.`);
@@ -900,10 +856,7 @@ function wizardValidateStep(step) {
       }
     } else {
       const u = parseInt(document.getElementById('singleUnitsCount')?.value);
-      if (!u || u < 1) {
-        toastWarning('تعداد واحدها را وارد کنید.');
-        return false;
-      }
+      if (!u || u < 1) { toastWarning('تعداد واحدها را وارد کنید.'); return false; }
     }
     return true;
   }
@@ -911,14 +864,10 @@ function wizardValidateStep(step) {
   return true;
 }
 
-/* ✅ نمایش خطا روی فیلد */
 function showFieldError(inputId, message) {
   const input = document.getElementById(inputId);
   if (!input) return;
-
   input.classList.add('input-error');
-
-  // پیدا کردن error-message بعدی
   let errEl = input.parentElement.querySelector('.error-message');
   if (errEl) {
     errEl.textContent = message;
@@ -926,9 +875,9 @@ function showFieldError(inputId, message) {
   } else {
     toastWarning(message);
   }
-
   input.focus();
 }
+
 function wizardNext() {
   if (!wizardValidateStep(wizardStep)) return;
   if (wizardStep < 4) {
@@ -940,49 +889,44 @@ function wizardNext() {
 function wizardPrev() {
   if (wizardStep > 1) { wizardStep--; updateWizardUI(); }
 }
+
 /* ============================================================
    💎 انتخاب پلن
    ============================================================ */
 function selectPlan(planType) {
   selectedPlanType = planType;
-  
-  // هایلایت کارت انتخاب‌شده
+
   document.querySelectorAll('.plan-card').forEach(card => {
     card.classList.toggle('selected', card.dataset.plan === planType);
   });
-  
+
   if (planType === 'free') {
     confirmFreePlan();
   } else if (planType === 'pro') {
     confirmProPlan();
   }
 }
+
 function confirmFreePlan() {
   const totalUnits = getTotalUnitsFromWizard();
-  
-  // ⚠️ چک: اگه کاربر پلن رایگان رو با بیش از ۱۰ واحد انتخاب کرد
+
   if (totalUnits > 10) {
     const confirmMsg = `⚠️ پلن رایگان فقط برای ساختمان‌های تا ۱۰ واحد است.\n\n` +
                        `ساختمان شما ${toPersianNum(totalUnits)} واحد دارد.\n\n` +
                        `آیا با این حال می‌خواهید پلن رایگان را انتخاب کنید؟\n` +
                        `(فقط ۱۰ واحد اول ثبت می‌شوند)`;
-    
-    if (!confirm(confirmMsg)) {
-      return;
-    }
+
+    if (!confirm(confirmMsg)) return;
   }
-  
-  // فعال‌سازی پلن رایگان
+
   activatePlan('free', totalUnits, {
     amount: 0,
     status: 'free',
     paidAt: new Date().toISOString(),
   });
-  
-  // ذخیره اطلاعات ساختمان
+
   saveWizardData();
-  
-  // نمایش صفحه موفقیت
+
   showSuccessPage({
     planName: 'رایگان',
     planIcon: '🆓',
@@ -994,17 +938,15 @@ function confirmFreePlan() {
 
 function showMockPaymentPage(paymentInfo) {
   const isUpgrade = paymentInfo.isUpgrade === true;
-  
-  // اگه ارتقا از پنل هست، یه مودال جدید بساز
+
   if (isUpgrade) {
     showMockPaymentModal(paymentInfo);
     return;
   }
-  
-  // حالت عادی (ثبت‌نام)
+
   const modal = document.getElementById('welcomeModal');
   const container = modal.querySelector('.modal-welcome');
-  
+
   container.innerHTML = `
     <div class="mock-payment-box">
       <div class="mock-payment-header">
@@ -1012,7 +954,7 @@ function showMockPaymentPage(paymentInfo) {
         <h2>درگاه پرداخت آزمایشی</h2>
         <p>این یک درگاه آزمایشی است. درگاه واقعی زرین‌پال به‌زودی فعال می‌شود.</p>
       </div>
-      
+
       <div class="mock-payment-info">
         <div class="success-info-row">
           <span>مبلغ قابل پرداخت:</span>
@@ -1027,35 +969,31 @@ function showMockPaymentPage(paymentInfo) {
           <strong>${toPersianNum(paymentInfo.totalUnits)} واحد</strong>
         </div>
       </div>
-      
+
       <div class="mock-payment-notice">
         ⚠️ <strong>توجه:</strong> این درگاه فقط برای تست است. با کلیک روی «پرداخت»، مبلغ کسر نمی‌شود.
       </div>
-      
+
       <div class="wizard-actions" style="margin-top:20px;">
         <button class="btn btn-cancel" id="mockCancelBtn">❌ انصراف</button>
         <button class="btn btn-primary" id="mockPayBtn" style="flex:1;">✅ پرداخت آزمایشی</button>
       </div>
     </div>
   `;
-  
+
   document.getElementById('mockCancelBtn')?.addEventListener('click', () => {
     wizardStep = 4;
     openWelcomeModal();
   });
-  
+
   document.getElementById('mockPayBtn')?.addEventListener('click', () => {
     processMockPaymentSuccess(paymentInfo);
   });
 }
 
-
-
 /* ============================================================
    🔒 محدودیت پلن رایگان
    ============================================================ */
-
-// لیست صفحات قفل‌شده برای کاربر رایگان
 const LOCKED_PAGES_FOR_FREE = [
   'charges-payments',
   'side-incomes',
@@ -1067,139 +1005,116 @@ const LOCKED_PAGES_FOR_FREE = [
   'profit',
 ];
 
-// چک کن کاربر پلن حرفه‌ای داره یا نه
 function isProPlan() {
   const plan = loadPlan();
   if (!plan) return false;
   if (plan.type !== 'pro') return false;
-  
-  // چک تاریخ انقضا
   if (plan.expiresAt && new Date(plan.expiresAt) < new Date()) {
     return false;
   }
-  
   return true;
 }
 
-// چک کن یه صفحه قفله یا نه
 function isPageLocked(pageKey) {
   if (isProPlan()) return false;
   return LOCKED_PAGES_FOR_FREE.includes(pageKey);
 }
 
-/* ✅ به‌روزرسانی ظاهر سایدبار بر اساس پلن */
 function updateSidebarLockStates() {
   const isPro = isProPlan();
-  
-  // آپدیت آیتم‌های منو
+
   document.querySelectorAll('#menu li[data-page]').forEach(li => {
     const page = li.dataset.page;
     const isLocked = !isPro && LOCKED_PAGES_FOR_FREE.includes(page);
-    
     li.classList.toggle('locked', isLocked);
   });
-  
-  // آپدیت زیرمنو (شارژها و درآمد جانبی)
+
   document.querySelectorAll('#menu .submenu li').forEach(li => {
     const page = li.dataset.page;
     const isLocked = !isPro && LOCKED_PAGES_FOR_FREE.includes(page);
-    
     li.classList.toggle('locked', isLocked);
   });
-  
-  // آپدیت باکس ارتقا
+
   const upgradeBox = document.getElementById('upgradeBox');
   if (upgradeBox) {
     upgradeBox.classList.toggle('hidden', isPro);
   }
 }
 
-/* ✅ مودال ارتقا (بهبود یافته) */
 function showUpgradeModal(pageKey = null) {
   const plan = loadPlan();
   const totalUnits = plan?.totalUnits || 0;
-  
-  // محاسبه قیمت بر اساس تعداد واحد
+
   let price = 0;
   let priceBreakdown = '';
-  
+
   if (totalUnits > 0) {
     const result = calculatePrice(totalUnits);
     price = result.price;
     priceBreakdown = result.breakdown;
-    
-    // اگه ۱۰ واحد یا کمتر بود، قیمت پایه
+
     if (price === 0) {
       price = 10 * 100000;
       priceBreakdown = `قیمت پایه (${toPersianNum(10)} واحد × ۱۰۰,۰۰۰ تومان)`;
     }
   }
-  
-  // ساخت مودال
+
   const modal = document.getElementById('upgradeModal');
   if (modal) {
-    // پر کردن اطلاعات
     const elUnits = document.getElementById('upgradeModalUnits');
     const elPrice = document.getElementById('upgradeModalPrice');
     const elBreakdown = document.getElementById('upgradeModalBreakdown');
-    
+
     if (elUnits) elUnits.textContent = toPersianNum(totalUnits) + ' واحد';
     if (elPrice) elPrice.textContent = formatPrice(price);
     if (elBreakdown) elBreakdown.textContent = priceBreakdown;
-    
+
     modal.classList.add('open');
   } else {
-    // اگه مودال نبود، ساده بپرس
     const msg = '🔒 این بخش برای پلن حرفه‌ای است.\n\n' +
                 'برای دسترسی به همه امکانات، پلن خود را ارتقا دهید.\n\n' +
                 (price > 0 ? `💰 قیمت: ${formatPrice(price)}\n\n` : '') +
                 'آیا می‌خواهید الان ارتقا دهید؟';
-    
+
     if (confirm(msg)) {
       handleUpgrade();
     }
   }
 }
 
-/* ✅ دکمه ارتقا */
 function handleUpgrade() {
   const plan = loadPlan();
   const totalUnits = plan?.totalUnits || 0;
-  
+
   let price = 0;
-  
+
   if (totalUnits > 0) {
     const result = calculatePrice(totalUnits);
     price = result.price;
-    
+
     if (price === 0) {
       price = 10 * 100000;
     }
   }
-  
-  // ساخت درخواست پرداخت
+
   const paymentInfo = {
     planType: 'pro',
     totalUnits: totalUnits,
     amount: price,
     orderId: 'UPG-' + Date.now(),
-    isUpgrade: true, // این ارتقا از پنل هست
+    isUpgrade: true,
   };
-  
-  // بستن مودال اگه بازه
+
   closeUpgradeModal();
-  
-  // رفتن به صفحه پرداخت
   showMockPaymentPage(paymentInfo);
 }
 
-/* ✅ مودال پرداخت آزمایشی (برای حالت ارتقا) */
 function showMockPaymentModal(paymentInfo) {
   const modal = document.getElementById('upgradeModal');
   const container = modal.querySelector('.modal');
-  
+
   const originalHTML = container.innerHTML;
-  
+
   container.innerHTML = `
     <div class="unit-modal-header">
       <div class="unit-modal-icon">🏦</div>
@@ -1208,7 +1123,7 @@ function showMockPaymentModal(paymentInfo) {
         <p>درگاه واقعی زرین‌پال به‌زودی فعال می‌شود</p>
       </div>
     </div>
-    
+
     <div class="mock-payment-info">
       <div class="success-info-row">
         <span>مبلغ قابل پرداخت:</span>
@@ -1223,23 +1138,22 @@ function showMockPaymentModal(paymentInfo) {
         <strong>${toPersianNum(paymentInfo.totalUnits)} واحد</strong>
       </div>
     </div>
-    
+
     <div class="mock-payment-notice">
       ⚠️ <strong>توجه:</strong> این درگاه فقط برای تست است.
     </div>
-    
+
     <div class="unit-modal-actions" style="margin-top:20px;">
       <button class="btn btn-cancel" id="mockUpgradeCancelBtn">❌ انصراف</button>
       <button class="btn btn-primary" id="mockUpgradePayBtn" style="flex:1;">✅ پرداخت آزمایشی</button>
     </div>
   `;
-  
+
   document.getElementById('mockUpgradeCancelBtn')?.addEventListener('click', () => {
-    // بازگشت به مودال ارتقا
     container.innerHTML = originalHTML;
     bindUpgradeModal();
   });
-  
+
   document.getElementById('mockUpgradePayBtn')?.addEventListener('click', () => {
     processMockPaymentSuccess(paymentInfo);
     closeUpgradeModal();
@@ -1249,18 +1163,12 @@ function showMockPaymentModal(paymentInfo) {
 function confirmProPlan() {
   const totalUnits = getTotalUnitsFromWizard();
   const result = calculatePrice(totalUnits);
-  
-  // ⚠️ نکته: حتی اگه ساختمان ≤ ۱۰ واحد باشه،
-  // کاربر می‌تونه پلن حرفه‌ای رو انتخاب کنه
-  // فقط اگه قیمت صفر شد، یه قیمت پایه در نظر بگیر
-  
+
   let finalPrice = result.price;
-  
+
   if (finalPrice === 0) {
-    // کاربر با ۱۰ واحد داره پلن حرفه‌ای می‌خره
-    // یه قیمت پایه براش حساب کن (۱۰ واحد × ۱۰۰K = ۱,۰۰۰,۰۰۰)
     finalPrice = 10 * 100000;
-    
+
     if (!confirm(
       `💎 پلن حرفه‌ای\n\n` +
       `ساختمان شما ${toPersianNum(totalUnits)} واحد دارد.\n` +
@@ -1271,19 +1179,17 @@ function confirmProPlan() {
       return;
     }
   }
-  
-  // ذخیره اطلاعات توی یه متغیر موقت
+
   window._pendingPayment = {
     planType: 'pro',
     totalUnits: totalUnits,
     amount: finalPrice,
     orderId: 'ORD-' + Date.now(),
   };
-  
-  // رفتن به صفحه پرداخت
+
   showMockPaymentPage(window._pendingPayment);
 }
-/* ✅ گرفتن تعداد واحد از ویزارد */
+
 function getTotalUnitsFromWizard() {
   if (selectedBuildingType === 'complex') {
     return blockNames.reduce((s, b) => s + (parseInt(b.units) || 0), 0);
@@ -1291,7 +1197,6 @@ function getTotalUnitsFromWizard() {
   return parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
 }
 
-/* ✅ ذخیره اطلاعات ویزارد توی localStorage */
 function saveWizardData() {
   const mn = wizardAuthData.name || document.getElementById('managerName')?.value.trim() || '';
   const mp = wizardAuthData.phone || document.getElementById('managerPhone')?.value.trim() || '';
@@ -1342,7 +1247,6 @@ function saveWizardData() {
   buildDemoUnits(building);
 }
 
-/* ✅ بایند دکمه‌های انتخاب پلن */
 function bindPlanSelection() {
   document.querySelectorAll('[data-plan-select]').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -1351,15 +1255,13 @@ function bindPlanSelection() {
       selectPlan(planType);
     });
   });
-  
-  // کلیک روی خود کارت هم پلن رو انتخاب کنه
+
   document.querySelectorAll('.plan-card').forEach(card => {
     card.addEventListener('click', () => {
       selectPlan(card.dataset.plan);
     });
   });
-  
-  // دکمه قبلی مرحله ۴
+
   document.getElementById('wizardPrevBtn4')?.addEventListener('click', () => {
     wizardStep = 3;
     updateWizardUI();
@@ -1372,14 +1274,13 @@ function bindPlanSelection() {
 function showSuccessPage(info) {
   const modal = document.getElementById('welcomeModal');
   const container = modal.querySelector('.modal-welcome');
-  
-  // پاک کردن محتوای قبلی (به جز دکمه‌ها)
+
   container.innerHTML = `
     <div class="success-box">
       <div class="success-icon">🎉</div>
       <h2>تبریک! ساختمان شما با موفقیت ثبت شد</h2>
       <p>اکنون می‌توانید وارد پنل مدیریت شوید.</p>
-      
+
       <div class="success-info">
         <div class="success-info-row">
           <span>🏢 ساختمان:</span>
@@ -1398,22 +1299,17 @@ function showSuccessPage(info) {
           <strong style="direction:ltr; text-align:left; font-family:monospace; font-size:11.5px;">${info.refId}</strong>
         </div>
       </div>
-      
+
       <button class="btn btn-primary btn-block" id="btnEnterPanel" style="margin-top:20px;">
         🚀 ورود به پنل مدیریت
       </button>
     </div>
   `;
-  
-  // بایند دکمه ورود
-  document.getElementById('btnEnterPanel')?.addEventListener('click', () => {
-    // پاک کردن URL parameters
-    window.history.replaceState({}, document.title, window.location.pathname);
 
-    // بستن مودال
+  document.getElementById('btnEnterPanel')?.addEventListener('click', () => {
+    window.history.replaceState({}, document.title, window.location.pathname);
     closeWelcomeModal();
 
-    // رندر پنل بدون رفرش
     renderBuildingCard();
     const d = loadData();
     if (d?.building) {
@@ -1423,7 +1319,6 @@ function showSuccessPage(info) {
     renderDashboard();
     updateSidebarLockStates();
 
-    // رفرش ملایم برای پاک کردن پارامترها
     setTimeout(() => {
       window.location.href = window.location.pathname;
     }, 100);
@@ -1436,12 +1331,14 @@ function selectBuildingType(type) {
     el.classList.toggle('selected', el.dataset.type === type);
   });
 }
+
 function saveWelcomeChoice() {
   saveWizardData();
   closeWelcomeModal();
   renderDashboard();
   toastSuccess('ثبت شد. کد: ' + (loadData()?.building?.code || '—'));
 }
+
 function bindWelcomeModal() {
   document.querySelectorAll('.type-option').forEach(el => {
     el.addEventListener('click', () => selectBuildingType(el.dataset.type));
@@ -1450,7 +1347,6 @@ function bindWelcomeModal() {
   document.getElementById('wizardPrevBtn')?.addEventListener('click', wizardPrev);
   document.getElementById('blocksCount')?.addEventListener('input', buildBlockInputs);
 
-  // ✅ دکمه نمایش/مخفی رمز در ویزارد ثبت‌نام
   document.querySelectorAll('[data-toggle-pass]').forEach(btn => {
     btn.addEventListener('click', () => {
       const input = document.getElementById(btn.dataset.togglePass);
@@ -1465,7 +1361,6 @@ function bindWelcomeModal() {
     });
   });
 
-  // ✅ بایند انتخاب پلن
   bindPlanSelection();
 }
 
@@ -1579,8 +1474,7 @@ function buildUnitsBlockFilter() {
 }
 
 function renderUnitsStats() {
-  // اگر فیلتر بلوک فعال است، فقط همان بلوک را حساب کن
-  const allUnits = getUnitsPageFiltered(); // یا UNITS اگر همیشه کل را می‌خواهید
+  const allUnits = getUnitsPageFiltered();
 
   const total = allUnits.length;
   const empty = allUnits.filter(u => !u.owner?.name).length;
@@ -1616,7 +1510,7 @@ function renderUnitsPage() {
   if (units.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="text-align:center;color:#94a3b8;padding:40px;">
+        <td colspan="11" style="text-align:center;color:#94a3b8;padding:40px;">
           واحدی یافت نشد.
         </td>
       </tr>`;
@@ -1633,6 +1527,17 @@ function renderUnitsPage() {
       : '<span style="color:#94a3b8;">—</span>';
 
     const ownerPhone = u.owner?.phone || '—';
+    const tenantPhone = u.tenant?.phone || '—';
+    const area = u.area ? formatNumber(u.area) + ' متر' : '—';
+    const peopleCount = u.peopleCount ? formatNumber(u.peopleCount) + ' نفر' : '—';
+    const parkingCount = u.parkingCount ? formatNumber(u.parkingCount) : '—';
+
+    let statusBadge = '';
+    if (isUnitEmpty(u)) {
+      statusBadge = '<span class="badge" style="background:#fef3c7; color:#92400e;">🚪 خالی</span>';
+    } else {
+      statusBadge = '<span class="badge badge-paid">🏠 پر</span>';
+    }
 
     return `
       <tr data-unit-id="${u.id}">
@@ -1641,10 +1546,12 @@ function renderUnitsPage() {
         <td>${ownerName}</td>
         <td>${tenantName}</td>
         <td>${ownerPhone}</td>
+        <td>${tenantPhone}</td>
+        <td>${area}</td>
+        <td>${peopleCount}</td>
+        <td>${parkingCount}</td>
         <td>${u.debt > 0 ? formatToman(u.debt) : '—'}</td>
-        <td>${u.debt > 0
-              ? '<span class="badge badge-debt">بدهکار</span>'
-              : '<span class="badge badge-paid">تسویه</span>'}</td>
+        <td>${statusBadge}</td>
         <td>
           <div class="row-actions">
             <button class="row-action-btn" data-action="view" data-id="${u.id}" title="جزئیات">✏️</button>
@@ -1805,7 +1712,7 @@ function openUnitModal(unitId = null) {
     document.getElementById('ownerPhone').value = unit.owner?.phone || '';
     document.getElementById('tenantName').value = unit.tenant?.name || '';
     document.getElementById('tenantPhone').value = unit.tenant?.phone || '';
-       document.getElementById('unitCharge').value = unit.chargeAmount || 500000;
+    document.getElementById('unitCharge').value = unit.chargeAmount || 500000;
     document.getElementById('unitDebt').value = unit.debt || 0;
     document.getElementById('unitArea').value = unit.area || 100;
     document.getElementById('unitPeopleCount').value = unit.peopleCount || 0;
@@ -1850,6 +1757,7 @@ function saveUnit() {
   const peopleCount = parseInt(document.getElementById('unitPeopleCount').value) || 0;
   const parkingCount = parseInt(document.getElementById('unitParkingCount').value) || 0;
   const status = document.getElementById('unitStatus').value || 'auto';
+
   if (!area || area < 1) {
     toastWarning('لطفاً متراژ واحد را وارد کنید.');
     return;
@@ -1880,6 +1788,7 @@ function saveUnit() {
   }
 
   const code = `${block}-${toPersianNum(number)}`;
+  const isEdit = !!currentEditUnitId;
 
   if (currentEditUnitId) {
     const unit = UNITS.find(u => u.id === currentEditUnitId);
@@ -1895,7 +1804,7 @@ function saveUnit() {
         name: tenantName || null, phone: tenantPhone || null,
         registered: !!tenantName, approved: !!tenantName,
       };
-           unit.chargeAmount = charge;
+      unit.chargeAmount = charge;
       unit.debt = debt;
       unit.area = area;
       unit.peopleCount = peopleCount;
@@ -1914,7 +1823,7 @@ function saveUnit() {
         name: tenantName || null, phone: tenantPhone || null,
         registered: !!tenantName, approved: !!tenantName,
       },
-        chargeAmount: charge, debt: debt,
+      chargeAmount: charge, debt: debt,
       area: area,
       peopleCount: peopleCount,
       parkingCount: parkingCount,
@@ -1928,11 +1837,11 @@ function saveUnit() {
   renderUnitsPage();
   renderDashboard();
 
-  if (currentEditUnitId) {
-  toastSuccess('واحد ویرایش شد.');
-} else {
-  toastSuccess('واحد جدید اضافه شد.');
-}
+  if (isEdit) {
+    toastSuccess('واحد ویرایش شد.');
+  } else {
+    toastSuccess('واحد جدید اضافه شد.');
+  }
 }
 
 /* ============ ۱۶) خروجی اکسل واحدها ============ */
@@ -1968,6 +1877,9 @@ function exportToExcel() {
             <th>موبایل مالک</th>
             <th>مستاجر</th>
             <th>موبایل مستاجر</th>
+            <th>متراژ</th>
+            <th>تعداد افراد</th>
+            <th>تعداد پارکینگ</th>
             <th>شارژ ماهانه</th>
             <th>بدهی</th>
             <th>وضعیت</th>
@@ -1984,6 +1896,9 @@ function exportToExcel() {
     const charge = Number(u.chargeAmount || 0).toLocaleString('en-US');
     const debt = Number(u.debt || 0).toLocaleString('en-US');
     const status = u.debt > 0 ? 'بدهکار' : 'تسویه';
+    const area = u.area || '—';
+    const peopleCount = u.peopleCount || 0;
+    const parkingCount = u.parkingCount || 0;
 
     html += `
       <tr>
@@ -1994,6 +1909,9 @@ function exportToExcel() {
         <td>${ownerPhone}</td>
         <td>${tenantName}</td>
         <td>${tenantPhone}</td>
+        <td>${area}</td>
+        <td>${peopleCount}</td>
+        <td>${parkingCount}</td>
         <td>${charge}</td>
         <td>${debt}</td>
         <td>${status}</td>
@@ -2041,6 +1959,9 @@ function printUnitsPdf() {
     const debt = Number(u.debt || 0);
     const debtStr = debt > 0 ? formatToman(debt) : '—';
     const status = debt > 0 ? 'بدهکار' : 'تسویه';
+    const area = u.area || '—';
+    const peopleCount = u.peopleCount || 0;
+    const parkingCount = u.parkingCount || 0;
 
     rows += `
       <tr>
@@ -2050,6 +1971,9 @@ function printUnitsPdf() {
         <td>${ownerName}</td>
         <td>${ownerPhone}</td>
         <td>${tenantName}</td>
+        <td>${area}</td>
+        <td>${peopleCount}</td>
+        <td>${parkingCount}</td>
         <td>${debtStr}</td>
         <td>${status}</td>
       </tr>
@@ -2103,7 +2027,8 @@ function printUnitsPdf() {
         <thead>
           <tr>
             <th>ردیف</th><th>بلوک</th><th>واحد</th><th>مالک</th>
-            <th>موبایل</th><th>مستاجر</th><th>بدهی</th><th>وضعیت</th>
+            <th>موبایل</th><th>مستاجر</th><th>متراژ</th>
+            <th>نفرات</th><th>پارکینگ</th><th>بدهی</th><th>وضعیت</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -2195,11 +2120,21 @@ function openUnitDetail(unitId) {
   const elNumber = document.getElementById('detailNumber');
   const elCharge = document.getElementById('detailCharge');
   const elDebt = document.getElementById('detailDebt');
+  const elArea = document.getElementById('detailArea');
+  const elPeople = document.getElementById('detailPeople');
+  const elParking = document.getElementById('detailParking');
+  const elStatus = document.getElementById('detailStatus');
 
   if (elBlock) elBlock.textContent = unit.block || '—';
   if (elNumber) elNumber.textContent = toPersianNum(unit.number) || '—';
   if (elCharge) elCharge.textContent = formatToman(unit.chargeAmount || 500000);
   if (elDebt) elDebt.textContent = unit.debt > 0 ? formatToman(unit.debt) : '—';
+  if (elArea) elArea.textContent = unit.area ? formatNumber(unit.area) + ' متر' : '—';
+  if (elPeople) elPeople.textContent = unit.peopleCount ? formatNumber(unit.peopleCount) + ' نفر' : '—';
+  if (elParking) elParking.textContent = unit.parkingCount ? formatNumber(unit.parkingCount) : '—';
+  if (elStatus) {
+    elStatus.textContent = isUnitEmpty(unit) ? '🚪 خالی' : '🏠 پر';
+  }
 
   const ownerStatus = document.getElementById('detailOwnerStatus');
   const ownerName = document.getElementById('detailOwnerName');
@@ -2292,16 +2227,14 @@ function getChargesForMonth(month, year) {
 }
 
 /* ============================================================
-   صفحه شارژ — اصلاح‌شده ✅
+   صفحه شارژ
    ============================================================ */
 let currentChargeMonth = getTodayPersianMonth();
-let currentChargeYear = String(getTodayPersianYear()); // عدد انگلیسی
+let currentChargeYear = String(getTodayPersianYear());
 
 function renderChargesPage() {
-  // ✅ اول دراپ‌داون‌ها رو پر کن
   fillYearMonthDropdowns('chargeYear', 'chargeMonth');
 
-  // ✅ حالا مقدار پیش‌فرض
   const monthSelect = document.getElementById('chargeMonth');
   const yearSelect = document.getElementById('chargeYear');
   if (monthSelect) monthSelect.value = currentChargeMonth;
@@ -2437,7 +2370,6 @@ function openIssueChargeModal() {
   if (issueMonth) issueMonth.value = currentChargeMonth;
   if (issueYear) issueYear.value = currentChargeYear;
 
-  // پر کردن بلوک‌ها
   const blockSelect = document.getElementById('issueBlockSelect');
   const data = loadData();
   if (blockSelect && data?.building) {
@@ -2452,7 +2384,6 @@ function openIssueChargeModal() {
     }
   }
 
-  // ریست کردن
   document.getElementById('chargeCalcType').value = 'combined';
   document.getElementById('issueUnitStatusFilter').value = 'all';
   document.getElementById('issueBaseCharge').value = 500000;
@@ -2479,16 +2410,35 @@ function openIssueChargeModal() {
 function toggleChargeSections() {
   const type = document.getElementById('chargeCalcType')?.value || 'combined';
 
-  document.getElementById('fixedSection').style.display = (type === 'fixed') ? 'block' : 'none';
-  document.getElementById('areaSection').style.display = (type === 'area') ? 'block' : 'none';
-  document.getElementById('peopleSection').style.display = (type === 'people') ? 'block' : 'none';
-  document.getElementById('combinedSection').style.display = (type === 'combined') ? 'block' : 'none';
-  document.getElementById('customSection').style.display = (type === 'custom') ? 'block' : 'none';
+  const sections = {
+    fixed: 'fixedSection',
+    area: 'areaSection',
+    people: 'peopleSection',
+    combined: 'combinedSection',
+    custom: 'customSection',
+    default: 'defaultSection',
+    'expenses': 'expensesSection',
+    'fixed-expenses': 'fixedExpensesSection',
+    'default-expenses': 'defaultExpensesSection',
+    'distributed': 'distributedSection',
+  };
+
+  Object.values(sections).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  const target = sections[type];
+  if (target) {
+    const el = document.getElementById(target);
+    if (el) el.style.display = 'block';
+  }
 }
 
 function closeIssueChargeModal() {
   document.getElementById('issueChargeModal').classList.remove('open');
 }
+
 function calculateUnitCharge(unit, chargeConfig) {
   const type = chargeConfig.type;
 
@@ -2508,6 +2458,10 @@ function calculateUnitCharge(unit, chargeConfig) {
     return (unit.peopleCount || 0) * (chargeConfig.pricePerPerson || 0);
   }
 
+  if (type === 'default') {
+    return unit.chargeAmount || 0;
+  }
+
   if (type === 'combined') {
     let total = 0;
 
@@ -2520,7 +2474,6 @@ function calculateUnitCharge(unit, chargeConfig) {
     }
 
     if (chargeConfig.includeWaterCharge) {
-      // اگه واحد خالیه، آب نمی‌گیریم
       const peopleCount = isUnitEmpty(unit) ? 0 : (unit.peopleCount || 0);
       total += peopleCount * (chargeConfig.pricePerPersonCombined || 0);
     }
@@ -2536,13 +2489,9 @@ function calculateUnitCharge(unit, chargeConfig) {
 }
 
 function isUnitEmpty(unit) {
-  // اگه وضعیت دستی "خالی" باشه
   if (unit.status === 'empty') return true;
-
-  // اگه وضعیت دستی "پر" باشه
   if (unit.status === 'occupied') return false;
 
-  // اگه "خودکار" باشه: اگه مالک یا مستاجر داره → پر، وگرنه → خالی
   const hasOwner = unit.owner?.name && unit.owner.name.trim() !== '';
   const hasTenant = unit.tenant?.name && unit.tenant.name.trim() !== '';
   const hasPeople = (unit.peopleCount || 0) > 0;
@@ -2602,21 +2551,68 @@ function updateIssuePreview() {
   if (elTotal) elTotal.textContent = formatToman(total);
 }
 
+/* ============================================================
+   ✅ صدور شارژ — تابع اصلی (اضافه‌شده)
+   ============================================================ */
+function issueChargeConfirm() {
+  const month = document.getElementById('issueMonth')?.value;
+  const year = document.getElementById('issueYear')?.value;
+  const blockFilter = document.getElementById('issueBlockSelect')?.value || 'all';
+  const statusFilter = document.getElementById('issueUnitStatusFilter')?.value || 'all';
+  const dueDate = document.getElementById('issueDueDate')?.value || '';
+  const description = document.getElementById('issueDescription')?.value || '';
+  const chargeConfig = getChargeConfigFromForm();
+
+  if (!month || !year) {
+    toastWarning('لطفاً ماه و سال را انتخاب کنید.');
+    return;
+  }
+
+  // چک: آیا برای این ماه قبلاً شارژ صادر شده؟
+  const existingCharges = getChargesForMonth(month, year);
+  if (existingCharges.length > 0) {
+    if (!confirm(`⚠️ برای ${month} ${toPersianNum(year)} قبلاً ${existingCharges.length} شارژ صادر شده.\n\nآیا شارژهای قبلی حذف و شارژ جدید صادر شود؟`)) {
+      return;
+    }
+  }
+
+  let units = UNITS;
+
+  if (blockFilter !== 'all') {
+    units = units.filter(u => String(u.block).trim() === String(blockFilter).trim());
+  }
+
+  if (statusFilter === 'occupied') {
+    units = units.filter(u => !isUnitEmpty(u));
+  } else if (statusFilter === 'empty') {
+    units = units.filter(u => isUnitEmpty(u));
+  }
+
+  if (units.length === 0) {
+    toastWarning('واحدی برای صدور شارژ پیدا نشد.');
+    return;
+  }
+
+  // حذف شارژهای قبلی این ماه
+  let charges = loadCharges();
+  if (existingCharges.length > 0) {
+    const existingIds = existingCharges.map(c => c.id);
+    charges = charges.filter(c => !existingIds.includes(c.id));
+  }
+
   let lastId = charges.length > 0 ? Math.max(...charges.map(c => c.id || 0)) : 0;
 
   const newCharges = units.map(u => {
-    const unitExtra = extra || 0;
-    const total = baseCharge + unitExtra;
-
+    const amount = calculateUnitCharge(u, chargeConfig);
     return {
       id: ++lastId,
       month: month,
-      year: year,
+      year: String(year),
       unitId: u.id,
       block: u.block,
-      amount: baseCharge,
-      extra: unitExtra,
-      total: total,
+      amount: amount,
+      extra: 0,
+      total: amount,
       paid: false,
       paidDate: null,
       dueDate: dueDate,
@@ -2633,7 +2629,7 @@ function updateIssuePreview() {
   closeIssueChargeModal();
 
   currentChargeMonth = month;
-  currentChargeYear = year;
+  currentChargeYear = String(year);
   renderChargesPage();
 
   const msg = blockFilter === 'all'
@@ -2662,13 +2658,11 @@ function bindIssueChargeModal() {
   document.getElementById('issueCancelBtn')?.addEventListener('click', closeIssueChargeModal);
   document.getElementById('issueConfirmBtn')?.addEventListener('click', issueChargeConfirm);
 
-  // تغییر نوع محاسبه
   document.getElementById('chargeCalcType')?.addEventListener('change', () => {
     toggleChargeSections();
     updateIssuePreview();
   });
 
-  // همه input‌ها و selectها → آپدیت پیش‌نمایش
   const inputs = [
     'issueMonth', 'issueYear', 'issueBlockSelect', 'issueUnitStatusFilter',
     'issueBaseCharge', 'issuePricePerMeter', 'issueBaseChargeForArea',
@@ -2951,53 +2945,22 @@ let sideIncomeMonthFilter = 'all';
 let sideIncomeYearFilter = String(getTodayPersianYear());
 let sideIncomeSessionFilter = 'all';
 let currentEditSideIncomeId = null;
-/* ============================================================
-   🕐 سانس‌های پیش‌فرض درآمد جانبی
-   ============================================================ */
+
 const SIDE_INCOME_SESSIONS = {
-  'اجاره سالن': [
-    'سانس صبح (۸-۱۲)',
-    'سانس عصر (۱۴-۱۸)',
-    'سانس شب (۱۹-۲۳)',
-  ],
-  'اجاره استخر': [
-    'سانس آقایان',
-    'سانس بانوان',
-    'سانس کودک',
-  ],
-  'اجاره باشگاه': [
-    'سانس صبح',
-    'سانس عصر',
-    'سانس شب',
-  ],
-  'اجاره سالن ورزش': [
-    'سانس صبح',
-    'سانس عصر',
-    'سانس شب',
-  ],
-  'اجاره مغازه': [
-    'ماهانه',
-    'سالانه',
-  ],
-  'اجاره پارکینگ': [
-    'ماهانه',
-    'سالانه',
-  ],
-  'اجاره آنتن': [
-    'ماهانه',
-    'سالانه',
-  ],
-  'سایر': [
-    'سانس صبح',
-    'سانس عصر',
-    'سانس شب',
-    'تمام روز',
-  ],
+  'اجاره سالن': ['سانس صبح (۸-۱۲)', 'سانس عصر (۱۴-۱۸)', 'سانس شب (۱۹-۲۳)'],
+  'اجاره استخر': ['سانس آقایان', 'سانس بانوان', 'سانس کودک'],
+  'اجاره باشگاه': ['سانس صبح', 'سانس عصر', 'سانس شب'],
+  'اجاره سالن ورزش': ['سانس صبح', 'سانس عصر', 'سانس شب'],
+  'اجاره مغازه': ['ماهانه', 'سالانه'],
+  'اجاره پارکینگ': ['ماهانه', 'سالانه'],
+  'اجاره آنتن': ['ماهانه', 'سالانه'],
+  'سایر': ['سانس صبح', 'سانس عصر', 'سانس شب', 'تمام روز'],
 };
 
 function getSessionsForCategory(category) {
   return SIDE_INCOME_SESSIONS[category] || SIDE_INCOME_SESSIONS['سایر'];
 }
+
 function getSideIncomesKey() {
   return 'ham_sakhteman_side_incomes';
 }
@@ -3075,7 +3038,7 @@ function renderSideIncomesPage() {
   if (incomes.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align:center;color:#94a3b8;padding:40px;">
+        <td colspan="10" style="text-align:center;color:#94a3b8;padding:40px;">
           هنوز درآمد جانبی ثبت نشده است.
           <br><br>
           <button class="btn btn-primary" onclick="document.getElementById('btnAddSideIncome').click()">
@@ -3132,6 +3095,7 @@ function renderSideIncomesPage() {
     `;
   }).join('');
 }
+
 function openSideIncomeModal(incomeId = null) {
   currentEditSideIncomeId = incomeId;
 
@@ -3139,10 +3103,8 @@ function openSideIncomeModal(incomeId = null) {
   const title = document.getElementById('sideIncomeModalTitle');
   const subtitle = document.getElementById('sideIncomeModalSubtitle');
 
-  // پر کردن دراپ‌داون ماه و سال
   fillYearMonthDropdowns('sideIncomeModalYear', 'sideIncomeModalMonth');
 
-  // پر کردن لیست بلوک
   const blockSelect = document.getElementById('sideIncomeBlockSelect');
   const blockSection = document.getElementById('sideIncomeBlockSection');
   const data = loadData();
@@ -3161,18 +3123,13 @@ function openSideIncomeModal(incomeId = null) {
   }
 
   if (blockSection) {
-    if (data?.building?.type === 'complex') {
-      blockSection.style.display = 'block';
-    } else {
-      blockSection.style.display = 'none';
-    }
+    blockSection.style.display = data?.building?.type === 'complex' ? 'block' : 'none';
   }
 
   const sessionSelect = document.getElementById('sideIncomeSessionSelect');
   const sessionCustom = document.getElementById('sideIncomeSessionCustom');
   const categorySelect = document.getElementById('sideIncomeCategory');
 
-  // تابع کمکی برای پر کردن لیست سانس‌ها
   function fillSessions(category, selectedValue = '') {
     const sessions = getSessionsForCategory(category);
     if (!sessionSelect) return;
@@ -3185,13 +3142,11 @@ function openSideIncomeModal(incomeId = null) {
       sessionSelect.appendChild(opt);
     });
 
-    // گزینه متن دلخواه
     const customOpt = document.createElement('option');
     customOpt.value = '__custom__';
     customOpt.textContent = '✏️ متن دلخواه';
     sessionSelect.appendChild(customOpt);
 
-    // انتخاب مقدار
     if (selectedValue) {
       if (sessions.includes(selectedValue)) {
         sessionSelect.value = selectedValue;
@@ -3231,7 +3186,6 @@ function openSideIncomeModal(incomeId = null) {
     document.getElementById('sideIncomeDescription').value = income.description || '';
     if (blockSelect) blockSelect.value = income.block || 'all';
 
-    // پر کردن سانس‌ها بر اساس دسته
     fillSessions(income.category, income.session || '');
   } else {
     if (title) title.textContent = 'ثبت درآمد جانبی';
@@ -3248,18 +3202,15 @@ function openSideIncomeModal(incomeId = null) {
     document.getElementById('sideIncomeDescription').value = '';
     if (blockSelect) blockSelect.value = 'all';
 
-    // پر کردن سانس‌ها برای دسته پیش‌فرض
     fillSessions('اجاره مغازه', '');
   }
 
-  // ✅ وقتی دسته عوض شد، سانس‌ها رو عوض کن
   if (categorySelect) {
     categorySelect.onchange = () => {
       fillSessions(categorySelect.value, '');
     };
   }
 
-  // ✅ وقتی سانس عوض شد، اگه «متن دلخواه» بود، input رو نشون بده
   if (sessionSelect) {
     sessionSelect.onchange = () => {
       if (sessionSelect.value === '__custom__') {
@@ -3283,6 +3234,7 @@ function closeSideIncomeModal() {
   document.getElementById('sideIncomeModal').classList.remove('open');
   currentEditSideIncomeId = null;
 }
+
 function saveSideIncome() {
   const title = document.getElementById('sideIncomeTitle').value.trim();
   const category = document.getElementById('sideIncomeCategory').value;
@@ -3295,7 +3247,6 @@ function saveSideIncome() {
   const description = document.getElementById('sideIncomeDescription').value.trim();
   const block = document.getElementById('sideIncomeBlockSelect')?.value || 'all';
 
-  // ✅ خواندن سانس
   let session = '';
   const sessionSelect = document.getElementById('sideIncomeSessionSelect');
   const sessionCustom = document.getElementById('sideIncomeSessionCustom');
@@ -3307,22 +3258,12 @@ function saveSideIncome() {
     }
   }
 
-  if (!title) {
-    toastWarning('لطفاً عنوان درآمد را وارد کنید.');
-    return;
-  }
-
-  if (!amount || amount < 1) {
-    toastWarning('لطفاً مبلغ درآمد را وارد کنید.');
-    return;
-  }
-
-  if (!month || !year) {
-    toastWarning('لطفاً ماه و سال را انتخاب کنید.');
-    return;
-  }
+  if (!title) { toastWarning('لطفاً عنوان درآمد را وارد کنید.'); return; }
+  if (!amount || amount < 1) { toastWarning('لطفاً مبلغ درآمد را وارد کنید.'); return; }
+  if (!month || !year) { toastWarning('لطفاً ماه و سال را انتخاب کنید.'); return; }
 
   let incomes = loadSideIncomes();
+  const isEdit = !!currentEditSideIncomeId;
 
   if (currentEditSideIncomeId) {
     const income = incomes.find(i => i.id === currentEditSideIncomeId);
@@ -3337,23 +3278,13 @@ function saveSideIncome() {
       income.method = method;
       income.description = description;
       income.block = block;
-      income.session = session;  // ✅
+      income.session = session;
     }
   } else {
     const newId = incomes.length > 0 ? Math.max(...incomes.map(i => i.id || 0)) + 1 : 1;
     incomes.push({
       id: newId,
-      title: title,
-      category: category,
-      amount: amount,
-      date: date,
-      month: month,
-      year: year,
-      payer: payer,
-      method: method,
-      description: description,
-      block: block,
-      session: session,  // ✅
+      title, category, amount, date, month, year, payer, method, description, block, session,
       createdAt: new Date().toISOString(),
     });
   }
@@ -3362,7 +3293,7 @@ function saveSideIncome() {
   closeSideIncomeModal();
   renderSideIncomesPage();
 
-  if (currentEditSideIncomeId) {
+  if (isEdit) {
     toastSuccess('درآمد ویرایش شد.');
   } else {
     toastSuccess('درآمد جدید ثبت شد.');
@@ -3379,6 +3310,7 @@ function deleteSideIncome(incomeId) {
   renderSideIncomesPage();
   toastSuccess('درآمد حذف شد.');
 }
+
 function exportSideIncomesToExcel() {
   const incomes = getFilteredSideIncomes();
 
@@ -3447,8 +3379,8 @@ function exportSideIncomesToExcel() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
 function bindSideIncomesPage() {
-  // فیلتر بلوک
   const blockFilter = document.getElementById('sideIncomeBlockFilter');
   const data = loadData();
 
@@ -3474,10 +3406,8 @@ function bindSideIncomesPage() {
     });
   }
 
-  // ✅ فیلتر سانس
   const sessionFilter = document.getElementById('sideIncomeSessionFilter');
   if (sessionFilter) {
-    // گرفتن همه سانس‌های استفاده‌شده
     const usedSessions = new Set();
     loadSideIncomes().forEach(i => {
       if (i.session) usedSessions.add(i.session);
@@ -3497,7 +3427,6 @@ function bindSideIncomesPage() {
     });
   }
 
-  // فیلتر ماه
   const monthFilter = document.getElementById('sideIncomeMonthFilter');
   if (monthFilter) {
     monthFilter.innerHTML = '<option value="all">📅 همه ماه‌ها</option>';
@@ -3514,7 +3443,6 @@ function bindSideIncomesPage() {
     });
   }
 
-  // فیلتر سال
   const yearFilter = document.getElementById('sideIncomeYearFilter');
   if (yearFilter) {
     yearFilter.innerHTML = '<option value="all">📆 همه سال‌ها</option>';
@@ -3534,22 +3462,18 @@ function bindSideIncomesPage() {
     });
   }
 
-  // دکمه افزودن
   const btnAdd = document.getElementById('btnAddSideIncome');
   if (btnAdd) btnAdd.onclick = () => openSideIncomeModal(null);
 
-  // خروجی اکسل
   const btnExport = document.getElementById('btnExportSideIncomes');
   if (btnExport) btnExport.onclick = exportSideIncomesToExcel;
 
-  // دکمه‌های مودال
   const btnCancel = document.getElementById('sideIncomeCancelBtn');
   if (btnCancel) btnCancel.onclick = closeSideIncomeModal;
 
   const btnSave = document.getElementById('sideIncomeSaveBtn');
   if (btnSave) btnSave.onclick = saveSideIncome;
 
-  // جدول
   const tbody = document.getElementById('sideIncomesTableBody');
   if (tbody) {
     tbody.addEventListener('click', (e) => {
@@ -3567,7 +3491,6 @@ function bindSideIncomesPage() {
     });
   }
 
-  // بستن مودال
   const modal = document.getElementById('sideIncomeModal');
   if (modal) {
     modal.addEventListener('click', (e) => {
@@ -3894,7 +3817,6 @@ function updateNewPayUnits() {
     cb.addEventListener('change', (e) => {
       const unitId = Number(e.target.dataset.unitId);
       const chargeIds = e.target.dataset.chargeIds.split(',').map(Number);
-      const total = Number(e.target.dataset.total);
 
       if (e.target.checked) {
         chargeIds.forEach(cid => {
@@ -4028,8 +3950,9 @@ function confirmNewPayment() {
 }
 
 function bindNewPaymentModal() {
+  // ✅ اصلاح: دکمه ثبت پرداخت جدید باید openNewPaymentModal رو صدا بزنه نه issueCharge
   const btnAdd = document.getElementById('btnAddPayment');
-  if (btnAdd) btnAdd.onclick = openIssueChargeModal;
+  if (btnAdd) btnAdd.onclick = openNewPaymentModal;
 
   const btnCancel = document.getElementById('newPayCancelBtn');
   if (btnCancel) btnCancel.onclick = closeNewPaymentModal;
@@ -4206,14 +4129,9 @@ function openExpenseModal(expenseId = null) {
   }
 
   if (blockSection) {
-    if (data?.building?.type === 'complex') {
-      blockSection.style.display = 'block';
-    } else {
-      blockSection.style.display = 'none';
-    }
+    blockSection.style.display = data?.building?.type === 'complex' ? 'block' : 'none';
   }
 
-  // پر کردن سال و ماه
   fillYearMonthDropdowns('expenseModalYear', 'expenseModalMonth');
 
   if (expenseId) {
@@ -4264,22 +4182,12 @@ function saveExpense() {
   const description = document.getElementById('expenseDescription').value.trim();
   const block = document.getElementById('expenseBlockSelect')?.value || 'all';
 
-  if (!title) {
-    toastWarning('لطفاً عنوان هزینه را وارد کنید.');
-    return;
-  }
-
-  if (!amount || amount < 1) {
-    toastWarning('لطفاً مبلغ هزینه را وارد کنید.');
-    return;
-  }
-
-  if (!month || !year) {
-    toastWarning('لطفاً ماه و سال را انتخاب کنید.');
-    return;
-  }
+  if (!title) { toastWarning('لطفاً عنوان هزینه را وارد کنید.'); return; }
+  if (!amount || amount < 1) { toastWarning('لطفاً مبلغ هزینه را وارد کنید.'); return; }
+  if (!month || !year) { toastWarning('لطفاً ماه و سال را انتخاب کنید.'); return; }
 
   let expenses = loadExpenses();
+  const isEdit = !!currentEditExpenseId;
 
   if (currentEditExpenseId) {
     const expense = expenses.find(e => e.id === currentEditExpenseId);
@@ -4296,15 +4204,7 @@ function saveExpense() {
   } else {
     const newId = expenses.length > 0 ? Math.max(...expenses.map(e => e.id || 0)) + 1 : 1;
     expenses.push({
-      id: newId,
-      title: title,
-      category: category,
-      amount: amount,
-      date: date,
-      month: month,
-      year: year,
-      block: block,
-      description: description,
+      id: newId, title, category, amount, date, month, year, block, description,
       createdAt: new Date().toISOString(),
     });
   }
@@ -4314,11 +4214,11 @@ function saveExpense() {
   renderExpensesPage();
   renderDashboard();
 
-  if (currentEditExpenseId) {
-  toastSuccess('هزینه ویرایش شد.');
-} else {
-  toastSuccess('هزینه جدید ثبت شد.');
-}
+  if (isEdit) {
+    toastSuccess('هزینه ویرایش شد.');
+  } else {
+    toastSuccess('هزینه جدید ثبت شد.');
+  }
 }
 
 function deleteExpense(expenseId) {
@@ -4692,9 +4592,7 @@ function renderNoticeUnitsList() {
       const ownerName = (u.owner?.name || '').toLowerCase();
       const unitLabel = `${u.block}-${u.number}`.toLowerCase();
 
-      return numberStr.includes(q) ||
-             ownerName.includes(q) ||
-             unitLabel.includes(q);
+      return numberStr.includes(q) || ownerName.includes(q) || unitLabel.includes(q);
     });
   }
 
@@ -4807,25 +4705,10 @@ function saveNotice() {
   const targetType = document.getElementById('noticeTargetType').value;
   const targetBlock = document.getElementById('noticeBlockSelect').value;
 
-  if (!title) {
-    toastWarning('لطفاً عنوان اطلاعیه را وارد کنید.');
-    return;
-  }
-
-  if (!body) {
-    toastWarning('لطفاً متن اطلاعیه را وارد کنید.');
-    return;
-  }
-
-  if (targetType === 'block' && !targetBlock) {
-    toastWarning('لطفاً بلوک را انتخاب کنید.');
-    return;
-  }
-
-  if (targetType === 'units' && noticeSelectedUnits.length === 0) {
-    toastWarning('لطفاً حداقل یک واحد را انتخاب کنید.');
-    return;
-  }
+  if (!title) { toastWarning('لطفاً عنوان اطلاعیه را وارد کنید.'); return; }
+  if (!body) { toastWarning('لطفاً متن اطلاعیه را وارد کنید.'); return; }
+  if (targetType === 'block' && !targetBlock) { toastWarning('لطفاً بلوک را انتخاب کنید.'); return; }
+  if (targetType === 'units' && noticeSelectedUnits.length === 0) { toastWarning('لطفاً حداقل یک واحد را انتخاب کنید.'); return; }
 
   let receivers = 0;
   if (targetType === 'all') {
@@ -5372,11 +5255,9 @@ function openConversation(unitId) {
   const modal = document.getElementById('conversationModal');
   if (modal) modal.classList.add('open');
 
-  // ✅ شروع چک خودکار پیام‌های جدید
   startManagerChatWatcher(unitId);
 }
 
-/* ✅ چک دوره‌ای پیام‌های جدید (توی پنل مدیر) */
 let managerChatInterval = null;
 
 function startManagerChatWatcher(unitId) {
@@ -5674,11 +5555,11 @@ function renderVotingPage() {
         <td><span class="badge badge-paid">${formatNumber(candidatesCount)} نفر</span></td>
         <td><strong>${formatNumber(totalVotes)}</strong></td>
         <td>${statusBadge}</td>
-          <td>
+        <td>
           <div class="row-actions">
-          <button class="row-action-btn" data-voting-action="results" data-id="${v.id}" title="نمودار نتایج">📊</button>
-<button class="row-action-btn" data-voting-action="edit" data-id="${v.id}" title="ویرایش">✏️</button>
-<button class="row-action-btn danger" data-voting-action="delete" data-id="${v.id}" title="حذف">🗑️</button>
+            <button class="row-action-btn" data-voting-action="results" data-id="${v.id}" title="نمودار نتایج">📊</button>
+            <button class="row-action-btn" data-voting-action="edit" data-id="${v.id}" title="ویرایش">✏️</button>
+            <button class="row-action-btn danger" data-voting-action="delete" data-id="${v.id}" title="حذف">🗑️</button>
           </div>
         </td>
       </tr>
@@ -5701,6 +5582,7 @@ function openVotingModal() {
 
   modal.classList.add('open');
 }
+
 function editVoting(votingId) {
   const votings = loadVotings();
   const voting = votings.find(v => v.id === votingId);
@@ -5731,6 +5613,7 @@ function editVoting(votingId) {
 function closeVotingModal() {
   document.getElementById('votingModal').classList.remove('open');
   votingCandidates = [];
+  editingVotingId = null;
 }
 
 function addVotingCandidate() {
@@ -5738,12 +5621,7 @@ function addVotingCandidate() {
     ? Math.max(...votingCandidates.map(c => c.id)) + 1
     : 1;
 
-  votingCandidates.push({
-    id: newId,
-    name: '',
-    phone: '',
-  });
-
+  votingCandidates.push({ id: newId, name: '', phone: '' });
   renderVotingCandidates();
 }
 
@@ -5805,6 +5683,7 @@ function renderVotingCandidates() {
     });
   });
 }
+
 function saveVoting() {
   const title = document.getElementById('votingTitle').value.trim();
   const description = document.getElementById('votingDescription').value.trim();
@@ -5813,27 +5692,12 @@ function saveVoting() {
   const endDate = document.getElementById('votingEndDate').value.trim();
   const endTime = document.getElementById('votingEndTime').value.trim();
 
-  if (!title) {
-    toastWarning('لطفاً عنوان رأی‌گیری را وارد کنید.');
-    return;
-  }
+  if (!title) { toastWarning('لطفاً عنوان رأی‌گیری را وارد کنید.'); return; }
+  if (!startDate || !startTime) { toastWarning('لطفاً تاریخ و ساعت شروع را وارد کنید.'); return; }
+  if (!endDate || !endTime) { toastWarning('لطفاً تاریخ و ساعت پایان را وارد کنید.'); return; }
+  if (votingCandidates.length < 2) { toastWarning('حداقل ۲ کاندید لازم است.'); return; }
 
-  if (!startDate || !startTime) {
-    toastWarning('لطفاً تاریخ و ساعت شروع را وارد کنید.');
-    return;
-  }
-
-  if (!endDate || !endTime) {
-    toastWarning('لطفاً تاریخ و ساعت پایان را وارد کنید.');
-    return;
-  }
-
-  if (votingCandidates.length < 2) {
-    toastWarning('حداقل ۲ کاندید لازم است.');
-    return;
-  }
-
-   const emptyCandidates = votingCandidates.filter(c => !c.name || !c.name.trim());
+  const emptyCandidates = votingCandidates.filter(c => !c.name || !c.name.trim());
   if (emptyCandidates.length > 0) {
     toastWarning('لطفاً نام همه کاندیدها را وارد کنید.');
     return;
@@ -5842,31 +5706,18 @@ function saveVoting() {
   const startDateTime = parsePersianDateTime(startDate, startTime);
   const endDateTime = parsePersianDateTime(endDate, endTime);
 
-  if (!startDateTime || !endDateTime) {
-    toastWarning('خطا در تاریخ یا ساعت.');
-    return;
-  }
-
-  if (endDateTime <= startDateTime) {
-    toastWarning('زمان پایان باید بعد از زمان شروع باشد.');
-    return;
-  }
+  if (!startDateTime || !endDateTime) { toastWarning('خطا در تاریخ یا ساعت.'); return; }
+  if (endDateTime <= startDateTime) { toastWarning('زمان پایان باید بعد از زمان شروع باشد.'); return; }
 
   const votings = loadVotings();
 
-  // اگر در حال ویرایش هستیم
   if (editingVotingId) {
     const idx = votings.findIndex(v => v.id === editingVotingId);
     if (idx !== -1) {
       const old = votings[idx];
       votings[idx] = {
         ...old,
-        title: title,
-        description: description,
-        startDate: startDate,
-        startTime: startTime,
-        endDate: endDate,
-        endTime: endTime,
+        title, description, startDate, startTime, endDate, endTime,
         startDateTime: startDateTime.toISOString(),
         endDateTime: endDateTime.toISOString(),
         candidates: votingCandidates.map(c => {
@@ -5892,22 +5743,17 @@ function saveVoting() {
 
   votings.push({
     id: newId,
-    title: title,
-    description: description,
-    startDate: startDate,
-    startTime: startTime,
-    endDate: endDate,
-    endTime: endTime,
+    title, description, startDate, startTime, endDate, endTime,
     startDateTime: startDateTime.toISOString(),
     endDateTime: endDateTime.toISOString(),
-          candidates: votingCandidates.map(c => ({
+    candidates: votingCandidates.map(c => ({
       id: c.id,
       name: c.name.trim(),
       phone: (c.phone || '').trim(),
       votes: 0,
     })),
     votes: [],
-    eligibleVoters: 'owners',   // فقط مالکین حق رأی دارند
+    eligibleVoters: 'owners',
     createdAt: new Date().toISOString(),
   });
 
@@ -5977,6 +5823,7 @@ function persianToGregorian(jy, jm, jd) {
 
   return { year: gy, month: gm, day: gd };
 }
+
 function showVotingResults(votingId) {
   const votings = loadVotings();
   const voting = votings.find(v => v.id === votingId);
@@ -6125,13 +5972,13 @@ function bindVotingPage() {
       const action = btn.dataset.votingAction;
       const id = Number(btn.dataset.id);
 
-     if (action === 'results') {
-  showVotingResults(id);
-} else if (action === 'edit') {
-  editVoting(id);
-} else if (action === 'delete') {
-  deleteVoting(id);
-}
+      if (action === 'results') {
+        showVotingResults(id);
+      } else if (action === 'edit') {
+        editVoting(id);
+      } else if (action === 'delete') {
+        deleteVoting(id);
+      }
     });
   }
 
@@ -6167,11 +6014,9 @@ function getReportDateRange() {
   }
 
   if (reportPeriod === 'lastMonth') {
-    const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-                    'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
-    const idx = months.indexOf(currentMonth);
+    const idx = PERSIAN_MONTHS.indexOf(currentMonth);
     const lastIdx = idx > 0 ? idx - 1 : 11;
-    const lastMonth = months[lastIdx];
+    const lastMonth = PERSIAN_MONTHS[lastIdx];
     const lastYear = idx > 0 ? currentYear : String(parseInt(currentYear) - 1);
 
     return {
@@ -6202,10 +6047,7 @@ function getReportDateRange() {
     const toDate = document.getElementById('reportToDate')?.value.trim() || '';
 
     if (!fromDate && !toDate) {
-      return {
-        label: 'دستی (بازه نامشخص)',
-        filterFn: () => true,
-      };
+      return { label: 'دستی (بازه نامشخص)', filterFn: () => true };
     }
 
     const fromG = fromDate ? parseReportDate(fromDate) : null;
@@ -6224,10 +6066,7 @@ function getReportDateRange() {
     };
   }
 
-  return {
-    label: 'همه دوره‌ها',
-    filterFn: () => true,
-  };
+  return { label: 'همه دوره‌ها', filterFn: () => true };
 }
 
 function parseReportDate(dateStr) {
@@ -6280,7 +6119,6 @@ function renderReportsPage() {
     : 0;
 
   const balance = chargesIncome - expensesSum;
-
   const totalDebt = UNITS.reduce((s, u) => s + (Number(u.debt) || 0), 0);
 
   document.getElementById('reportIncome').textContent = formatToman(chargesIncome);
@@ -7003,6 +6841,8 @@ function downloadBackup() {
     messages: localStorage.getItem('ham_sakhteman_messages'),
     votings: localStorage.getItem('ham_sakhteman_votings'),
     settings: localStorage.getItem('ham_sakhteman_settings'),
+    sideIncomes: localStorage.getItem('ham_sakhteman_side_incomes'),
+    plan: localStorage.getItem('ham_sakhteman_plan'),
     exportDate: new Date().toISOString(),
   };
 
@@ -7037,6 +6877,8 @@ function uploadBackup(file) {
       if (backup.messages) localStorage.setItem('ham_sakhteman_messages', backup.messages);
       if (backup.votings) localStorage.setItem('ham_sakhteman_votings', backup.votings);
       if (backup.settings) localStorage.setItem('ham_sakhteman_settings', backup.settings);
+      if (backup.sideIncomes) localStorage.setItem('ham_sakhteman_side_incomes', backup.sideIncomes);
+      if (backup.plan) localStorage.setItem('ham_sakhteman_plan', backup.plan);
 
       toastSuccess('پشتیبان بازیابی شد. صفحه رفرش می‌شود.');
       location.reload();
@@ -7106,7 +6948,6 @@ function init() {
   const urlParams = new URLSearchParams(window.location.search);
   const isSignup = urlParams.get('signup') === '1';
 
-  // اگر ثبت‌نام است، اجازه بده وارد شود (حتی بدون لاگین)
   if (!isSignup) {
     if (typeof isLoggedIn === 'function' && !isLoggedIn()) {
       window.location.replace('login.html');
@@ -7122,10 +6963,7 @@ function init() {
 
     if (id.toLowerCase().includes('month') && !id.toLowerCase().includes('year')) {
       const currentValue = select.value;
-      const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-                      'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
-      
       if (id.includes('charge') || id.includes('issue') || id.includes('expenseModal')) {
         return;
       }
@@ -7144,7 +6982,7 @@ function init() {
         select.appendChild(allOpt);
       }
 
-      months.forEach(m => {
+      PERSIAN_MONTHS.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m;
         opt.textContent = m;
@@ -7157,7 +6995,6 @@ function init() {
   const data = loadData();
 
   if (!data || !data.building || isSignup) {
-    // اگه signup=1 بود، پنل فعلی رو نادیده بگیر و wizard باز کن
     openWelcomeModal();
   } else {
     renderBuildingCard();
@@ -7171,7 +7008,6 @@ function init() {
     }
   }
 
-  // ✅ منوی سایدبار
   document.getElementById('menu')?.addEventListener('click', (e) => {
     const mainItem = e.target.closest('.nav-item-main');
     if (mainItem) {
@@ -7213,14 +7049,13 @@ function init() {
   bindVotingPage();
   bindReportsPage();
   bindProfitPage();
-    bindSideIncomesPage();
+  bindSideIncomesPage();
   bindSettingsPage();
-     bindSupportPage();
-   bindProfilePage();
-  bindUpgradeModal();       
+  bindSupportPage();
+  bindProfilePage();
+  bindUpgradeModal();
   initNotificationsAndProfile();
-  
-  // ✅ آپدیت قفل‌های سایدبار
+
   updateSidebarLockStates();
   let t;
   window.addEventListener('resize', () => {
@@ -7234,7 +7069,6 @@ function init() {
   switchPage('dashboard');
 }
 
-/* ✅ تعداد واحدهای مورد انتظار */
 function getExpectedUnitsCount(building) {
   if (!building) return 0;
   if (building.type === 'complex') {
@@ -7591,38 +7425,34 @@ function handleLogout() {
     return;
   }
 
-  // علامت‌گذاری خروج
   localStorage.setItem('ham_sakhteman_logged_out', 'true');
 
   toastSuccess('از پنل خارج شدید. در حال انتقال...');
-  
+
   setTimeout(() => {
     window.location.href = 'login.html';
   }, 800);
 }
+
 /* ============================================================
    💎 بایند مودال ارتقا
    ============================================================ */
 function bindUpgradeModal() {
-  // دکمه ارتقا در سایدبار
   const btnUpgrade = document.getElementById('btnUpgradePlan');
   if (btnUpgrade) {
     btnUpgrade.addEventListener('click', () => showUpgradeModal());
   }
-  
-  // دکمه انصراف
+
   const btnCancel = document.getElementById('upgradeCancelBtn');
   if (btnCancel) {
     btnCancel.addEventListener('click', closeUpgradeModal);
   }
-  
-  // دکمه تایید و پرداخت
+
   const btnConfirm = document.getElementById('upgradeConfirmBtn');
   if (btnConfirm) {
     btnConfirm.addEventListener('click', handleUpgrade);
   }
-  
-  // بستن با کلیک روی backdrop
+
   const modal = document.getElementById('upgradeModal');
   if (modal) {
     modal.addEventListener('click', (e) => {
@@ -7635,6 +7465,7 @@ function closeUpgradeModal() {
   const modal = document.getElementById('upgradeModal');
   if (modal) modal.classList.remove('open');
 }
+
 function initNotificationsAndProfile() {
   loadNotifications();
   generateAutoNotifications();
@@ -7803,33 +7634,13 @@ function saveProfileInfo() {
   const address = document.getElementById('profileAddress')?.value.trim();
   const bio = document.getElementById('profileBio')?.value.trim();
 
-  if (!fullName) {
-    toastWarning('لطفاً نام و نام خانوادگی را وارد کنید.');
-    return;
-  }
-
-  if (!phone) {
-    toastWarning('لطفاً شماره موبایل را وارد کنید.');
-    return;
-  }
-
-  if (!isValidIranMobile(phone)) {
-    toastWarning('شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
-    return;
-  }
-
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    toastWarning('فرمت ایمیل صحیح نیست.');
-    return;
-  }
-
-  if (nationalId && !/^\d{10}$/.test(nationalId)) {
-    toastWarning('کد ملی باید ۱۰ رقم باشد.');
-    return;
-  }
+  if (!fullName) { toastWarning('لطفاً نام و نام خانوادگی را وارد کنید.'); return; }
+  if (!phone) { toastWarning('لطفاً شماره موبایل را وارد کنید.'); return; }
+  if (!isValidIranMobile(phone)) { toastWarning('شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.'); return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toastWarning('فرمت ایمیل صحیح نیست.'); return; }
+  if (nationalId && !/^\d{10}$/.test(nationalId)) { toastWarning('کد ملی باید ۱۰ رقم باشد.'); return; }
 
   const profile = loadProfile();
-  const oldPhone = profile.phone || '';
   profile.fullName = fullName;
   profile.phone = phone;
   profile.email = email;
@@ -7839,11 +7650,6 @@ function saveProfileInfo() {
   profile.updatedAt = new Date().toISOString();
 
   saveProfile(profile);
-
-  // ✅ اگه شماره موبایل عوض شد، اطلاعات ورود رو هم آپدیت کن
-  if (oldPhone !== phone && typeof normalizePhone === 'function') {
-    localStorage.setItem('ham_sakhteman_user_phone', phone);
-  }
 
   const data = loadData() || { building: {}, manager: {} };
   data.manager = { ...data.manager, name: fullName, phone: phone };
@@ -7912,12 +7718,12 @@ function bindPasswordStrength() {
     bar.classList.add(strength);
   });
 }
+
 function changePassword() {
   const currentPass = document.getElementById('currentPassword')?.value || '';
   const newPass = document.getElementById('newPassword')?.value || '';
   const confirmPass = document.getElementById('confirmPassword')?.value || '';
 
-  // چک رمز فعلی از auth
   const savedHash = localStorage.getItem('ham_sakhteman_user_password');
 
   if (savedHash) {
@@ -7934,34 +7740,17 @@ function changePassword() {
     }
   }
 
-  if (!newPass) {
-    toastWarning('لطفاً رمز عبور جدید را وارد کنید.');
-    return;
-  }
+  if (!newPass) { toastWarning('لطفاً رمز عبور جدید را وارد کنید.'); return; }
+  if (newPass.length < 6) { toastWarning('رمز عبور جدید باید حداقل ۶ کاراکتر باشد.'); return; }
+  if (newPass !== confirmPass) { toastError('تکرار رمز عبور جدید مطابقت ندارد.'); return; }
+  if (currentPass && currentPass === newPass) { toastWarning('رمز عبور جدید نباید با رمز فعلی یکسان باشد.'); return; }
 
-  if (newPass.length < 6) {
-    toastWarning('رمز عبور جدید باید حداقل ۶ کاراکتر باشد.');
-    return;
-  }
-
-  if (newPass !== confirmPass) {
-    toastError('تکرار رمز عبور جدید مطابقت ندارد.');
-    return;
-  }
-
-  if (currentPass && currentPass === newPass) {
-    toastWarning('رمز عبور جدید نباید با رمز فعلی یکسان باشد.');
-    return;
-  }
-
-  // ذخیره‌ی رمز جدید
   if (typeof simpleHashAuth === 'function') {
     localStorage.setItem('ham_sakhteman_user_password', simpleHashAuth(newPass));
   } else {
     savePasswordHash(simpleHash(newPass));
   }
 
-  // پاک کردن فرم
   document.getElementById('currentPassword').value = '';
   document.getElementById('newPassword').value = '';
   document.getElementById('confirmPassword').value = '';
@@ -7971,6 +7760,7 @@ function changePassword() {
 
   toastSuccess('رمز عبور با موفقیت تغییر کرد.');
 }
+
 function renderProfileStats() {
   const charges = loadCharges();
   const payments = charges.filter(c => c.paid);
@@ -7989,24 +7779,7 @@ function renderProfileStats() {
   if (elExpenses) elExpenses.textContent = formatNumber(expenses.length);
   if (elNotices) elNotices.textContent = formatNumber(notices.length);
 }
-function renderProfileStats() {
-  const charges = loadCharges();
-  const payments = charges.filter(c => c.paid);
-  const expenses = loadExpenses();
-  const notices = loadNotices();
 
-  const elUnits = document.getElementById('statProfileUnits');
-  const elCharges = document.getElementById('statProfileCharges');
-  const elPayments = document.getElementById('statProfilePayments');
-  const elExpenses = document.getElementById('statProfileExpenses');
-  const elNotices = document.getElementById('statProfileNotices');
-
-  if (elUnits) elUnits.textContent = formatNumber(UNITS.length);
-  if (elCharges) elCharges.textContent = formatNumber(charges.length);
-  if (elPayments) elPayments.textContent = formatNumber(payments.length);
-  if (elExpenses) elExpenses.textContent = formatNumber(expenses.length);
-  if (elNotices) elNotices.textContent = formatNumber(notices.length);
-}
 function renderProfileActivity() {
   const container = document.getElementById('profileActivityList');
   if (!container) return;
@@ -8133,9 +7906,6 @@ let profitYear = String(getTodayPersianYear());
 let profitBlock = 'all';
 let profitPeriod = 'year';
 
-const PERSIAN_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-                        'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
-
 function calcMonthProfit(monthName, year) {
   const charges = loadCharges();
   const expenses = loadExpenses();
@@ -8168,9 +7938,7 @@ function calcMonthProfit(monthName, year) {
 
   return {
     month: monthName,
-    income,
-    expense,
-    profit,
+    income, expense, profit,
     chargesCount: monthCharges.length,
     expensesCount: monthExpenses.length,
     expenses: monthExpenses,
@@ -8190,13 +7958,7 @@ function calcTotalProfit() {
   }
   const totalDebt = units.reduce((s, u) => s + (Number(u.debt) || 0), 0);
 
-  return {
-    months: allMonths,
-    totalIncome,
-    totalExpense,
-    netProfit,
-    totalDebt,
-  };
+  return { months: allMonths, totalIncome, totalExpense, netProfit, totalDebt };
 }
 
 function getPeriodMonths() {
@@ -8330,9 +8092,7 @@ function renderProfitTable() {
     ? monthsData.filter(m => m.income > 0 || m.expense > 0)
     : monthsData;
 
-  if (countLabel) {
-    countLabel.textContent = `${formatNumber(filtered.length)} ماه`;
-  }
+  if (countLabel) countLabel.textContent = `${formatNumber(filtered.length)} ماه`;
 
   if (filtered.length === 0) {
     tbody.innerHTML = `
@@ -8437,7 +8197,11 @@ function renderProfitBarChart() {
 
       ctx.fillStyle = grad1;
       ctx.beginPath();
-      ctx.roundRect(incomeX, incomeY, barWidth, incomeH, [6, 6, 0, 0]);
+      if (ctx.roundRect) {
+        ctx.roundRect(incomeX, incomeY, barWidth, incomeH, [6, 6, 0, 0]);
+      } else {
+        ctx.rect(incomeX, incomeY, barWidth, incomeH);
+      }
       ctx.fill();
     }
 
@@ -8452,7 +8216,11 @@ function renderProfitBarChart() {
 
       ctx.fillStyle = grad2;
       ctx.beginPath();
-      ctx.roundRect(expenseX, expenseY, barWidth, expenseH, [6, 6, 0, 0]);
+      if (ctx.roundRect) {
+        ctx.roundRect(expenseX, expenseY, barWidth, expenseH, [6, 6, 0, 0]);
+      } else {
+        ctx.rect(expenseX, expenseY, barWidth, expenseH);
+      }
       ctx.fill();
     }
 
@@ -8913,7 +8681,7 @@ function printProfitPdf() {
         <tbody>${rows}</tbody>
       </table>
 
-            <div class="footer">
+      <div class="footer">
         © ${new Date().getFullYear()} — آپارتمان پلاس | نرم‌افزار هوشمند مدیریت ساختمان
       </div>
 
@@ -8931,6 +8699,7 @@ function printProfitPdf() {
   printWindow.document.write(html);
   printWindow.document.close();
 }
+
 /* ============================================================
    🆘 صفحه پشتیبانی
    ============================================================ */
@@ -8962,9 +8731,7 @@ function renderSupportPage() {
   const total = tickets.length;
   const open = tickets.filter(t => t.status === 'open').length;
   const closed = tickets.filter(t => t.status === 'closed').length;
-  const lastDate = tickets.length > 0
-    ? tickets[tickets.length - 1].date
-    : '—';
+  const lastDate = tickets.length > 0 ? tickets[tickets.length - 1].date : '—';
 
   const elTotal = document.getElementById('supportTotal');
   const elPending = document.getElementById('supportPending');
@@ -9001,7 +8768,6 @@ function renderSupportPage() {
   const priorityIcons = { 'کم': '🟢', 'متوسط': '🟡', 'زیاد': '🔴' };
 
   tbody.innerHTML = [...tickets].reverse().map(t => {
-    const lastMsg = t.messages[t.messages.length - 1];
     const msgCount = t.messages.length;
 
     return `
@@ -9048,14 +8814,8 @@ function saveTicket() {
   const priority = document.getElementById('ticketPriority')?.value || 'متوسط';
   const message = document.getElementById('ticketMessage')?.value.trim();
 
-  if (!subject) {
-    toastWarning('لطفاً موضوع تیکت را وارد کنید.');
-    return;
-  }
-  if (!message) {
-    toastWarning('لطفاً متن پیام را وارد کنید.');
-    return;
-  }
+  if (!subject) { toastWarning('لطفاً موضوع تیکت را وارد کنید.'); return; }
+  if (!message) { toastWarning('لطفاً متن پیام را وارد کنید.'); return; }
 
   const tickets = loadTickets();
   const newId = tickets.length > 0 ? Math.max(...tickets.map(t => t.id || 0)) + 1 : 1;
@@ -9063,9 +8823,7 @@ function saveTicket() {
 
   tickets.push({
     id: newId,
-    subject: subject,
-    category: category,
-    priority: priority,
+    subject, category, priority,
     status: 'open',
     date: dt.date,
     time: dt.time,
@@ -9073,15 +8831,13 @@ function saveTicket() {
     lastUpdateTime: dt.time,
     createdAt: dt.iso,
     updatedAt: dt.iso,
-    messages: [
-      {
-        sender: 'user',
-        text: message,
-        date: dt.date,
-        time: dt.time,
-        createdAt: dt.iso,
-      }
-    ],
+    messages: [{
+      sender: 'user',
+      text: message,
+      date: dt.date,
+      time: dt.time,
+      createdAt: dt.iso,
+    }],
   });
 
   saveTickets(tickets);
@@ -9110,7 +8866,6 @@ function openTicketView(ticketId) {
 
   renderTicketMessages(ticket);
 
-  // اگه تیکت بسته شده، فرم پاسخ مخفی بشه
   const replyBox = document.getElementById('ticketReplyBox');
   if (replyBox) {
     replyBox.style.display = ticket.status === 'closed' ? 'none' : 'block';
@@ -9131,9 +8886,8 @@ function renderTicketMessages(ticket) {
   const container = document.getElementById('ticketMessagesBox');
   if (!container) return;
 
-  container.innerHTML = ticket.messages.map((m, idx) => {
+  container.innerHTML = ticket.messages.map((m) => {
     const isUser = m.sender === 'user';
-    const isAdmin = m.sender === 'admin';
 
     const label = isUser ? '👤 شما' : '🆘 پشتیبانی';
     const bgColor = isUser ? '#5b4cdb' : '#0f766e';
@@ -9166,10 +8920,7 @@ function replyToTicket() {
   if (!currentTicketId) return;
 
   const message = document.getElementById('ticketReplyMessage')?.value.trim();
-  if (!message) {
-    toastWarning('لطفاً متن پاسخ را وارد کنید.');
-    return;
-  }
+  if (!message) { toastWarning('لطفاً متن پاسخ را وارد کنید.'); return; }
 
   const tickets = loadTickets();
   const ticket = tickets.find(t => t.id === currentTicketId);
@@ -9252,7 +9003,6 @@ function bindSupportPage() {
   }
 }
 
-
 /* ============================================================
    💎 صفحه اشتراکی
    ============================================================ */
@@ -9285,13 +9035,13 @@ function renderSubscriptionPage() {
     elUnits.textContent = formatNumber(plan?.totalUnits || UNITS.length);
   }
 
-  // دکمه پلن رایگان
   const btnFree = document.getElementById('subBtnFree');
   if (btnFree) {
     if (currentPlan === 'free') {
       btnFree.textContent = 'پلن فعلی';
       btnFree.disabled = true;
       btnFree.className = 'btn btn-outline plan-select-btn';
+      btnFree.onclick = null;
     } else {
       btnFree.textContent = 'غیرفعال کردن حرفه‌ای';
       btnFree.disabled = false;
@@ -9313,7 +9063,6 @@ function renderSubscriptionPage() {
     }
   }
 
-  // دکمه پلن حرفه‌ای
   const btnPro = document.getElementById('subBtnPro');
   const elProPrice = document.getElementById('subProPrice');
 
@@ -9375,4 +9124,5 @@ function processMockPaymentSuccess(paymentInfo) {
 
   toastSuccess('پلن حرفه‌ای با موفقیت فعال شد!');
 }
+
 document.addEventListener('DOMContentLoaded', init);
