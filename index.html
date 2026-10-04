@@ -2976,92 +2976,206 @@
   </div>
 
 
-  <!-- ============ مودال جزئیات واحد ============ -->
-  <div class="modal-backdrop" id="unitDetailModal">
-    <div class="modal modal-detail">
+  <!-- ============ مودال جزئیات واحد (نسخه جدید) ============ -->
+<div class="modal-backdrop" id="unitDetailModal">
+  <div class="modal modal-detail">
 
-      <div class="detail-header">
-        <div class="detail-title">
-          <span class="detail-icon">🏠</span>
-          <div>
-            <h2 id="detailUnitTitle">جزئیات واحد</h2>
-            <p id="detailUnitSubtitle">—</p>
-          </div>
-        </div>
-        <button class="detail-close" id="detailCloseBtn">✖</button>
-      </div>
-
-      <div class="detail-stats">
-        <div class="detail-stat">
-          <span>بلوک</span>
-          <strong id="detailBlock">—</strong>
-        </div>
-        <div class="detail-stat">
-          <span>شماره واحد</span>
-          <strong id="detailNumber">—</strong>
-        </div>
-        <div class="detail-stat">
-          <span>شارژ ماهانه</span>
-          <strong id="detailCharge">—</strong>
-        </div>
-        <div class="detail-stat">
-          <span>بدهی</span>
-          <strong id="detailDebt">—</strong>
+    <div class="detail-header">
+      <div class="detail-title">
+        <span class="detail-icon">🏠</span>
+        <div>
+          <h2 id="detailUnitTitle">جزئیات واحد</h2>
+          <p id="detailUnitSubtitle">—</p>
         </div>
       </div>
-
-      <div class="detail-section">
-        <div class="detail-section-title">
-          <span>👤 مالک</span>
-          <span class="detail-status" id="detailOwnerStatus">—</span>
-        </div>
-        <div class="detail-grid">
-          <div class="detail-item">
-            <span>نام</span>
-            <strong id="detailOwnerName">—</strong>
-          </div>
-          <div class="detail-item">
-            <span>موبایل</span>
-            <strong id="detailOwnerPhone">—</strong>
-          </div>
-        </div>
-      </div>
-
-      <div class="detail-section">
-        <div class="detail-section-title">
-          <span>🏘️ مستاجر</span>
-          <span class="detail-status" id="detailTenantStatus">—</span>
-        </div>
-        <div class="detail-grid">
-          <div class="detail-item">
-            <span>نام</span>
-            <strong id="detailTenantName">—</strong>
-          </div>
-          <div class="detail-item">
-            <span>موبایل</span>
-            <strong id="detailTenantPhone">—</strong>
-          </div>
-        </div>
-      </div>
-
-      <div class="detail-section">
-        <div class="detail-section-title">
-          <span>📋 تاریخچه</span>
-        </div>
-        <div class="detail-empty">
-          به‌زودی: تاریخچه شارژها و پرداخت‌های این واحد
-        </div>
-      </div>
-
-      <div class="detail-actions">
-        <button class="btn btn-cancel" id="detailCancelBtn">انصراف</button>
-        <button class="btn btn-primary" id="detailEditBtn">✏️ ویرایش</button>
-      </div>
-
+      <button class="detail-close" id="detailCloseBtn">✖</button>
     </div>
-  </div>
 
-  <!-- ============ مودال افزودن/ویرایش واحد ============ -->
+    <!-- اطلاعات پایه -->
+    <div class="detail-stats">
+      <div class="detail-stat">
+        <span>بلوک</span>
+        <strong id="detailBlock">—</strong>
+      </div>
+      <div class="detail-stat">
+        <span>شماره واحد</span>
+        <strong id="detailNumber">—</strong>
+      </div>
+      <div class="detail-stat">
+        <span>طبقه</span>
+        <strong id="detailFloor">—</strong>
+      </div>
+      <div class="detail-stat">
+        <span>وضعیت</span>
+        <strong id="detailStatus">—</strong>
+      </div>
+    </div>
+
+    <!-- متراژ / نفرات / پارکینگ / انباری -->
+    <div class="detail-stats" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="detail-stat">
+        <span>📐 متراژ</span>
+        <strong id="detailArea">—</strong>
+      </div>
+      <div class="detail-stat">
+        <span>👥 نفرات</span>
+        <strong id="detailPeople">—</strong>
+      </div>
+      <div class="detail-stat">
+        <span>🚗 پارکینگ</span>
+        <strong id="detailParking">—</strong>
+      </div>
+      <div class="detail-stat">
+        <span>📦 انباری</span>
+        <strong id="detailStorage">—</strong>
+      </div>
+    </div>
+
+    <!-- اطلاعات مالی -->
+    <div class="detail-stats" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="detail-stat">
+        <span>💰 شارژ ماهانه</span>
+        <strong id="detailCharge">—</strong>
+      </div>
+      <div class="detail-stat">
+        <span>⚠️ بدهی</span>
+        <strong id="detailDebt">—</strong>
+      </div>
+      <div class="detail-stat">
+        <span>🏷️ کد واحد</span>
+        <strong id="detailCode">—</strong>
+      </div>
+    </div>
+
+    <!-- مالک -->
+    <div class="detail-section">
+      <div class="detail-section-title">
+        <span>👤 مالک</span>
+        <span class="detail-status" id="detailOwnerStatus">—</span>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span>نام</span>
+          <strong id="detailOwnerName">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>موبایل</span>
+          <strong id="detailOwnerPhone">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>کد ملی</span>
+          <strong id="detailOwnerNationalId">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>تاریخ تولد</span>
+          <strong id="detailOwnerBirthDate">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>ماهیت</span>
+          <strong id="detailOwnerType">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>شارژ پیش‌فرض</span>
+          <strong id="detailOwnerDefaultCharge">—</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- ساکن -->
+    <div class="detail-section">
+      <div class="detail-section-title">
+        <span>🏘️ ساکن / مستاجر</span>
+        <span class="detail-status" id="detailTenantStatus">—</span>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span>نام</span>
+          <strong id="detailTenantName">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>موبایل</span>
+          <strong id="detailTenantPhone">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>کد ملی</span>
+          <strong id="detailTenantNationalId">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>تاریخ تولد</span>
+          <strong id="detailTenantBirthDate">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>ماهیت</span>
+          <strong id="detailTenantType">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>شارژ پیش‌فرض</span>
+          <strong id="detailTenantDefaultCharge">—</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- اطلاعات تکمیلی -->
+    <div class="detail-section">
+      <div class="detail-section-title">
+        <span>📎 اطلاعات تکمیلی</span>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span>شناسه تسویه مالک</span>
+          <strong id="detailOwnerSettlementId">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>شناسه تسویه ساکن</span>
+          <strong id="detailTenantSettlementId">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>شناسه قبض آب</span>
+          <strong id="detailWaterBillId">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>شناسه قبض برق</span>
+          <strong id="detailElectricityBillId">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>شناسه قبض گاز</span>
+          <strong id="detailGasBillId">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>شناسه قبض تلفن</span>
+          <strong id="detailPhoneBillId">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>شماره پارکینگ</span>
+          <strong id="detailParkingNumber">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>شماره انباری</span>
+          <strong id="detailStorageNumber">—</strong>
+        </div>
+        <div class="detail-item">
+          <span>تلفن ثابت</span>
+          <strong id="detailLandlinePhone">—</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- توضیحات -->
+    <div class="detail-section" id="detailNotesSection" style="display:none;">
+      <div class="detail-section-title">
+        <span>📝 توضیحات</span>
+      </div>
+      <p id="detailNotes" style="font-size:13.5px; color:#64748b; line-height:1.8;"></p>
+    </div>
+
+    <!-- دکمه‌ها -->
+    <div class="detail-actions">
+      <button class="btn btn-cancel" id="detailCancelBtn">انصراف</button>
+      <button class="btn btn-primary" id="detailEditBtn">✏️ ویرایش</button>
+    </div>
+
+  </div>
+</div>
  <!-- ============ مودال افزودن/ویرایش واحد (نسخه دو تب) ============ -->
 <div class="modal-backdrop" id="unitModal">
   <div class="modal modal-unit modal-tabs">
