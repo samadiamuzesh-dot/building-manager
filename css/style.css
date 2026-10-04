@@ -4024,3 +4024,608 @@ body.dark-mode .modal-detail .detail-item {
   background: #1e293b;
   border-color: #334155;
 }
+/* ============================================================
+   🎯 فاز ۱: ریسپانسیو جامع پنل مدیر
+   ============================================================ */
+
+/* ============ همه جدول‌ها اسکرول افقی داشته باشن ============ */
+.table-box {
+  overflow-x: auto;
+}
+
+.table-box::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-box::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.table-box::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 10px;
+}
+
+/* همه جدول‌ها */
+.table-box table {
+  min-width: 800px;
+}
+
+/* ============ تبلت (بین ۶۴۰ تا ۹۰۰) ============ */
+@media (min-width: 641px) and (max-width: 900px) {
+  .content {
+    padding: 20px 16px;
+  }
+
+  .content-header h1 {
+    font-size: 20px;
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar-right,
+  .toolbar-left {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .modal {
+    max-width: 90vw;
+  }
+
+  .modal-tabs {
+    max-width: 90vw;
+  }
+}
+
+/* ============ موبایل بزرگ (۴۸۰-۶۴۰) ============ */
+@media (max-width: 640px) {
+  /* ===== تاپ‌بار ===== */
+  .topbar {
+    height: auto;
+    min-height: 64px;
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .brand-logo-svg {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .brand-text h1 {
+    font-size: 15px;
+  }
+
+  .brand-text p {
+    font-size: 11px;
+    display: none;
+  }
+
+  .topbar-actions {
+    gap: 8px;
+  }
+
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .profile {
+    padding: 4px 8px 4px 4px;
+    gap: 6px;
+  }
+
+  .profile-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+
+  .profile-info {
+    display: none;
+  }
+
+  .profile-chevron {
+    display: none;
+  }
+
+  /* ===== سایدبار ===== */
+  .app-body {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .building-card {
+    padding: 12px;
+  }
+
+  .building-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .building-info h3 {
+    font-size: 14px;
+  }
+
+  .building-info p {
+    font-size: 11.5px;
+  }
+
+  .sidebar-nav ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sidebar-nav li {
+    flex: 1 1 auto;
+    min-width: calc(50% - 3px);
+    padding: 10px 12px;
+    font-size: 13px;
+    justify-content: flex-start;
+  }
+
+  .sidebar-nav li .nav-icon {
+    font-size: 15px;
+    width: 20px;
+  }
+
+  .sidebar-nav li .nav-text {
+    font-size: 12.5px;
+  }
+
+  /* زیرمنو */
+  .sidebar-nav .submenu {
+    margin-right: 12px;
+  }
+
+  .sidebar-nav .submenu li {
+    padding: 8px 10px;
+    font-size: 12px;
+    min-width: 100%;
+  }
+
+  /* باکس ارتقا */
+  .upgrade-box {
+    margin-top: 12px;
+    padding: 14px;
+  }
+
+  .upgrade-box-title {
+    font-size: 13px;
+  }
+
+  .upgrade-box-desc {
+    font-size: 11px;
+  }
+
+  .upgrade-box-btn {
+    padding: 10px;
+    font-size: 12.5px;
+  }
+
+  /* آیتم اشتراکی */
+  .sidebar-nav .subscription-nav-item {
+    min-width: 100% !important;
+    padding: 14px 14px !important;
+    font-size: 14px !important;
+    margin-top: 10px !important;
+  }
+
+  .sidebar-nav .subscription-nav-item .nav-icon {
+    font-size: 20px !important;
+  }
+
+  .sidebar-nav .subscription-nav-item .nav-text {
+    font-size: 14px !important;
+  }
+
+  /* ===== محتوا ===== */
+  .content {
+    padding: 14px 12px;
+  }
+
+  .content-header h1 {
+    font-size: 18px;
+  }
+
+  .page-subtitle {
+    font-size: 12.5px;
+  }
+
+  /* ===== کارت‌های آماری ===== */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px;
+  }
+
+  .units-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .stat-card {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+
+  .stat-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+    border-radius: 12px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .stat-value {
+    font-size: 15px;
+  }
+
+  /* ===== نمودارها ===== */
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .chart-card {
+    padding: 14px;
+  }
+
+  .chart-header h3 {
+    font-size: 13.5px;
+  }
+
+  .donut-wrapper {
+    width: 150px;
+    height: 150px;
+  }
+
+  .donut-percent {
+    font-size: 22px;
+  }
+
+  .donut-label {
+    font-size: 10.5px;
+  }
+
+  .line-wrapper {
+    height: 180px;
+  }
+
+  /* ===== نوار ابزار ===== */
+  .toolbar {
+    padding: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar-right,
+  .toolbar-left {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .toolbar label {
+    font-size: 12.5px;
+  }
+
+  .block-select {
+    padding: 8px 12px;
+    font-size: 13px;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .search-input {
+    min-width: 100% !important;
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  /* ===== جدول‌ها ===== */
+  .table-box {
+    padding: 14px 12px;
+    border-radius: 12px;
+  }
+
+  .table-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+
+  .table-header h3 {
+    font-size: 14px;
+  }
+
+  .table-count {
+    font-size: 12px;
+  }
+
+  .table-box table {
+    min-width: 800px;
+    font-size: 12.5px;
+  }
+
+  .table-box table thead th {
+    padding: 10px 8px;
+    font-size: 11.5px;
+  }
+
+  .table-box table tbody td {
+    padding: 10px 8px;
+    font-size: 12.5px;
+  }
+
+  .badge {
+    font-size: 10.5px;
+    padding: 4px 9px;
+  }
+
+  .row-action-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+  }
+
+  /* ===== مودال‌ها ===== */
+  .modal-backdrop {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+
+  .modal,
+  .modal-unit,
+  .modal-detail,
+  .modal-tabs,
+  .modal-welcome {
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 95vh !important;
+    border-radius: 22px 22px 0 0 !important;
+    padding: 18px 16px !important;
+  }
+
+  .unit-modal-header {
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+  }
+
+  .unit-modal-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+    border-radius: 12px;
+  }
+
+  .unit-modal-header h2 {
+    font-size: 16px;
+  }
+
+  .unit-modal-header p {
+    font-size: 12px;
+  }
+
+  /* فرم‌ها یک ستونه */
+  .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .form-section {
+    padding: 14px 12px;
+    border-radius: 12px;
+  }
+
+  .form-section-title {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .form-group label {
+    font-size: 12.5px;
+  }
+
+  .form-input {
+    font-size: 13.5px;
+    padding: 11px 12px;
+    border-radius: 9px;
+  }
+
+  .required {
+    font-size: 11px;
+  }
+
+  .unit-modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+    padding-top: 14px;
+    margin-top: 16px;
+  }
+
+  .unit-modal-actions .btn {
+    padding: 12px;
+    font-size: 14px;
+    width: 100%;
+  }
+
+  /* ===== تب‌های مودال ===== */
+  .unit-tabs {
+    padding: 0 12px;
+  }
+
+  .unit-tab {
+    padding: 11px 14px;
+    font-size: 12.5px;
+    gap: 6px;
+  }
+
+  .unit-tab span:first-child {
+    font-size: 14px;
+  }
+
+  .unit-tab-content-wrapper {
+    padding: 14px 12px;
+  }
+
+  /* ===== پنل اعلان‌ها ===== */
+  .notif-panel {
+    width: calc(100vw - 20px);
+    left: auto;
+    right: 0;
+    max-height: 70vh;
+  }
+
+  .profile-menu {
+    width: calc(100vw - 20px);
+    left: auto;
+    right: 0;
+  }
+
+  /* ===== Toast ===== */
+  .toast-container {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .toast {
+    min-width: auto;
+    max-width: 100%;
+  }
+}
+
+/* ============ موبایل کوچک (زیر ۴۸۰) ============ */
+@media (max-width: 480px) {
+  .content {
+    padding: 12px 10px;
+  }
+
+  .content-header h1 {
+    font-size: 17px;
+  }
+
+  .stats-grid,
+  .units-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .stat-card {
+    padding: 10px 8px;
+    gap: 8px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 17px;
+    border-radius: 10px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+
+  .stat-value {
+    font-size: 13.5px;
+  }
+
+  .table-box table {
+    min-width: 700px;
+  }
+
+  .sidebar-nav li {
+    min-width: 100%;
+    padding: 9px 10px;
+    font-size: 12.5px;
+  }
+
+  .sidebar-nav li .nav-text {
+    font-size: 12px;
+  }
+
+  .profile-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .modal,
+  .modal-unit,
+  .modal-detail,
+  .modal-tabs,
+  .modal-welcome {
+    padding: 16px 14px !important;
+  }
+}
+
+/* ============ افقی موبایل ============ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .topbar {
+    min-height: 52px;
+    padding: 6px 14px;
+  }
+
+  .brand-logo-svg {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand-text h1 {
+    font-size: 14px;
+  }
+
+  .modal,
+  .modal-unit,
+  .modal-detail,
+  .modal-tabs {
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+}
