@@ -1592,6 +1592,7 @@ function updateSortIcons() {
 
 /* ============ ۱۵) مودال افزودن/ویرایش واحد ============ */
 let currentEditUnitId = null;
+let currentUnitTab = 'main';
 
 function showInputError(inputEl, message) {
   if (!inputEl) return;
@@ -1626,13 +1627,15 @@ function openUnitModal(unitId = null) {
   document.querySelectorAll('.form-input').forEach(el => {
     el.classList.remove('input-error', 'input-success');
   });
+  document.querySelectorAll('.error-message').forEach(el => {
+    el.classList.remove('show');
+  });
 
   const blockSelect = document.getElementById('unitBlock');
   const data = loadData();
 
   if (blockSelect && data?.building) {
     blockSelect.innerHTML = '<option value="">— انتخاب کنید —</option>';
-
     if (data.building.type === 'complex') {
       data.building.blocks.forEach(b => {
         const opt = document.createElement('option');
@@ -1648,6 +1651,8 @@ function openUnitModal(unitId = null) {
     }
   }
 
+  if (typeof switchUnitTab === 'function') switchUnitTab('main');
+
   if (unitId) {
     const unit = UNITS.find(u => u.id === unitId);
     if (!unit) return;
@@ -1657,32 +1662,84 @@ function openUnitModal(unitId = null) {
 
     document.getElementById('unitBlock').value = unit.block || '';
     document.getElementById('unitNumber').value = unit.number || '';
-    document.getElementById('ownerName').value = unit.owner?.name || '';
-    document.getElementById('ownerPhone').value = unit.owner?.phone || '';
-    document.getElementById('tenantName').value = unit.tenant?.name || '';
-    document.getElementById('tenantPhone').value = unit.tenant?.phone || '';
-    document.getElementById('unitCharge').value = unit.chargeAmount || 500000;
-    document.getElementById('unitDebt').value = unit.debt || 0;
-    document.getElementById('unitArea').value = unit.area || 100;
+    document.getElementById('unitFloor').value = unit.floor || '';
+    document.getElementById('unitArea').value = unit.area || '';
     document.getElementById('unitPeopleCount').value = unit.peopleCount || 0;
     document.getElementById('unitParkingCount').value = unit.parkingCount || 0;
+    document.getElementById('unitStorageCount').value = unit.storageCount || 0;
     document.getElementById('unitStatus').value = unit.status || 'auto';
+
+    document.getElementById('ownerName').value = unit.owner?.name || '';
+    document.getElementById('ownerPhone').value = unit.owner?.phone || '';
+    document.getElementById('ownerBirthDate').value = unit.owner?.birthDate || '';
+    document.getElementById('ownerNationalId').value = unit.owner?.nationalId || '';
+    document.getElementById('ownerType').value = unit.owner?.type || 'owner';
+    document.getElementById('defaultChargeOwner').value = unit.defaultChargeOwner || 0;
+    document.getElementById('ownerInAccounting').checked = unit.owner?.inAccounting || false;
+
+    document.getElementById('tenantName').value = unit.tenant?.name || '';
+    document.getElementById('tenantPhone').value = unit.tenant?.phone || '';
+    document.getElementById('tenantBirthDate').value = unit.tenant?.birthDate || '';
+    document.getElementById('tenantNationalId').value = unit.tenant?.nationalId || '';
+    document.getElementById('tenantType').value = unit.tenant?.type || 'tenant';
+    document.getElementById('defaultChargeTenant').value = unit.defaultChargeTenant || 0;
+    document.getElementById('tenantInAccounting').checked = unit.tenant?.inAccounting || false;
+
+    document.getElementById('unitCharge').value = unit.chargeAmount || 500000;
+    document.getElementById('unitDebt').value = unit.debt || 0;
+    document.getElementById('unitNotes').value = unit.notes || '';
+
+    document.getElementById('ownerSettlementId').value = unit.ownerSettlementId || '';
+    document.getElementById('tenantSettlementId').value = unit.tenantSettlementId || '';
+    document.getElementById('waterBillId').value = unit.waterBillId || '';
+    document.getElementById('electricityBillId').value = unit.electricityBillId || '';
+    document.getElementById('gasBillId').value = unit.gasBillId || '';
+    document.getElementById('phoneBillId').value = unit.phoneBillId || '';
+    document.getElementById('parkingNumber').value = unit.parkingNumber || '';
+    document.getElementById('storageNumber').value = unit.storageNumber || '';
+    document.getElementById('landlinePhone').value = unit.landlinePhone || '';
   } else {
     if (title) title.textContent = 'افزودن واحد جدید';
     if (subtitle) subtitle.textContent = 'اطلاعات واحد را وارد کنید';
 
     document.getElementById('unitBlock').value = '';
     document.getElementById('unitNumber').value = '';
-    document.getElementById('ownerName').value = '';
-    document.getElementById('ownerPhone').value = '';
-    document.getElementById('tenantName').value = '';
-    document.getElementById('tenantPhone').value = '';
-    document.getElementById('unitCharge').value = 500000;
-    document.getElementById('unitDebt').value = 0;
-    document.getElementById('unitArea').value = 100;
+    document.getElementById('unitFloor').value = '';
+    document.getElementById('unitArea').value = '';
     document.getElementById('unitPeopleCount').value = 0;
     document.getElementById('unitParkingCount').value = 0;
+    document.getElementById('unitStorageCount').value = 0;
     document.getElementById('unitStatus').value = 'auto';
+
+    document.getElementById('ownerName').value = '';
+    document.getElementById('ownerPhone').value = '';
+    document.getElementById('ownerBirthDate').value = '';
+    document.getElementById('ownerNationalId').value = '';
+    document.getElementById('ownerType').value = 'owner';
+    document.getElementById('defaultChargeOwner').value = 0;
+    document.getElementById('ownerInAccounting').checked = false;
+
+    document.getElementById('tenantName').value = '';
+    document.getElementById('tenantPhone').value = '';
+    document.getElementById('tenantBirthDate').value = '';
+    document.getElementById('tenantNationalId').value = '';
+    document.getElementById('tenantType').value = 'tenant';
+    document.getElementById('defaultChargeTenant').value = 0;
+    document.getElementById('tenantInAccounting').checked = false;
+
+    document.getElementById('unitCharge').value = 500000;
+    document.getElementById('unitDebt').value = 0;
+    document.getElementById('unitNotes').value = '';
+
+    document.getElementById('ownerSettlementId').value = '';
+    document.getElementById('tenantSettlementId').value = '';
+    document.getElementById('waterBillId').value = '';
+    document.getElementById('electricityBillId').value = '';
+    document.getElementById('gasBillId').value = '';
+    document.getElementById('phoneBillId').value = '';
+    document.getElementById('parkingNumber').value = '';
+    document.getElementById('storageNumber').value = '';
+    document.getElementById('landlinePhone').value = '';
   }
 
   modal.classList.add('open');
@@ -1691,47 +1748,82 @@ function openUnitModal(unitId = null) {
 function closeUnitModal() {
   document.getElementById('unitModal').classList.remove('open');
   currentEditUnitId = null;
+  currentUnitTab = 'main';
 }
 
 function saveUnit() {
   const block = document.getElementById('unitBlock').value.trim();
   const number = parseInt(document.getElementById('unitNumber').value);
-  const ownerName = document.getElementById('ownerName').value.trim();
-  const ownerPhone = document.getElementById('ownerPhone').value.trim();
-  const tenantName = document.getElementById('tenantName').value.trim();
-  const tenantPhone = document.getElementById('tenantPhone').value.trim();
-  const charge = parseInt(document.getElementById('unitCharge').value) || 500000;
-  const debt = parseInt(document.getElementById('unitDebt').value) || 0;
-  const area = parseFloat(document.getElementById('unitArea').value) || 100;
+  const floor = document.getElementById('unitFloor').value.trim();
+  const area = parseFloat(document.getElementById('unitArea').value) || 0;
   const peopleCount = parseInt(document.getElementById('unitPeopleCount').value) || 0;
   const parkingCount = parseInt(document.getElementById('unitParkingCount').value) || 0;
+  const storageCount = parseInt(document.getElementById('unitStorageCount').value) || 0;
   const status = document.getElementById('unitStatus').value || 'auto';
 
+  const ownerName = document.getElementById('ownerName').value.trim();
+  const ownerPhone = document.getElementById('ownerPhone').value.trim();
+  const ownerBirthDate = document.getElementById('ownerBirthDate').value.trim();
+  const ownerNationalId = document.getElementById('ownerNationalId').value.trim();
+  const ownerType = document.getElementById('ownerType').value;
+  const defaultChargeOwner = parseInt(document.getElementById('defaultChargeOwner').value) || 0;
+  const ownerInAccounting = document.getElementById('ownerInAccounting').checked;
+
+  const tenantName = document.getElementById('tenantName').value.trim();
+  const tenantPhone = document.getElementById('tenantPhone').value.trim();
+  const tenantBirthDate = document.getElementById('tenantBirthDate').value.trim();
+  const tenantNationalId = document.getElementById('tenantNationalId').value.trim();
+  const tenantType = document.getElementById('tenantType').value;
+  const defaultChargeTenant = parseInt(document.getElementById('defaultChargeTenant').value) || 0;
+  const tenantInAccounting = document.getElementById('tenantInAccounting').checked;
+
+  const charge = parseInt(document.getElementById('unitCharge').value) || 500000;
+  const debt = parseInt(document.getElementById('unitDebt').value) || 0;
+  const notes = document.getElementById('unitNotes').value.trim();
+
+  const ownerSettlementId = document.getElementById('ownerSettlementId').value.trim();
+  const tenantSettlementId = document.getElementById('tenantSettlementId').value.trim();
+  const waterBillId = document.getElementById('waterBillId').value.trim();
+  const electricityBillId = document.getElementById('electricityBillId').value.trim();
+  const gasBillId = document.getElementById('gasBillId').value.trim();
+  const phoneBillId = document.getElementById('phoneBillId').value.trim();
+  const parkingNumber = document.getElementById('parkingNumber').value.trim();
+  const storageNumber = document.getElementById('storageNumber').value.trim();
+  const landlinePhone = document.getElementById('landlinePhone').value.trim();
+
+  if (!block) {
+    if (typeof switchUnitTab === 'function') switchUnitTab('main');
+    toastWarning('لطفاً بلوک را انتخاب کنید.');
+    return;
+  }
+  if (!number || number < 1) {
+    if (typeof switchUnitTab === 'function') switchUnitTab('main');
+    toastWarning('لطفاً شماره واحد را وارد کنید.');
+    return;
+  }
   if (!area || area < 1) {
+    if (typeof switchUnitTab === 'function') switchUnitTab('main');
     toastWarning('لطفاً متراژ واحد را وارد کنید.');
     return;
   }
-
-  if (!block) { toastWarning('لطفاً بلوک را انتخاب کنید.'); return; }
-  if (!number || number < 1) { toastWarning('لطفاً شماره واحد را وارد کنید.'); return; }
-
   if (ownerPhone && !isValidIranMobile(ownerPhone)) {
+    if (typeof switchUnitTab === 'function') switchUnitTab('main');
     showInputError(document.getElementById('ownerPhone'), 'شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود');
     toastWarning('شماره موبایل مالک اشتباه است.');
     return;
   }
-
   if (tenantPhone && !isValidIranMobile(tenantPhone)) {
+    if (typeof switchUnitTab === 'function') switchUnitTab('main');
     showInputError(document.getElementById('tenantPhone'), 'شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود');
-    toastWarning('شماره موبایل مستاجر اشتباه است.');
+    toastWarning('شماره موبایل ساکن اشتباه است.');
     return;
   }
 
   const duplicate = UNITS.find(u =>
     u.block === block && u.number === number && u.id !== currentEditUnitId
   );
-
   if (duplicate) {
+    if (typeof switchUnitTab === 'function') switchUnitTab('main');
     toastWarning(`واحد ${number} در بلوک ${block} قبلاً ثبت شده است.`);
     return;
   }
@@ -1739,45 +1831,51 @@ function saveUnit() {
   const code = `${block}-${toPersianNum(number)}`;
   const isEdit = !!currentEditUnitId;
 
+  const unitData = {
+    block, number, code, floor,
+    area, peopleCount, parkingCount, storageCount, status,
+    owner: {
+      name: ownerName || null,
+      phone: ownerPhone || null,
+      birthDate: ownerBirthDate || null,
+      nationalId: ownerNationalId || null,
+      type: ownerType,
+      inAccounting: ownerInAccounting,
+      registered: !!ownerName,
+      approved: !!ownerName,
+    },
+    tenant: {
+      name: tenantName || null,
+      phone: tenantPhone || null,
+      birthDate: tenantBirthDate || null,
+      nationalId: tenantNationalId || null,
+      type: tenantType,
+      inAccounting: tenantInAccounting,
+      registered: !!tenantName,
+      approved: !!tenantName,
+    },
+    defaultChargeOwner,
+    defaultChargeTenant,
+    chargeAmount: charge,
+    debt,
+    notes,
+    ownerSettlementId: ownerSettlementId || null,
+    tenantSettlementId: tenantSettlementId || null,
+    waterBillId: waterBillId || null,
+    electricityBillId: electricityBillId || null,
+    gasBillId: gasBillId || null,
+    phoneBillId: phoneBillId || null,
+    parkingNumber: parkingNumber || null,
+    storageNumber: storageNumber || null,
+    landlinePhone: landlinePhone || null,
+  };
+
   if (currentEditUnitId) {
     const unit = UNITS.find(u => u.id === currentEditUnitId);
-    if (unit) {
-      unit.block = block;
-      unit.number = number;
-      unit.code = code;
-      unit.owner = {
-        name: ownerName || null, phone: ownerPhone || null,
-        registered: !!ownerName, approved: !!ownerName,
-      };
-      unit.tenant = {
-        name: tenantName || null, phone: tenantPhone || null,
-        registered: !!tenantName, approved: !!tenantName,
-      };
-      unit.chargeAmount = charge;
-      unit.debt = debt;
-      unit.area = area;
-      unit.peopleCount = peopleCount;
-      unit.parkingCount = parkingCount;
-      unit.status = status;
-    }
+    if (unit) Object.assign(unit, unitData);
   } else {
     const newId = UNITS.length > 0 ? Math.max(...UNITS.map(u => u.id)) + 1 : 1;
-    UNITS.push({
-      id: newId, block: block, number: number, code: code,
-      owner: {
-        name: ownerName || null, phone: ownerPhone || null,
-        registered: !!ownerName, approved: !!ownerName,
-      },
-      tenant: {
-        name: tenantName || null, phone: tenantPhone || null,
-        registered: !!tenantName, approved: !!tenantName,
-      },
-      chargeAmount: charge, debt: debt,
-      area: area,
-      peopleCount: peopleCount,
-      parkingCount: parkingCount,
-      status: status,
-    });
+    UNITS.push({ id: newId, ...unitData });
   }
 
   saveUnits();
@@ -1786,11 +1884,7 @@ function saveUnit() {
   renderUnitsPage();
   renderDashboard();
 
-  if (isEdit) {
-    toastSuccess('واحد ویرایش شد.');
-  } else {
-    toastSuccess('واحد جدید اضافه شد.');
-  }
+  toastSuccess(isEdit ? 'واحد ویرایش شد.' : 'واحد جدید اضافه شد.');
 }
 
 /* ============ ۱۶) خروجی اکسل واحدها ============ */
@@ -2014,8 +2108,19 @@ function bindUnitModal() {
   const btnCancel = document.getElementById('unitCancelBtn');
   if (btnCancel) btnCancel.onclick = closeUnitModal;
 
+  const btnClose = document.getElementById('unitModalCloseBtn');
+  if (btnClose) btnClose.onclick = closeUnitModal;
+
   const btnSave = document.getElementById('unitSaveBtn');
   if (btnSave) btnSave.onclick = saveUnit;
+
+  document.querySelectorAll('.unit-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (typeof switchUnitTab === 'function') {
+        switchUnitTab(tab.dataset.unitTab);
+      }
+    });
+  });
 
   const ownerPhone = document.getElementById('ownerPhone');
   if (ownerPhone) {
@@ -2048,7 +2153,21 @@ function bindUnitModal() {
     });
   }
 }
+/* ✅ سوئیچ بین تب‌ها */
+function switchUnitTab(tabName) {
+  currentUnitTab = tabName;
 
+  document.querySelectorAll('.unit-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.unitTab === tabName);
+  });
+
+  document.querySelectorAll('.unit-tab-content').forEach(c => {
+    c.classList.toggle('active', c.dataset.unitTabContent === tabName);
+  });
+
+  const wrapper = document.querySelector('.unit-tab-content-wrapper');
+  if (wrapper) wrapper.scrollTop = 0;
+}
 /* ============================================================
    مودال جزئیات واحد
    ============================================================ */
