@@ -195,58 +195,7 @@ function loadUnits() {
 }
 function saveUnits() { localStorage.setItem(UNITS_KEY, JSON.stringify(UNITS)); }
 
-/* ============================================================
-   💎 پلن‌ها (Plan Management) — اضافه‌شده
-   ============================================================ */
-const PLAN_KEY = 'ham_sakhteman_plan';
 
-function loadPlan() {
-  const raw = localStorage.getItem(PLAN_KEY);
-  if (raw) { try { return JSON.parse(raw); } catch (e) { return null; } }
-  return null;
-}
-
-function savePlan(plan) {
-  localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
-}
-
-function activatePlan(type, totalUnits, payment) {
-  const now = new Date();
-  const expiresAt = type === 'pro'
-    ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()).toISOString()
-    : null;
-
-  const plan = {
-    type: type,
-    totalUnits: totalUnits,
-    startedAt: now.toISOString(),
-    expiresAt: expiresAt,
-    payment: payment || { amount: 0, status: type === 'free' ? 'free' : 'paid' },
-  };
-
-  savePlan(plan);
-  return plan;
-}
-
-function calculatePrice(totalUnits) {
-  const units = Number(totalUnits) || 0;
-
-  if (units <= 10) {
-    return {
-      price: 0,
-      breakdown: 'پلن رایگان برای ساختمان‌های تا ۱۰ واحد',
-    };
-  }
-
-  // قیمت: هر واحد ۱۰۰,۰۰۰ تومان (به‌صورت پله‌ای)
-  const pricePerUnit = 100000;
-  const price = units * pricePerUnit;
-
-  return {
-    price: price,
-    breakdown: `${toPersianNum(units)} واحد × ۱۰۰,۰۰۰ تومان = ${formatPrice(price)}`,
-  };
-}
 
 /* ============ ۴) ساخت واحدهای خالی ============ */
 function buildDemoUnits(building) {
