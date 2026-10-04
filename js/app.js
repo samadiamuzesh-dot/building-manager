@@ -1315,6 +1315,7 @@ function bindWelcomeModal() {
 
 /* ============ ۱۴) صفحه واحدها ============ */
 let unitsPageFilter = 'all';
+let unitsOccupancyFilter = 'all';
 let unitsSortColumn = null;
 let unitsSortDirection = 'asc';
 let unitsSearchQuery = '';
@@ -1325,6 +1326,13 @@ function getUnitsPageFiltered() {
   if (unitsPageFilter !== 'all' && unitsPageFilter !== '') {
     const filterName = String(unitsPageFilter).trim();
     list = list.filter(u => String(u.block).trim() === filterName);
+  }
+
+  // ✅ فیلتر مشغول
+  if (unitsOccupancyFilter === 'occupied') {
+    list = list.filter(u => !isUnitEmpty(u));
+  } else if (unitsOccupancyFilter === 'empty') {
+    list = list.filter(u => isUnitEmpty(u));
   }
 
   if (unitsSearchQuery.trim() !== '') {
@@ -1373,13 +1381,25 @@ function getUnitsPageFiltered() {
           valA = String(a.owner?.phone || '').trim();
           valB = String(b.owner?.phone || '').trim();
           break;
+        case 'area':
+          valA = Number(a.area) || 0;
+          valB = Number(b.area) || 0;
+          break;
+        case 'people':
+          valA = Number(a.peopleCount) || 0;
+          valB = Number(b.peopleCount) || 0;
+          break;
+        case 'parking':
+          valA = Number(a.parkingCount) || 0;
+          valB = Number(b.parkingCount) || 0;
+          break;
+        case 'occupancy':
+          valA = isUnitEmpty(a) ? 0 : 1;
+          valB = isUnitEmpty(b) ? 0 : 1;
+          break;
         case 'debt':
           valA = Number(a.debt) || 0;
           valB = Number(b.debt) || 0;
-          break;
-        case 'status':
-          valA = a.debt > 0 ? 1 : 0;
-          valB = b.debt > 0 ? 1 : 0;
           break;
         default:
           return 0;
@@ -1398,7 +1418,6 @@ function getUnitsPageFiltered() {
 
   return list;
 }
-
 function buildUnitsBlockFilter() {
   const data = loadData();
   const select = document.getElementById('unitsBlockFilter');
@@ -1476,16 +1495,15 @@ function renderUnitsPage() {
       : '<span style="color:#94a3b8;">—</span>';
 
     const ownerPhone = u.owner?.phone || '—';
-    const tenantPhone = u.tenant?.phone || '—';
     const area = u.area ? formatNumber(u.area) + ' متر' : '—';
     const peopleCount = u.peopleCount ? formatNumber(u.peopleCount) + ' نفر' : '—';
     const parkingCount = u.parkingCount ? formatNumber(u.parkingCount) : '—';
 
-    let statusBadge = '';
-    if (isUnitEmpty(u)) {
-      statusBadge = '<span class="badge" style="background:#fef3c7; color:#92400e;">🚪 خالی</span>';
+    let statusBadge;
+    if (typeof isUnitEmpty === 'function' && !isUnitEmpty(u)) {
+      statusBadge = '<span class="badge-occupied">🏠 پر</span>';
     } else {
-      statusBadge = '<span class="badge badge-paid">🏠 پر</span>';
+      statusBadge = '<span class="badge-empty">🚪 خالی</span>';
     }
 
     return `
@@ -1495,12 +1513,11 @@ function renderUnitsPage() {
         <td>${ownerName}</td>
         <td>${tenantName}</td>
         <td>${ownerPhone}</td>
-        <td>${tenantPhone}</td>
         <td>${area}</td>
         <td>${peopleCount}</td>
         <td>${parkingCount}</td>
-        <td>${u.debt > 0 ? formatToman(u.debt) : '—'}</td>
         <td>${statusBadge}</td>
+        <td>${u.debt > 0 ? formatToman(u.debt) : '—'}</td>
         <td>
           <div class="row-actions">
             <button class="row-action-btn" data-action="view" data-id="${u.id}" title="جزئیات">✏️</button>
@@ -1517,6 +1534,14 @@ function bindUnitsPage() {
   if (filter) {
     filter.addEventListener('change', (e) => {
       unitsPageFilter = e.target.value;
+      renderUnitsPage();
+    });
+  }
+     const occupancyFilter = document.getElementById('unitsOccupancyFilter');
+  if (occupancyFilter) {
+    occupancyFilter.addEventListener('change', (e) => {
+      unitsOccupancyFilter = e.target.value;
+      renderUnitsStats();
       renderUnitsPage();
     });
   }
@@ -2505,6 +2530,19 @@ function toggleChargeSections() {
 
 function closeIssueChargeModal() {
   document.getElementById('issueChargeModal').classList.remove('open');
+}
+function isUnitEmpty(unit) {
+  if (!unit) return true;
+
+  if (unit.status === 'empty') return true;
+  if (unit.status === 'occupied') return false;
+
+  // خودکار: اگه مالک یا ساکن یا نفرات داره → پر
+  const hasOwner = unit.owner?.name && unit.owner.name.trim() !== '';
+  const hasTenant = unit.tenant?.name && unit.tenant.name.trim() !== '';
+  const hasPeople = (unit.peopleCount || 0) > 0;
+
+  return !hasOwner && !hasTenant && !hasPeople;
 }
 
 function calculateUnitCharge(unit, chargeConfig) {
