@@ -8909,7 +8909,19 @@ function printProfitPdf() {
       <div class="info">
         گزارش سود و زیان — ${blockLabel} — سال ${toPersianNum(profitYear)} | تاریخ چاپ: ${today}
       </div>
-
+<div class="stats">
+  <div class="stat-box">
+    <span>کل درآمد</span>
+    <strong style="color:#15803d;">${formatToman(totalIncome)}</strong>
+  </div>
+  <div class="stat-box">
+    <span>شارژ دریافتی</span>
+    <strong style="color:#15803d;">${formatToman(chargesTotal)}</strong>
+  </div>
+  <div class="stat-box">
+    <span>درآمد جانبی</span>
+    <strong style="color:#15803d;">${formatToman(sideIncomesTotal)}</strong>
+  </div>
       <div class="stats">
         <div class="stat-box">
           <span>کل درآمد</span>
