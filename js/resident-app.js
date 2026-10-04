@@ -496,7 +496,6 @@ function renderResidentCharges() {
   const charges = loadCharges();
   const units = loadUnits();
 
-  // پیدا کردن واحد کاربر
   const userUnit = units.find(u => {
     if (session.block === '—' || !session.block) {
       return (u.block === '—' || !u.block) && Number(u.number) === Number(session.unitNumber);
@@ -510,14 +509,19 @@ function renderResidentCharges() {
     return;
   }
 
-  const myCharges = charges.filter(c => c.unitId === userUnit.id);
+  const myCharges = charges.filter(c => Number(c.unitId) === Number(userUnit.id));
 
   if (myCharges.length === 0) {
     container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:40px;">هنوز شارژی صادر نشده</p>';
     return;
   }
 
-  container.innerHTML = [...myCharges].reverse().map(c => {
+  // مرتب‌سازی: جدیدترین اول
+  const sorted = [...myCharges].sort((a, b) =>
+    (b.issuedAt || '').localeCompare(a.issuedAt || '')
+  );
+
+  container.innerHTML = sorted.map(c => {
     const status = c.paid
       ? '<span style="color:#16a34a; font-weight:800;">✅ پرداخت شده</span>'
       : '<span style="color:#dc2626; font-weight:800;">⚠️ پرداخت نشده</span>';
@@ -537,9 +541,13 @@ function renderResidentCharges() {
           <strong>${status}</strong>
         </div>
         ${c.paid ? `
-          <div style="display:flex; justify-content:space-between; padding:8px 0;">
+          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
             <span style="color:#64748b;">تاریخ پرداخت</span>
             <strong>${c.paidDate || '—'}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0;">
+            <span style="color:#64748b;">روش پرداخت</span>
+            <strong>${c.payMethod || '—'}</strong>
           </div>
         ` : ''}
       </div>
@@ -964,39 +972,142 @@ function renderResidentProfile() {
   const container = document.getElementById('residentProfileContent');
   if (!session || !container) return;
 
+  const units = loadUnits();
+  const myUnit = units.find(u => {
+    if (session.block === '—' || !session.block) {
+      return (u.block === '—' || !u.block) && Number(u.number) === Number(session.unitNumber);
+    }
+    return String(u.block).trim() === String(session.block).trim()
+        && Number(u.number) === Number(session.unitNumber);
+  });
+
   const roleLabel = session.role === 'owner' ? '👤 مالک' : '🏘️ مستاجر';
   const unitLabel = session.block && session.block !== '—'
     ? `${session.block} - واحد ${toPersianNumR(session.unitNumber)}`
     : `واحد ${toPersianNumR(session.unitNumber)}`;
 
-  container.innerHTML = `
+  // ============ اطلاعات من ============
+  let infoHtml = `
     <div class="resident-card">
+      <div class="resident-card-header">
+        <h3>👤 اطلاعات من</h3>
+      </div>
+
       <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
         <span style="color:#64748b;">نام</span>
-        <strong>${session.name}</strong>
+        <strong>${session.name || '—'}</strong>
       </div>
       <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
         <span style="color:#64748b;">موبایل</span>
-        <strong dir="ltr">${session.phone}</strong>
+        <strong dir="ltr">${session.phone || '—'}</strong>
       </div>
       <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
         <span style="color:#64748b;">نقش</span>
         <strong>${roleLabel}</strong>
       </div>
-      <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex; justify-content:space-between; padding:10px 0;">
         <span style="color:#64748b;">واحد</span>
         <strong>${unitLabel}</strong>
       </div>
-      <div style="display:flex; justify-content:space-between; padding:10px 0;">
-        <span style="color:#64748b;">کد ساختمان</span>
-        <strong dir="ltr">${session.buildingCode}</strong>
-      </div>
     </div>
+  `;
 
+  // ============ اطلاعات واحد ============
+  if (myUnit) {
+    infoHtml += `
+      <div class="resident-card">
+        <div class="resident-card-header">
+          <h3>🏠 اطلاعات واحد</h3>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">بلوک</span>
+          <strong>${myUnit.block || '—'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">شماره واحد</span>
+          <strong>${toPersianNumR(myUnit.number) || '—'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">📐 متراژ</span>
+          <strong>${myUnit.area ? formatNumberR(myUnit.area) + ' متر' : '—'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">👥 تعداد افراد</span>
+          <strong>${myUnit.peopleCount ? formatNumberR(myUnit.peopleCount) + ' نفر' : '—'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">🚗 پارکینگ</span>
+          <strong>${myUnit.parkingCount ? formatNumberR(myUnit.parkingCount) : '—'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:10px 0;">
+          <span style="color:#64748b;">📦 انباری</span>
+          <strong>${myUnit.storageCount ? formatNumberR(myUnit.storageCount) : '—'}</strong>
+        </div>
+      </div>
+    `;
+
+    // ============ اطلاعات مالک ============
+    if (myUnit.owner?.name) {
+      infoHtml += `
+        <div class="resident-card">
+          <div class="resident-card-header">
+            <h3>👤 مالک</h3>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+            <span style="color:#64748b;">نام</span>
+            <strong>${myUnit.owner.name}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+            <span style="color:#64748b;">موبایل</span>
+            <strong dir="ltr">${myUnit.owner.phone || '—'}</strong>
+          </div>
+          ${myUnit.owner.nationalId ? `
+            <div style="display:flex; justify-content:space-between; padding:10px 0;">
+              <span style="color:#64748b;">کد ملی</span>
+              <strong dir="ltr">${myUnit.owner.nationalId}</strong>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // ============ اطلاعات ساکن ============
+    if (myUnit.tenant?.name && session.role !== 'tenant') {
+      infoHtml += `
+        <div class="resident-card">
+          <div class="resident-card-header">
+            <h3>🏘️ ساکن</h3>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+            <span style="color:#64748b;">نام</span>
+            <strong>${myUnit.tenant.name}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:10px 0;">
+            <span style="color:#64748b;">موبایل</span>
+            <strong dir="ltr">${myUnit.tenant.phone || '—'}</strong>
+          </div>
+        </div>
+      `;
+    }
+  } else {
+    infoHtml += `
+      <div class="resident-card" style="text-align:center; padding:30px;">
+        <p style="color:#94a3b8;">اطلاعات واحد یافت نشد</p>
+      </div>
+    `;
+  }
+
+  // ============ دکمه خروج ============
+  infoHtml += `
     <button class="resident-submit-btn" id="residentLogoutBtn2" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); margin-top: 20px;">
       🚪 خروج از حساب
     </button>
   `;
+
+  container.innerHTML = infoHtml;
 
   document.getElementById('residentLogoutBtn2')?.addEventListener('click', logoutResident);
 }
