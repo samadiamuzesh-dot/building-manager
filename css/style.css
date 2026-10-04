@@ -3869,3 +3869,158 @@ body.dark-mode .sticky-actions {
     padding: 3px 8px;
   }
 }
+/* ============================================================
+   🎯 فاز ۱: مودال جزئیات واحد ریسپانسیو
+   ============================================================ */
+
+.modal-detail {
+  max-width: 700px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.modal-detail::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-detail::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.modal-detail::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 10px;
+}
+
+/* detail-stats ریسپانسیو */
+.modal-detail .detail-stats {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+/* detail-grid ریسپانسیو */
+.modal-detail .detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+/* ============ ریسپانسیو: تبلت ============ */
+@media (max-width: 900px) {
+  .modal-detail {
+    max-width: 92vw;
+  }
+}
+
+/* ============ ریسپانسیو: موبایل ============ */
+@media (max-width: 640px) {
+  .modal-detail {
+    max-width: 100%;
+    width: 100%;
+    max-height: 95vh;
+    padding: 18px 16px;
+    border-radius: 22px 22px 0 0 !important;
+  }
+
+  .modal-detail .detail-header {
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+  }
+
+  .modal-detail .detail-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+    border-radius: 12px;
+  }
+
+  .modal-detail .detail-title h2 {
+    font-size: 16px;
+  }
+
+  .modal-detail .detail-title p {
+    font-size: 12px;
+  }
+
+  /* detail-stats: ۲ ستونه */
+  .modal-detail .detail-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
+  }
+
+  .modal-detail .detail-stat {
+    padding: 10px 8px;
+  }
+
+  .modal-detail .detail-stat span {
+    font-size: 10.5px;
+  }
+
+  .modal-detail .detail-stat strong {
+    font-size: 13.5px;
+  }
+
+  /* detail-grid: ۱ ستونه */
+  .modal-detail .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .modal-detail .detail-item {
+    padding: 9px 11px;
+  }
+
+  .modal-detail .detail-item span {
+    font-size: 11px;
+  }
+
+  .modal-detail .detail-item strong {
+    font-size: 13px;
+  }
+
+  .modal-detail .detail-section {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .modal-detail .detail-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+    padding-top: 14px;
+  }
+
+  .modal-detail .detail-actions .btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+}
+
+/* ============ ریسپانسیو: موبایل کوچک ============ */
+@media (max-width: 380px) {
+  .modal-detail .detail-stats {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .modal-detail .detail-stat strong {
+    font-size: 12.5px;
+  }
+}
+
+/* ============ حالت شب ============ */
+body.dark-mode .modal-detail {
+  background: #1e293b;
+}
+
+body.dark-mode .modal-detail .detail-stat,
+body.dark-mode .modal-detail .detail-section {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+body.dark-mode .modal-detail .detail-item {
+  background: #1e293b;
+  border-color: #334155;
+}
