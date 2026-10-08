@@ -526,6 +526,10 @@ function renderResidentCharges() {
       ? '<span style="color:#16a34a; font-weight:800;">✅ پرداخت شده</span>'
       : '<span style="color:#dc2626; font-weight:800;">⚠️ پرداخت نشده</span>';
 
+       const payButton = c.paid
+      ? ''
+      : `<button class="resident-pay-btn" data-pay-charge-id="${c.id}">💳 پرداخت آنلاین</button>`;
+
     return `
       <div class="resident-card">
         <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
@@ -550,11 +554,19 @@ function renderResidentCharges() {
             <strong>${c.payMethod || '—'}</strong>
           </div>
         ` : ''}
+        ${payButton}
       </div>
     `;
   }).join('');
-}
 
+  // بایند دکمه‌های پرداخت
+  container.querySelectorAll('[data-pay-charge-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const chargeId = Number(btn.dataset.payChargeId);
+      openResidentPayModal(chargeId);
+    });
+  });
+}
 function renderResidentNotices() {
   const container = document.getElementById('residentNoticesList');
   if (!container) return;
