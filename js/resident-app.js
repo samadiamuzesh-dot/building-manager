@@ -1174,6 +1174,7 @@ function initResidentApp() {
   document.querySelectorAll('.resident-nav-item').forEach(btn => {
   // چت
   bindResidentMessagesPage();
+       bindResidentPayModal();
     btn.addEventListener('click', () => {
       switchResidentPage(btn.dataset.residentPage);
     });
