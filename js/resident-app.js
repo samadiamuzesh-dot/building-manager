@@ -897,28 +897,378 @@ function renderResidentVoting() {
   const container = document.getElementById('residentVotingList');
   if (!container) return;
 
+  const session = getResidentSession();
+  if (!session) return;
+
   const votings = loadVotings();
-  const active = votings.filter(v => {
-    const now = new Date();
+  const now = new Date();
+
+  // فیلتر: فقط رأی‌گیری‌های فعال
+  const activeVotings = votings.filter(v => {
     const start = new Date(v.startDateTime || v.createdAt);
     const end = new Date(v.endDateTime || v.createdAt);
     return now >= start && now <= end;
   });
 
-  if (active.length === 0) {
-    container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:40px;">رأی‌گیری فعالی وجود ندارد</p>';
+  // رأی‌گیری‌های پایان‌یافته
+  const endedVotings = votings.filter(v => {
+    const end = new Date(v.endDateTime || v.createdAt);
+    return now > end;
+  }).sort((a, b) => new Date(b.endDateTime) - new Date(a.endDateTime));
+
+  if (activeVotings.length === 0 && endedVotings.length === 0) {
+    container.innerHTML = `
+      <div class="resident-card" style="text-align:center; padding:40px 20px;">
+        <div style="font-size:56px; margin-bottom:12px;">🗳️</div>
+        <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">رأی‌گیری فعالی وجود ندارد</h3>
+        <p style="color:#64748b; font-size:13.5px;">
+          وقتی مدیر رأی‌گیری ایجاد کنه، اینجا نمایش داده میشه.
+        </p>
+      </div>
+    `;
     return;
   }
 
-  container.innerHTML = active.map(v => `
-    <div class="resident-card">
-      <h3 style="font-size:15px; font-weight:800; margin-bottom:8px;">${v.title}</h3>
-      <p style="font-size:13px; color:#64748b; margin-bottom:12px;">${v.description || ''}</p>
-      <p style="font-size:12px; color:#94a3b8;">⏰ از ${v.startDate} تا ${v.endDate}</p>
-    </div>
-  `).join('');
+  let html = '';
+
+  // ============ رأی‌گیری‌های فعال ============
+  if (activeVotings.length > 0) {
+    html += `<div style="margin-bottom:20px;">
+      <h3 style="font-size:14px; font-weight:800; color:#16a34a; margin-bottom:12px;">
+        🟢 رأی‌گیری‌های فعال (${toPersianNumR(activeVotings.length)})
+      </h3>
+    `;
+
+    activeVotings.forEach(v => {
+      html += renderVotingCard(v, 'active', session);
+    });
+
+    html += `</div>`;
+  }
+
+  // ============ رأی‌گیری‌های پایان‌یافته ============
+  if (endedVotings.length > 0) {
+    html += `<div>
+      <h3 style="font-size:14px; font-weight:800; color:#64748b; margin-bottom:12px;">
+        ⚫ پایان‌یافته (${toPersianNumR(endedVotings.length)})
+      </h3>
+    `;
+
+    endedVotings.forEach(v => {
+      html += renderVotingCard(v, 'ended', session);
+    });
+
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+
+  // بایند دکمه‌ها
+  bindVotingActions();
 }
 
+/* ✅ رندر یک کارت رأی‌گیری */
+function renderVotingCard(voting, status, session) {
+  const candidates = voting.candidates || [];
+  const votes = voting.votes || [];
+  const totalVotes = votes.length;
+
+  // چک کن ساکن رأی داده یا نه
+  const myVote = votes.find(v => 
+    v.voterPhone === session.phone ||
+    (v.voterUnitId && v.voterUnitId === getUnitIdBySession())
+  );
+  const hasVoted = !!myVote;
+
+  // اطلاعات زمان
+  const startDate = voting.startDate || '—';
+  const endDate = voting.endDate || '—';
+
+  let statusBadge = '';
+  if (status === 'active') {
+    statusBadge = '<span class="resident-badge resident-badge-green">🟢 فعال</span>';
+  } else {
+    statusBadge = '<span class="resident-badge resident-badge-gray">⚫ پایان‌یافته</span>';
+  }
+
+  let html = `
+    <div class="resident-card" style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:10px; gap:8px;">
+        <h3 style="font-size:15px; font-weight:800; flex:1;">${voting.title || '—'}</h3>
+        ${statusBadge}
+      </div>
+      
+      ${voting.description ? `<p style="font-size:13px; color:#64748b; margin-bottom:10px; line-height:1.7;">${voting.description}</p>` : ''}
+      
+      <div style="display:flex; gap:12px; font-size:11.5px; color:#94a3b8; margin-bottom:12px;">
+        <span>⏰ از ${startDate}</span>
+        <span>تا ${endDate}</span>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; padding:8px 0; border-top:1px solid #f1f5f9; margin-bottom:12px;">
+        <span style="color:#64748b; font-size:12.5px;">👥 کاندیدها</span>
+        <strong style="font-size:13px;">${toPersianNumR(candidates.length)} نفر</strong>
+      </div>
+  `;
+
+  // ===== اگر رأی داده =====
+  if (hasVoted) {
+    html += `
+      <div style="background:#dcfce7; border-radius:10px; padding:12px; text-align:center; margin-bottom:12px;">
+        <div style="font-size:14px; font-weight:800; color:#15803d; margin-bottom:4px;">
+          ✅ شما رأی داده‌اید
+        </div>
+        <div style="font-size:12px; color:#15803d;">
+          رأی شما به: <strong>${myVote.candidateName || '—'}</strong>
+        </div>
+      </div>
+    `;
+
+    // دکمه مشاهده نتایج
+    html += `
+      <button class="resident-pay-btn" data-voting-results="${voting.id}" style="background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);">
+        📊 مشاهده نتایج
+      </button>
+    `;
+  }
+  // ===== اگر رأی نداده و فعاله =====
+  else if (status === 'active' && candidates.length > 0) {
+    html += `
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12.5px; font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">
+          🗳️ کاندید مورد نظر خود را انتخاب کنید:
+        </label>
+        <div class="resident-voting-candidates" data-voting-id="${voting.id}">
+    `;
+
+    candidates.forEach((c, idx) => {
+      html += `
+        <label class="resident-voting-candidate">
+          <input type="radio" name="vote-${voting.id}" value="${c.id}" data-candidate-name="${c.name || ''}" />
+          <div class="resident-voting-candidate-info">
+            <div class="resident-voting-candidate-num">${toPersianNumR(idx + 1)}</div>
+            <div>
+              <div class="resident-voting-candidate-name">${c.name || '—'}</div>
+              ${c.phone ? `<div class="resident-voting-candidate-phone">${c.phone}</div>` : ''}
+            </div>
+          </div>
+        </label>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+      <button class="resident-pay-btn" data-vote-submit="${voting.id}" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">
+        ✅ ثبت رأی
+      </button>
+    `;
+  }
+  // ===== اگر پایان‌یافته و رأی نداده =====
+  else if (status === 'ended') {
+    html += `
+      <div style="background:#fef3c7; border-radius:10px; padding:12px; text-align:center; margin-bottom:12px;">
+        <div style="font-size:13px; color:#92400e;">
+          ⏰ این رأی‌گیری به پایان رسیده است
+        </div>
+      </div>
+      <button class="resident-pay-btn" data-voting-results="${voting.id}" style="background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);">
+        📊 مشاهده نتایج
+      </button>
+    `;
+  }
+  // ===== اگر کاندید نداره =====
+  else {
+    html += `
+      <div style="background:#f1f5f9; border-radius:10px; padding:12px; text-align:center;">
+        <div style="font-size:12.5px; color:#64748b;">
+          کاندیدی ثبت نشده است
+        </div>
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+
+  return html;
+}
+
+/* ✅ بایند دکمه‌های رأی‌گیری */
+function bindVotingActions() {
+  // دکمه ثبت رأی
+  document.querySelectorAll('[data-vote-submit]').forEach(btn => {
+    btn.onclick = () => {
+      const votingId = Number(btn.dataset.voteSubmit);
+      submitVote(votingId);
+    };
+  });
+
+  // دکمه مشاهده نتایج
+  document.querySelectorAll('[data-voting-results]').forEach(btn => {
+    btn.onclick = () => {
+      const votingId = Number(btn.dataset.votingResults);
+      showVotingResults(votingId);
+    };
+  });
+}
+
+/* ✅ ثبت رأی */
+function submitVote(votingId) {
+  const session = getResidentSession();
+  if (!session) return;
+
+  const container = document.querySelector(`[data-voting-id="${votingId}"]`);
+  if (!container) return;
+
+  const selected = container.querySelector('input[type="radio"]:checked');
+  if (!selected) {
+    showResidentToast('لطفاً یک کاندید را انتخاب کنید.', 'warning');
+    return;
+  }
+
+  const candidateId = Number(selected.value);
+  const candidateName = selected.dataset.candidateName;
+
+  // تأیید
+  if (!confirm(`آیا از ثبت رأی خود به «${candidateName}» مطمئن هستید؟`)) {
+    return;
+  }
+
+  const votings = loadVotings();
+  const voting = votings.find(v => v.id === votingId);
+  if (!voting) {
+    showResidentToast('رأی‌گیری پیدا نشد.', 'error');
+    return;
+  }
+
+  // چک کن قبلاً رأی نداده
+  if (!voting.votes) voting.votes = [];
+  
+  const alreadyVoted = voting.votes.find(v => 
+    v.voterPhone === session.phone
+  );
+  
+  if (alreadyVoted) {
+    showResidentToast('شما قبلاً رأی داده‌اید.', 'warning');
+    return;
+  }
+
+  // اضافه کردن رأی
+  const myUnitId = getUnitIdBySession();
+
+  voting.votes.push({
+    voterPhone: session.phone,
+    voterName: session.name,
+    voterUnitId: myUnitId,
+    candidateId: candidateId,
+    candidateName: candidateName,
+    votedAt: new Date().toISOString(),
+  });
+
+  // آپدیت تعداد آرای کاندید
+  if (voting.candidates) {
+    const candidate = voting.candidates.find(c => c.id === candidateId);
+    if (candidate) {
+      candidate.votes = (candidate.votes || 0) + 1;
+    }
+  }
+
+  saveVotings(votings);
+
+  showResidentToast('✅ رأی شما با موفقیت ثبت شد!', 'success');
+
+  // رفرش
+  setTimeout(() => {
+    renderResidentVoting();
+  }, 500);
+}
+
+/* ✅ نمایش نتایج رأی‌گیری */
+function showVotingResults(votingId) {
+  const votings = loadVotings();
+  const voting = votings.find(v => v.id === votingId);
+  if (!voting) return;
+
+  const candidates = voting.candidates || [];
+  const totalVotes = (voting.votes || []).length;
+
+  // مرتب‌سازی بر اساس آرا
+  const sorted = [...candidates].sort((a, b) => (b.votes || 0) - (a.votes || 0));
+
+  let html = `
+    <div class="resident-modal-header" style="padding:0 0 16px 0; border-bottom:1px solid #e2e8f0; margin-bottom:16px;">
+      <h2 style="font-size:16px; font-weight:800;">📊 نتایج: ${voting.title}</h2>
+    </div>
+
+    <div style="background:#f8fafc; border-radius:12px; padding:14px; margin-bottom:16px; text-align:center;">
+      <div style="font-size:11.5px; color:#64748b; margin-bottom:4px;">کل آراء</div>
+      <div style="font-size:22px; font-weight:800; color:#5b4cdb;">${toPersianNumR(totalVotes)}</div>
+    </div>
+  `;
+
+  if (totalVotes === 0) {
+    html += `<p style="text-align:center; color:#94a3b8; padding:20px;">هنوز رأیی ثبت نشده</p>`;
+  } else {
+    sorted.forEach((c, idx) => {
+      const votes = c.votes || 0;
+      const percent = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+
+      let medal = '';
+      if (idx === 0) medal = '🥇';
+      else if (idx === 1) medal = '🥈';
+      else if (idx === 2) medal = '🥉';
+
+      html += `
+        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:13.5px;">${medal} ${c.name || '—'}</strong>
+            <div style="text-align:left;">
+              <strong style="font-size:15px; color:#5b4cdb;">${toPersianNumR(votes)}</strong>
+              <span style="font-size:11px; color:#64748b;">(${toPersianNumR(percent)}٪)</span>
+            </div>
+          </div>
+          <div style="background:#eef2ff; border-radius:8px; height:8px; overflow:hidden;">
+            <div style="background:#5b4cdb; height:100%; width:${percent}%;"></div>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  // نمایش توی یه مودال ساده
+  const modal = document.getElementById('residentPayModal');
+  const modalBody = modal.querySelector('.resident-modal-body');
+  const modalHeader = modal.querySelector('.resident-modal-header');
+  const modalActions = modal.querySelector('.resident-modal-actions');
+
+  // ذخیره محتوای قبلی
+  const originalHeader = modalHeader.innerHTML;
+  const originalBody = modalBody.innerHTML;
+  const originalActions = modalActions.innerHTML;
+
+  // جایگزینی
+  modalHeader.innerHTML = '';
+  modalBody.innerHTML = html;
+  modalActions.innerHTML = `<button class="resident-submit-btn" id="residentResultsCloseBtn">بستن</button>`;
+
+  // تغییر عنوان
+  const title = modal.querySelector('h2');
+  // (اختیاری)
+
+  modal.classList.add('open');
+
+  // بستن
+  document.getElementById('residentResultsCloseBtn')?.addEventListener('click', () => {
+    modalHeader.innerHTML = originalHeader;
+    modalBody.innerHTML = originalBody;
+    modalActions.innerHTML = originalActions;
+
+    // بایند مجدد
+    bindResidentPayModal();
+
+    modal.classList.remove('open');
+  });
+}
 function renderResidentProfile() {
   const session = getResidentSession();
   const container = document.getElementById('residentProfileContent');
