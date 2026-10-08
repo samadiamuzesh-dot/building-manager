@@ -558,7 +558,7 @@ function renderResidentCharges() {
       payButton = `<button class="resident-pay-btn" data-pay-charge-id="${c.id}">💳 پرداخت</button>`;
     }
 
-    return `
+      return `
       <div class="resident-card">
         <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
           <span style="color:#64748b;">دوره</span>
@@ -573,41 +573,6 @@ function renderResidentCharges() {
           <strong>${status}</strong>
         </div>
         ${extraInfo}
-        ${payButton}
-      </div>
-    `;
-  }).join('');
-
-  // بایند دکمه‌های پرداخت
-  container.querySelectorAll('[data-pay-charge-id]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const chargeId = Number(btn.dataset.payChargeId);
-      openResidentPayModal(chargeId);
-    });
-  });
-}
-        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="color:#64748b;">دوره</span>
-          <strong>${c.month} ${toPersianNumR(c.year)}</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="color:#64748b;">مبلغ</span>
-          <strong>${formatTomanR(c.total)}</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="color:#64748b;">وضعیت</span>
-          <strong>${status}</strong>
-        </div>
-        ${c.paid ? `
-          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
-            <span style="color:#64748b;">تاریخ پرداخت</span>
-            <strong>${c.paidDate || '—'}</strong>
-          </div>
-          <div style="display:flex; justify-content:space-between; padding:8px 0;">
-            <span style="color:#64748b;">روش پرداخت</span>
-            <strong>${c.payMethod || '—'}</strong>
-          </div>
-        ` : ''}
         ${payButton}
       </div>
     `;
@@ -792,86 +757,7 @@ function closeResidentChat() {
   renderResidentMessages();
 }
 
-/* ============ پیام‌ها — چت مستقیم با مدیر ============ */
 
-function renderResidentMessages() {
-  const container = document.getElementById('residentChatMessages');
-  if (!container) return;
-
-  const session = getResidentSession();
-  if (!session) return;
-
-  const myUnitId = getUnitIdBySession();
-  if (!myUnitId) {
-    container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:40px;">واحد شما یافت نشد</p>';
-    return;
-  }
-
-  const messages = loadMessages()
-    .filter(m => Number(m.unitId) === Number(myUnitId))
-    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-
-  // علامت‌گذاری خوانده‌شده
-  let changed = false;
-  const allMsgs = loadMessages();
-  allMsgs.forEach(m => {
-    if (Number(m.unitId) === Number(myUnitId) && m.direction === 'sent' && !m.read) {
-      m.read = true;
-      changed = true;
-    }
-  });
-  if (changed) {
-    localStorage.setItem('ham_sakhteman_messages', JSON.stringify(allMsgs));
-  }
-
-  if (messages.length === 0) {
-    container.innerHTML = `
-      <div style="text-align:center; color:#94a3b8; padding:60px 20px; font-size: 14px;">
-        <div style="font-size: 56px; margin-bottom: 14px;">💬</div>
-        هنوز پیامی بین شما و مدیر رد و بدل نشده.<br>
-        اولین پیام رو بنویس و بفرست.
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = messages.map(m => {
-    const isFromManager = m.direction === 'sent';
-    const align = isFromManager ? 'flex-end' : 'flex-start';
-    const bubbleClass = isFromManager ? 'resident-bubble-manager' : 'resident-bubble-me';
-
-    // تیک‌ها فقط برای پیام‌های خود ساکن (نه مدیر)
-    let checkHtml = '';
-    if (!isFromManager) {
-      if (m.delivered) {
-        checkHtml = '<span class="resident-bubble-checks delivered">✓✓</span>';
-      } else {
-        checkHtml = '<span class="resident-bubble-checks sent">✓</span>';
-      }
-    }
-
-    return `
-      <div class="resident-chat-row" style="justify-content: ${align};">
-        <div class="resident-chat-bubble ${bubbleClass}">
-          <div class="resident-bubble-text">${(m.body || '').replace(/\n/g, '<br>')}</div>
-          <div class="resident-bubble-footer">
-            <span class="resident-bubble-time">${m.time || ''}</span>
-            ${checkHtml}
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  setTimeout(() => {
-    const scrollBtn = document.getElementById('residentScrollBottomBtn');
-    const isBtnVisible = scrollBtn?.classList.contains('show');
-
-    if (!isBtnVisible) {
- container.scrollTop = container.scrollHeight;
-    }
-  }, 50);
-}
 
 function sendResidentMessage() {
   const session = getResidentSession();
@@ -1221,14 +1107,14 @@ function initResidentApp() {
     document.getElementById('residentStep3').style.display = 'none';
   });
 
-  document.getElementById('residentRegisterBtn')?.addEventListener('click', registerResident);
-     
+   document.getElementById('residentRegisterBtn')?.addEventListener('click', registerResident);
+
+  // چت و پرداخت
+  bindResidentMessagesPage();
+  bindResidentPayModal();
 
   // نوار پایین
   document.querySelectorAll('.resident-nav-item').forEach(btn => {
-  // چت
-  bindResidentMessagesPage();
-       bindResidentPayModal();
     btn.addEventListener('click', () => {
       switchResidentPage(btn.dataset.residentPage);
     });
