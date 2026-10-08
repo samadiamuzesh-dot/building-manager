@@ -563,7 +563,7 @@ function renderLineChart() {
   canvas.height = H * dpr;
   ctx.scale(dpr, dpr);
 
-  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'];
   const units = getFilteredUnits();
   const paidUnits = units.filter(u => u.debt === 0);
   const totalPerMonth = paidUnits.reduce((s, u) => s + (u.chargeAmount || 500000), 0);
@@ -635,11 +635,13 @@ function renderLineChart() {
   ctx.font = '12px Vazirmatn, Tahoma';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
+
   months.forEach((m, i) => {
-    ctx.fillText(m, points[i].x, padding.top + chartH + 12);
+    if (points[i]) {
+      ctx.fillText(m, points[i].x, padding.top + chartH + 12);
+    }
   });
 }
-
 /* ============ ۱۲) رندر داشبورد ============ */
 function renderDashboard() {
   const data = loadData();
