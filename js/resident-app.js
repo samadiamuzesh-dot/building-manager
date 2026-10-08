@@ -480,10 +480,10 @@ function switchResidentPage(pageKey) {
     btn.classList.toggle('active', btn.dataset.residentPage === pageKey);
   });
 
-  if (pageKey === 'dashboard') renderResidentDashboard();
+   if (pageKey === 'dashboard') renderResidentDashboard();
   if (pageKey === 'charges') renderResidentCharges();
   if (pageKey === 'notices') renderResidentNotices();
-   if (pageKey === 'messages') renderResidentMessages();
+  if (pageKey === 'messages') renderResidentMessages();
   if (pageKey === 'voting') renderResidentVoting();
   if (pageKey === 'profile') renderResidentProfile();
 }
