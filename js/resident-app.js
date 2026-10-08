@@ -1463,13 +1463,13 @@ function initResidentApp() {
   // چت و پرداخت
   bindResidentMessagesPage();
  bindResidentPayModal();
-bindResidentNotifications();
+
    // ✅ اطمینان از بسته بودن پنل اعلان‌ها
 setTimeout(() => {
   const panel = document.getElementById('residentNotifPanel');
   if (panel) panel.classList.remove('open');
 }, 100);
-renderResidentNotifications();
+
 
   // نوار پایین
   document.querySelectorAll('.resident-nav-item').forEach(btn => {
