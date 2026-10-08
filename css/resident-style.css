@@ -253,7 +253,7 @@ html, body {
 .resident-page.active {
   display: block;
   opacity: 1;
-  animation: fadeInResident 0.3s ease;
+  animation: fadeInResident 0.3s ease forwards;
 }
 
 @keyframes fadeInResident {
