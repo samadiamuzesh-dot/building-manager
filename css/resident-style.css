@@ -248,16 +248,16 @@ html, body {
 }
 
 .resident-page.active {
-  display: block;
-  opacity: 1;
-  animation: fadeInResident 0.3s ease forwards;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  animation: none !important;
 }
 
 @keyframes fadeInResident {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 .resident-page-header {
   margin-bottom: 16px;
 }
