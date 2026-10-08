@@ -882,13 +882,16 @@ function selectPlan(planType) {
 function confirmFreePlan() {
   const totalUnits = getTotalUnitsFromWizard();
 
-  if (totalUnits > 10) {
-    const confirmMsg = `⚠️ پلن رایگان فقط برای ساختمان‌های تا ۱۰ واحد است.\n\n` +
+  // ✅ چک: اگه کاربر پلن رایگان رو با بیش از ۴ واحد انتخاب کرد
+  if (totalUnits > 4) {
+    const confirmMsg = `⚠️ پلن رایگان فقط برای ساختمان‌های تا ۴ واحد است.\n\n` +
                        `ساختمان شما ${toPersianNum(totalUnits)} واحد دارد.\n\n` +
                        `آیا با این حال می‌خواهید پلن رایگان را انتخاب کنید؟\n` +
-                       `(فقط ۱۰ واحد اول ثبت می‌شوند)`;
+                       `(فقط ۴ واحد اول ثبت می‌شوند)`;
 
-    if (!confirm(confirmMsg)) return;
+    if (!confirm(confirmMsg)) {
+      return;
+    }
   }
 
   activatePlan('free', totalUnits, {
@@ -966,16 +969,8 @@ function showMockPaymentPage(paymentInfo) {
 /* ============================================================
    🔒 محدودیت پلن رایگان
    ============================================================ */
-const LOCKED_PAGES_FOR_FREE = [
-  'charges-payments',
-  'side-incomes',
-  'expenses',
-  'notices',
-  'messages',
-  'voting',
-  'reports',
-  'profit',
-];
+// ✅ پلن رایگان: همه صفحات فعال
+const LOCKED_PAGES_FOR_FREE = [];
 
 function isProPlan() {
   const plan = loadPlan();
@@ -1025,9 +1020,9 @@ function showUpgradeModal(pageKey = null) {
     price = result.price;
     priceBreakdown = result.breakdown;
 
-    if (price === 0) {
-      price = 10 * 100000;
-      priceBreakdown = `قیمت پایه (${toPersianNum(10)} واحد × ۱۰۰,۰۰۰ تومان)`;
+       if (price === 0) {
+      price = 4 * 100000;
+      priceBreakdown = `قیمت پایه (${toPersianNum(4)} واحد × ۱۰۰,۰۰۰ تومان)`;
     }
   }
 
@@ -1063,9 +1058,8 @@ function handleUpgrade() {
   if (totalUnits > 0) {
     const result = calculatePrice(totalUnits);
     price = result.price;
-
     if (price === 0) {
-      price = 10 * 100000;
+      price = 4 * 100000;
     }
   }
 
@@ -1139,7 +1133,7 @@ function confirmProPlan() {
   let finalPrice = result.price;
 
   if (finalPrice === 0) {
-    finalPrice = 10 * 100000;
+    finalPrice = 4 * 100000;
 
     if (!confirm(
       `💎 پلن حرفه‌ای\n\n` +
@@ -9362,8 +9356,8 @@ function renderSubscriptionPage() {
   const totalUnits = UNITS.length;
   const result = calculatePrice(totalUnits);
 
-  let price = result.price;
-  if (price === 0) price = 10 * 100000;
+    let price = result.price;
+  if (price === 0) price = 4 * 100000;
 
   if (elProPrice) {
     elProPrice.textContent = (price / 1000000).toFixed(1).replace('.0', '');
