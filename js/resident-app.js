@@ -1340,3 +1340,27 @@ function bindResidentPayModal() {
     });
   }
 }
+/* ============================================================
+   💾 توابع ذخیره‌سازی (کپی از app.js)
+   ============================================================ */
+
+function saveCharges(charges) {
+  localStorage.setItem('ham_sakhteman_charges', JSON.stringify(charges));
+}
+
+function saveUnits(units) {
+  localStorage.setItem('ham_sakhteman_units', JSON.stringify(units));
+}
+
+function saveMessages(messages) {
+  localStorage.setItem('ham_sakhteman_messages', JSON.stringify(messages));
+}
+
+function saveNotices(notices) {
+  localStorage.setItem('ham_sakhteman_notices', JSON.stringify(notices));
+}
+
+function saveVotings(votings) {
+  localStorage.setItem('ham_sakhteman_votings', JSON.stringify(votings));
+}
+
