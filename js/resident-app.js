@@ -1208,3 +1208,142 @@ let lastMessageCount = 0;
 }
 
 document.addEventListener('DOMContentLoaded', initResidentApp);
+/* ============================================================
+   💳 پرداخت آنلاین شارژ
+   ============================================================ */
+
+let currentPayingChargeId = null;
+
+function openResidentPayModal(chargeId) {
+  const charges = loadCharges();
+  const charge = charges.find(c => c.id === chargeId);
+  if (!charge) {
+    showResidentToast('شارژ پیدا نشد.', 'error');
+    return;
+  }
+
+  currentPayingChargeId = chargeId;
+
+  // پر کردن اطلاعات
+  const subtitle = document.getElementById('residentPaySubtitle');
+  if (subtitle) subtitle.textContent = `${charge.month} ${toPersianNumR(charge.year)}`;
+
+  document.getElementById('residentPayMonth').textContent = 
+    `${charge.month} ${toPersianNumR(charge.year)}`;
+  document.getElementById('residentPayAmount').textContent = 
+    formatTomanR(charge.total || 0);
+  document.getElementById('residentPayDueDate').textContent = 
+    charge.dueDate || '—';
+
+  document.getElementById('residentPayMethod').value = 'آنلاین';
+
+  const modal = document.getElementById('residentPayModal');
+  if (modal) modal.classList.add('open');
+}
+
+function closeResidentPayModal() {
+  const modal = document.getElementById('residentPayModal');
+  if (modal) modal.classList.remove('open');
+  currentPayingChargeId = null;
+}
+
+function confirmResidentPay() {
+  if (!currentPayingChargeId) return;
+
+  const charges = loadCharges();
+  const charge = charges.find(c => c.id === currentPayingChargeId);
+  if (!charge) {
+    showResidentToast('شارژ پیدا نشد.', 'error');
+    return;
+  }
+
+  const method = document.getElementById('residentPayMethod')?.value || 'آنلاین';
+
+  // تأیید
+  if (!confirm(`آیا از پرداخت ${formatTomanR(charge.total)} مطمئن هستید؟`)) {
+    return;
+  }
+
+  // شبیه‌سازی پرداخت — یه بار دیگه تأیید
+  const confirmText = prompt(
+    `💳 درگاه پرداخت آزمایشی\n\n` +
+    `مبلغ: ${formatTomanR(charge.total)}\n` +
+    `روش: ${method}\n\n` +
+    `برای تأیید پرداخت، کلمه «پرداخت» را تایپ کنید:`
+  );
+
+  if (confirmText !== 'پرداخت') {
+    showResidentToast('پرداخت لغو شد.', 'warning');
+    return;
+  }
+
+  // ثبت پرداخت
+  const now = new Date();
+  const persianDate = now.toLocaleDateString('fa-IR');
+
+  charge.paid = true;
+  charge.paidDate = persianDate;
+  charge.payMethod = method;
+  charge.payDescription = 'پرداخت آنلاین توسط ساکن';
+  charge.paidAt = now.toISOString();
+
+  saveCharges(charges);
+
+  // آپدیت بدهی واحد ساکن
+  updateResidentUnitDebt();
+
+  closeResidentPayModal();
+
+  showResidentToast('✅ پرداخت با موفقیت ثبت شد!', 'success');
+
+  // رفرش
+  setTimeout(() => {
+    renderResidentCharges();
+    renderResidentDashboard();
+  }, 300);
+}
+
+function updateResidentUnitDebt() {
+  const session = getResidentSession();
+  if (!session) return;
+
+  const units = loadUnits();
+  const myUnit = units.find(u => {
+    if (session.block === '—' || !session.block) {
+      return (u.block === '—' || !u.block) && Number(u.number) === Number(session.unitNumber);
+    }
+    return String(u.block).trim() === String(session.block).trim()
+        && Number(u.number) === Number(session.unitNumber);
+  });
+
+  if (!myUnit) return;
+
+  // محاسبه بدهی از شارژهای پرداخت‌نشده
+  const charges = loadCharges();
+  const unpaidCharges = charges.filter(c => 
+    Number(c.unitId) === Number(myUnit.id) && !c.paid
+  );
+  const totalDebt = unpaidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
+
+  // آپدیت واحد
+  myUnit.debt = totalDebt;
+  saveUnits(units);
+}
+
+function bindResidentPayModal() {
+  const closeBtn = document.getElementById('residentPayCloseBtn');
+  if (closeBtn) closeBtn.onclick = closeResidentPayModal;
+
+  const cancelBtn = document.getElementById('residentPayCancelBtn');
+  if (cancelBtn) cancelBtn.onclick = closeResidentPayModal;
+
+  const confirmBtn = document.getElementById('residentPayConfirmBtn');
+  if (confirmBtn) confirmBtn.onclick = confirmResidentPay;
+
+  const modal = document.getElementById('residentPayModal');
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeResidentPayModal();
+    });
+  }
+}
