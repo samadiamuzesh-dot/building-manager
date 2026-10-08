@@ -563,7 +563,7 @@ function renderLineChart() {
   canvas.height = H * dpr;
   ctx.scale(dpr, dpr);
 
-  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'];
+  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور''مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
   const units = getFilteredUnits();
   const paidUnits = units.filter(u => u.debt === 0);
   const totalPerMonth = paidUnits.reduce((s, u) => s + (u.chargeAmount || 500000), 0);
@@ -6448,7 +6448,7 @@ function renderReportLineChart() {
   canvas.height = H * dpr;
   ctx.scale(dpr, dpr);
 
-  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'];
+  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور''مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
   const allCharges = loadCharges();
   const values = months.map(month => {
