@@ -1729,7 +1729,7 @@ function openUnitModal(unitId = null) {
     document.getElementById('ownerNationalId').value = unit.owner?.nationalId || '';
     document.getElementById('ownerType').value = unit.owner?.type || 'settled';
     document.getElementById('defaultChargeOwner').value = unit.defaultChargeOwner || 0;
-    document.getElementById('ownerInAccounting').checked = unit.owner?.inAccounting || false;
+  
 
     document.getElementById('tenantName').value = unit.tenant?.name || '';
     document.getElementById('tenantPhone').value = unit.tenant?.phone || '';
@@ -1737,7 +1737,7 @@ function openUnitModal(unitId = null) {
     document.getElementById('tenantNationalId').value = unit.tenant?.nationalId || '';
    document.getElementById('tenantType').value = unit.tenant?.type || 'settled';
     document.getElementById('defaultChargeTenant').value = unit.defaultChargeTenant || 0;
-    document.getElementById('tenantInAccounting').checked = unit.tenant?.inAccounting || false;
+  
 
     document.getElementById('unitCharge').value = unit.chargeAmount || 500000;
     document.getElementById('unitDebt').value = unit.debt || 0;
@@ -1771,7 +1771,7 @@ function openUnitModal(unitId = null) {
     document.getElementById('ownerNationalId').value = '';
    document.getElementById('ownerType').value = 'settled';
     document.getElementById('defaultChargeOwner').value = 0;
-    document.getElementById('ownerInAccounting').checked = false;
+   
 
     document.getElementById('tenantName').value = '';
     document.getElementById('tenantPhone').value = '';
@@ -1779,7 +1779,7 @@ function openUnitModal(unitId = null) {
     document.getElementById('tenantNationalId').value = '';
     document.getElementById('tenantType').value = 'settled';
     document.getElementById('defaultChargeTenant').value = 0;
-    document.getElementById('tenantInAccounting').checked = false;
+  
 
     document.getElementById('unitCharge').value = 500000;
     document.getElementById('unitDebt').value = 0;
@@ -1821,7 +1821,7 @@ function saveUnit() {
   const ownerNationalId = document.getElementById('ownerNationalId').value.trim();
   const ownerType = document.getElementById('ownerType').value;
   const defaultChargeOwner = parseInt(document.getElementById('defaultChargeOwner').value) || 0;
-  const ownerInAccounting = document.getElementById('ownerInAccounting').checked;
+ 
 
   const tenantName = document.getElementById('tenantName').value.trim();
   const tenantPhone = document.getElementById('tenantPhone').value.trim();
@@ -1829,7 +1829,7 @@ function saveUnit() {
   const tenantNationalId = document.getElementById('tenantNationalId').value.trim();
   const tenantType = document.getElementById('tenantType').value;
   const defaultChargeTenant = parseInt(document.getElementById('defaultChargeTenant').value) || 0;
-  const tenantInAccounting = document.getElementById('tenantInAccounting').checked;
+ 
 
   const charge = parseInt(document.getElementById('unitCharge').value) || 500000;
   const debt = parseInt(document.getElementById('unitDebt').value) || 0;
@@ -1888,23 +1888,21 @@ function saveUnit() {
   const unitData = {
     block, number, code, floor,
     area, peopleCount, parkingCount, storageCount, status,
-    owner: {
+        owner: {
       name: ownerName || null,
       phone: ownerPhone || null,
       birthDate: ownerBirthDate || null,
       nationalId: ownerNationalId || null,
       type: ownerType,
-      inAccounting: ownerInAccounting,
       registered: !!ownerName,
       approved: !!ownerName,
     },
-    tenant: {
+       tenant: {
       name: tenantName || null,
       phone: tenantPhone || null,
       birthDate: tenantBirthDate || null,
       nationalId: tenantNationalId || null,
       type: tenantType,
-      inAccounting: tenantInAccounting,
       registered: !!tenantName,
       approved: !!tenantName,
     },
