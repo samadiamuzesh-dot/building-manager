@@ -1302,7 +1302,31 @@ function openResidentPayModal(chargeId) {
     charge.dueDate || '—';
 
   document.getElementById('residentPayMethod').value = 'آنلاین';
+// آپدیت متن دکمه بر اساس روش
+const methodSelect = document.getElementById('residentPayMethod');
+const confirmBtn = document.getElementById('residentPayConfirmBtn');
+const notice = document.querySelector('.resident-pay-notice');
 
+if (methodSelect) {
+  methodSelect.onchange = () => {
+    const m = methodSelect.value;
+    if (m === 'آنلاین') {
+      if (confirmBtn) confirmBtn.innerHTML = '✅ پرداخت آنلاین';
+      if (notice) {
+        notice.innerHTML = '⚠️ <strong>توجه:</strong> درگاه پرداخت شبیه‌سازی شده است. با کلیک روی پرداخت، مبلغ کسر نمی‌شود و شارژ خودکار پرداخت شده می‌شود.';
+        notice.style.background = '#fef3c7';
+        notice.style.color = '#92400e';
+      }
+    } else {
+      if (confirmBtn) confirmBtn.innerHTML = '📩 اعلام پرداخت';
+      if (notice) {
+        notice.innerHTML = '📩 <strong>توجه:</strong> پس از اعلام پرداخت، مدیر باید آن را تأیید کند. تا آن زمان، شارژ «در انتظار تأیید» می‌ماند.';
+        notice.style.background = '#dbeafe';
+        notice.style.color = '#1e40af';
+      }
+    }
+  };
+}
   const modal = document.getElementById('residentPayModal');
   if (modal) modal.classList.add('open');
 }
