@@ -522,16 +522,70 @@ function renderResidentCharges() {
   );
 
   container.innerHTML = sorted.map(c => {
-    const status = c.paid
-      ? '<span style="color:#16a34a; font-weight:800;">✅ پرداخت شده</span>'
-      : '<span style="color:#dc2626; font-weight:800;">⚠️ پرداخت نشده</span>';
+      let status = '';
+    let payButton = '';
+    let extraInfo = '';
 
-       const payButton = c.paid
-      ? ''
-      : `<button class="resident-pay-btn" data-pay-charge-id="${c.id}">💳 پرداخت آنلاین</button>`;
+    if (c.paid) {
+      // پرداخت شده
+      status = '<span style="color:#16a34a; font-weight:800;">✅ پرداخت شده</span>';
+      extraInfo = `
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">تاریخ پرداخت</span>
+          <strong>${c.paidDate || '—'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0;">
+          <span style="color:#64748b;">روش پرداخت</span>
+          <strong>${c.payMethod || '—'}</strong>
+        </div>
+      `;
+    } else if (c.pendingApproval) {
+      // در انتظار تأیید مدیر
+      status = '<span style="color:#f59e0b; font-weight:800;">⏳ در انتظار تأیید مدیر</span>';
+      extraInfo = `
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">روش پرداخت</span>
+          <strong>${c.payMethod || '—'}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0;">
+          <span style="color:#64748b;">تاریخ اعلام</span>
+          <strong>${new Date(c.pendingAt).toLocaleDateString('fa-IR')}</strong>
+        </div>
+      `;
+    } else {
+      // پرداخت نشده
+      status = '<span style="color:#dc2626; font-weight:800;">⚠️ پرداخت نشده</span>';
+      payButton = `<button class="resident-pay-btn" data-pay-charge-id="${c.id}">💳 پرداخت</button>`;
+    }
 
     return `
       <div class="resident-card">
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">دوره</span>
+          <strong>${c.month} ${toPersianNumR(c.year)}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">مبلغ</span>
+          <strong>${formatTomanR(c.total)}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">وضعیت</span>
+          <strong>${status}</strong>
+        </div>
+        ${extraInfo}
+        ${payButton}
+      </div>
+    `;
+  }).join('');
+
+  // بایند دکمه‌های پرداخت
+  container.querySelectorAll('[data-pay-charge-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const chargeId = Number(btn.dataset.payChargeId);
+      openResidentPayModal(chargeId);
+    });
+  });
+}
         <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
           <span style="color:#64748b;">دوره</span>
           <strong>${c.month} ${toPersianNumR(c.year)}</strong>
@@ -1271,29 +1325,44 @@ function confirmResidentPay() {
 
   const method = document.getElementById('residentPayMethod')?.value || 'آنلاین';
 
-  // ثبت پرداخت — بدون prompt
-  const now = new Date();
-  const persianDate = now.toLocaleDateString('fa-IR');
+  // ===== اگر آنلاین: خودکار تأیید =====
+  if (method === 'آنلاین') {
+    const now = new Date();
+    const persianDate = now.toLocaleDateString('fa-IR');
 
-  charge.paid = true;
-  charge.paidDate = persianDate;
+    charge.paid = true;
+    charge.paidDate = persianDate;
+    charge.payMethod = method;
+    charge.payDescription = 'پرداخت آنلاین توسط ساکن';
+    charge.paidAt = now.toISOString();
+
+    saveCharges(charges);
+    updateResidentUnitDebt();
+
+    closeResidentPayModal();
+    showResidentToast('✅ پرداخت آنلاین با موفقیت انجام شد!', 'success');
+
+    setTimeout(() => {
+      renderResidentCharges();
+      renderResidentDashboard();
+    }, 300);
+    return;
+  }
+
+  // ===== اگر کارت به کارت یا انتقال: در انتظار تأیید مدیر =====
   charge.payMethod = method;
-  charge.payDescription = 'پرداخت آنلاین توسط ساکن';
-  charge.paidAt = now.toISOString();
+  charge.payDescription = `اعلام پرداخت توسط ساکن - روش: ${method}`;
+  charge.pendingApproval = true;      // ← در انتظار تأیید
+  charge.pendingAt = new Date().toISOString();
+  // paid رو false نگه می‌داریم
 
   saveCharges(charges);
 
-  // ✅ آپدیت بدهی واحد ساکن
-  updateResidentUnitDebt();
-
   closeResidentPayModal();
+  showResidentToast('📩 پرداخت شما ثبت شد. منتظر تأیید مدیر باشید.', 'info');
 
-  showResidentToast('✅ پرداخت با موفقیت ثبت شد!', 'success');
-
-  // ✅ رفرش
   setTimeout(() => {
     renderResidentCharges();
-    renderResidentDashboard();
   }, 300);
 }
 function updateResidentUnitDebt() {
