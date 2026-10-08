@@ -1462,7 +1462,9 @@ function initResidentApp() {
 
   // چت و پرداخت
   bindResidentMessagesPage();
-  bindResidentPayModal();
+ bindResidentPayModal();
+bindResidentNotifications();
+renderResidentNotifications();
 
   // نوار پایین
   document.querySelectorAll('.resident-nav-item').forEach(btn => {
