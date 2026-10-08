@@ -1912,30 +1912,62 @@ function bindResidentNotifications() {
   const panel = document.getElementById('residentNotifPanel');
   const clearBtn = document.getElementById('residentNotifClearBtn');
 
-  if (btn) {
-    btn.onclick = (e) => {
+  // ✅ اطمینان از بسته بودن پنل در شروع
+  if (panel) panel.classList.remove('open');
+
+  if (btn && panel) {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const isOpen = panel?.classList.contains('open');
-      if (isOpen) closeResidentNotifPanel();
-      else openResidentNotifPanel();
-    };
+      e.preventDefault();
+      
+      const isOpen = panel.classList.contains('open');
+      console.log('🔔 کلیک شد — وضعیت:', isOpen ? 'باز' : 'بسته');
+      
+      if (isOpen) {
+        panel.classList.remove('open');
+        console.log('پنل بسته شد');
+      } else {
+        panel.classList.add('open');
+        console.log('پنل باز شد');
+        // علامت‌گذاری همه به‌عنوان خوانده‌شده
+        const notifications = loadResidentNotifications();
+        notifications.forEach(n => n.read = true);
+        saveResidentNotifications(notifications);
+        setTimeout(() => renderResidentNotifications(), 100);
+      }
+    });
   }
 
   if (clearBtn) {
-    clearBtn.onclick = (e) => {
+    clearBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      e.preventDefault();
       clearResidentNotifications();
-    };
+    });
   }
 
+  // ✅ بستن با کلیک بیرون
   document.addEventListener('click', (e) => {
-    if (panel && !panel.contains(e.target) && !btn?.contains(e.target)) {
-      closeResidentNotifPanel();
+    if (!panel) return;
+    if (!panel.classList.contains('open')) return;
+    
+    // اگه کلیک روی دکمه یا خود پنل نبود → ببند
+    if (!panel.contains(e.target) && !btn?.contains(e.target)) {
+      panel.classList.remove('open');
     }
   });
 
-  // آپدیت هر ۳۰ ثانیه
+  // ✅ بستن با دکمه Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && panel?.classList.contains('open')) {
+      panel.classList.remove('open');
+    }
+  });
+
+  // آپدیت خودکار هر ۳۰ ثانیه
   setInterval(() => {
-    renderResidentNotifications();
+    if (getResidentSession()) {
+      renderResidentNotifications();
+    }
   }, 30000);
 }
