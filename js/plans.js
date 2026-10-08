@@ -57,47 +57,25 @@ const PLANS = {
 };
 
 function calculatePrice(totalUnits) {
-  const units = parseInt(totalUnits) || 0;
-  
-  if (units <= 10) {
+  const units = Number(totalUnits) || 0;
+
+  // ✅ پلن رایگان تا ۴ واحد
+  if (units <= 4) {
     return {
-      planType: 'free',
       price: 0,
-      breakdown: 'رایگان برای ساختمان‌های تا ۱۰ واحد',
-      tier: null,
+      breakdown: 'پلن رایگان برای ساختمان‌های تا ۴ واحد',
     };
   }
-  
-  if (units <= 40) {
-    return {
-      planType: 'pro',
-      price: units * 100000,
-      breakdown: `${units} واحد × ۱۰۰,۰۰۰ تومان`,
-      tier: 'پله ۱ (۱۱-۴۰ واحد)',
-    };
-  }
-  
-  if (units <= 300) {
-    const base = 40 * 100000;
-    const remaining = (units - 40) * 70000;
-    return {
-      planType: 'pro',
-      price: base + remaining,
-      breakdown: `۴۰ واحد × ۱۰۰K + ${units - 40} واحد × ۷۰K`,
-      tier: 'پله ۲ (۴۱-۳۰۰ واحد)',
-    };
-  }
-  
-  const base = (40 * 100000) + (260 * 70000);
-  const remaining = (units - 300) * 50000;
+
+  // پلن حرفه‌ای: هر واحد ۱۰۰,۰۰۰ تومان
+  const pricePerUnit = 100000;
+  const price = units * pricePerUnit;
+
   return {
-    planType: 'pro',
-    price: base + remaining,
-    breakdown: `۴۰×۱۰۰K + ۲۶۰×۷۰K + ${units - 300}×۵۰K`,
-    tier: 'پله ۳ (۳۰۱+ واحد)',
+    price: price,
+    breakdown: `${toPersianNum(units)} واحد × ۱۰۰,۰۰۰ تومان = ${formatPrice(price)}`,
   };
 }
-
 function formatPrice(price) {
   if (price === 0) return 'رایگان';
   
