@@ -1237,7 +1237,6 @@ function openResidentPayModal(chargeId) {
 
   currentPayingChargeId = chargeId;
 
-  // پر کردن اطلاعات
   const subtitle = document.getElementById('residentPaySubtitle');
   if (subtitle) subtitle.textContent = `${charge.month} ${toPersianNumR(charge.year)}`;
 
@@ -1272,25 +1271,7 @@ function confirmResidentPay() {
 
   const method = document.getElementById('residentPayMethod')?.value || 'آنلاین';
 
-  // تأیید
-  if (!confirm(`آیا از پرداخت ${formatTomanR(charge.total)} مطمئن هستید؟`)) {
-    return;
-  }
-
-  // شبیه‌سازی پرداخت — یه بار دیگه تأیید
-  const confirmText = prompt(
-    `💳 درگاه پرداخت آزمایشی\n\n` +
-    `مبلغ: ${formatTomanR(charge.total)}\n` +
-    `روش: ${method}\n\n` +
-    `برای تأیید پرداخت، کلمه «پرداخت» را تایپ کنید:`
-  );
-
-  if (confirmText !== 'پرداخت') {
-    showResidentToast('پرداخت لغو شد.', 'warning');
-    return;
-  }
-
-  // ثبت پرداخت
+  // ثبت پرداخت — بدون prompt
   const now = new Date();
   const persianDate = now.toLocaleDateString('fa-IR');
 
@@ -1302,20 +1283,19 @@ function confirmResidentPay() {
 
   saveCharges(charges);
 
-  // آپدیت بدهی واحد ساکن
+  // ✅ آپدیت بدهی واحد ساکن
   updateResidentUnitDebt();
 
   closeResidentPayModal();
 
   showResidentToast('✅ پرداخت با موفقیت ثبت شد!', 'success');
 
-  // رفرش
+  // ✅ رفرش
   setTimeout(() => {
     renderResidentCharges();
     renderResidentDashboard();
   }, 300);
 }
-
 function updateResidentUnitDebt() {
   const session = getResidentSession();
   if (!session) return;
