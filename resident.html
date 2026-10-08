@@ -276,5 +276,68 @@
 <!-- Toast Container -->
 <div id="residentToastContainer" class="resident-toast-container"></div>
 <script src="js/resident-app.js?v=7"></script>
+  <!-- ============ مودال پرداخت آنلاین ============ -->
+<div class="resident-modal-backdrop" id="residentPayModal">
+  <div class="resident-modal">
+    
+    <div class="resident-modal-header">
+      <div class="resident-modal-icon">💳</div>
+      <div>
+        <h2>پرداخت آنلاین شارژ</h2>
+        <p id="residentPaySubtitle">—</p>
+      </div>
+      <button class="resident-modal-close" id="residentPayCloseBtn">✖</button>
+    </div>
+
+    <div class="resident-modal-body">
+
+      <!-- اطلاعات شارژ -->
+      <div class="resident-pay-info">
+        <div class="resident-pay-row">
+          <span>دوره</span>
+          <strong id="residentPayMonth">—</strong>
+        </div>
+        <div class="resident-pay-row">
+          <span>مبلغ شارژ</span>
+          <strong id="residentPayAmount">—</strong>
+        </div>
+        <div class="resident-pay-row">
+          <span>تاریخ سررسید</span>
+          <strong id="residentPayDueDate">—</strong>
+        </div>
+      </div>
+
+      <!-- درگاه شبیه‌سازی -->
+      <div class="resident-pay-gateway">
+        <div class="resident-pay-gateway-icon">🏦</div>
+        <h3>درگاه پرداخت آزمایشی</h3>
+        <p>این درگاه فقط برای تست است. با کلیک روی پرداخت، مبلغ کسر نمی‌شود.</p>
+      </div>
+
+      <!-- روش پرداخت -->
+      <div class="resident-pay-method">
+        <label>روش پرداخت</label>
+        <select id="residentPayMethod" class="resident-form-input">
+          <option value="آنلاین" selected>🌐 آنلاین (درگاه)</option>
+          <option value="کارت به کارت">💳 کارت به کارت</option>
+          <option value="انتقال بانکی">🏦 انتقال بانکی</option>
+        </select>
+      </div>
+
+      <div class="resident-pay-notice">
+        ⚠️ <strong>توجه:</strong> این درگاه شبیه‌سازی شده است. برای پرداخت واقعی، درگاه زرین‌پال به‌زودی فعال می‌شود.
+      </div>
+
+    </div>
+
+    <div class="resident-modal-actions">
+      <button class="resident-cancel-btn" id="residentPayCancelBtn">انصراف</button>
+      <button class="resident-submit-btn" id="residentPayConfirmBtn" style="flex: 1;">
+        ✅ پرداخت
+      </button>
+    </div>
+
+  </div>
+</div>
 </body>
 </html>
