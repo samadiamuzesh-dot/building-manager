@@ -1470,3 +1470,100 @@ html, body {
 .resident-pay-btn:active {
   transform: translateY(0);
 }
+/* ============================================================
+   🗳️ رأی‌گیری فعال
+   ============================================================ */
+
+.resident-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.resident-badge-green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.resident-badge-gray {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* کاندیدها */
+.resident-voting-candidates {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resident-voting-candidate {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resident-voting-candidate:hover {
+  border-color: #c7d2fe;
+  background: #f0f4ff;
+}
+
+.resident-voting-candidate input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #5b4cdb;
+  flex-shrink: 0;
+}
+
+.resident-voting-candidate input[type="radio"]:checked + .resident-voting-candidate-info {
+  color: #4338ca;
+}
+
+.resident-voting-candidate:has(input:checked) {
+  border-color: #5b4cdb;
+  background: #eef2ff;
+}
+
+.resident-voting-candidate-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.resident-voting-candidate-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: #5b4cdb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.resident-voting-candidate-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.resident-voting-candidate-phone {
+  font-size: 11.5px;
+  color: #64748b;
+  direction: ltr;
+  margin-top: 2px;
+}
