@@ -1265,7 +1265,8 @@ function showVotingResults(votingId) {
 
     // بایند مجدد
     bindResidentPayModal();
-
+bindResidentNotifications();
+renderResidentNotifications();
     modal.classList.remove('open');
   });
 }
@@ -1693,3 +1694,246 @@ function saveVotings(votings) {
   localStorage.setItem('ham_sakhteman_votings', JSON.stringify(votings));
 }
 
+/* ============================================================
+   🔔 اعلان‌ها
+   ============================================================ */
+
+const RESIDENT_NOTIF_KEY = 'ham_sakhteman_resident_notifications';
+const RESIDENT_LAST_SEEN_KEY = 'ham_sakhteman_resident_last_seen';
+
+function loadResidentNotifications() {
+  const raw = localStorage.getItem(RESIDENT_NOTIF_KEY);
+  if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
+  return [];
+}
+
+function saveResidentNotifications(notifs) {
+  localStorage.setItem(RESIDENT_NOTIF_KEY, JSON.stringify(notifs));
+}
+
+function generateResidentNotifications() {
+  const session = getResidentSession();
+  if (!session) return [];
+
+  const myUnitId = getUnitIdBySession();
+  if (!myUnitId) return [];
+
+  const notifications = [];
+  const now = new Date();
+
+  // ===== شارژهای پرداخت‌نشده =====
+  const charges = loadCharges().filter(c =>
+    Number(c.unitId) === Number(myUnitId) && !c.paid
+  );
+
+  charges.forEach(c => {
+    notifications.push({
+      id: `charge-${c.id}`,
+      type: 'charge',
+      icon: '💰',
+      iconClass: 'blue',
+      title: `شارژ ${c.month} ${toPersianNumR(c.year)}`,
+      desc: `مبلغ: ${formatTomanR(c.total)} — پرداخت نشده`,
+      time: c.issuedAt ? new Date(c.issuedAt).toLocaleDateString('fa-IR') : '—',
+      createdAt: c.issuedAt || c.createdAt || '',
+      page: 'charges',
+      read: false,
+    });
+  });
+
+  // ===== پیام‌های جدید از مدیر =====
+  const messages = loadMessages().filter(m =>
+    Number(m.unitId) === Number(myUnitId) && m.direction === 'sent' && !m.read
+  );
+
+  messages.forEach(m => {
+    notifications.push({
+      id: `message-${m.id}`,
+      type: 'message',
+      icon: '💬',
+      iconClass: 'green',
+      title: 'پیام جدید از مدیر',
+      desc: (m.body || '').substring(0, 60) + ((m.body || '').length > 60 ? '...' : ''),
+      time: m.date || '—',
+      createdAt: m.createdAt || '',
+      page: 'messages',
+      read: false,
+    });
+  });
+
+  // ===== رأی‌گیری‌های فعال که رأی ندادی =====
+  const votings = loadVotings();
+  votings.forEach(v => {
+    const start = new Date(v.startDateTime || v.createdAt);
+    const end = new Date(v.endDateTime || v.createdAt);
+
+    if (now >= start && now <= end) {
+      const myVote = (v.votes || []).find(vt => vt.voterPhone === session.phone);
+      if (!myVote) {
+        notifications.push({
+          id: `voting-${v.id}`,
+          type: 'voting',
+          icon: '🗳️',
+          iconClass: 'red',
+          title: `رأی‌گیری: ${v.title}`,
+          desc: 'هنوز رأی نداده‌اید',
+          time: v.startDate || '—',
+          createdAt: v.createdAt || '',
+          page: 'voting',
+          read: false,
+        });
+      }
+    }
+  });
+
+  // ===== اطلاعیه‌های امروز =====
+  const today = new Date().toLocaleDateString('fa-IR');
+  const notices = loadNotices().filter(n => n.date === today);
+
+  notices.forEach(n => {
+    notifications.push({
+      id: `notice-${n.id}`,
+      type: 'notice',
+      icon: '📢',
+      iconClass: 'orange',
+      title: n.title || 'اطلاعیه جدید',
+      desc: (n.body || '').substring(0, 60) + ((n.body || '').length > 60 ? '...' : ''),
+      time: n.date || '—',
+      createdAt: n.createdAt || '',
+      page: 'notices',
+      read: false,
+    });
+  });
+
+  // مرتب‌سازی
+  notifications.sort((a, b) =>
+    (b.createdAt || '').localeCompare(a.createdAt || '')
+  );
+
+  // حفظ وضعیت خوانده‌شده
+  const existing = loadResidentNotifications();
+  const readIds = existing.filter(n => n.read).map(n => n.id);
+
+  notifications.forEach(n => {
+    if (readIds.includes(n.id)) n.read = true;
+  });
+
+  saveResidentNotifications(notifications);
+  return notifications;
+}
+
+function renderResidentNotifications() {
+  const list = document.getElementById('residentNotifList');
+  const dot = document.getElementById('residentNotifDot');
+
+  if (!list) return;
+
+  const notifications = generateResidentNotifications() || [];
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  if (dot) {
+    dot.style.display = unreadCount > 0 ? 'block' : 'none';
+  }
+
+  if (notifications.length === 0) {
+    list.innerHTML = `
+      <div class="resident-notif-empty">
+        <div class="resident-notif-empty-icon">🔕</div>
+        <div>اعلان جدیدی وجود ندارد</div>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = notifications.map(n => `
+    <div class="resident-notif-item ${n.read ? '' : 'unread'}" data-notif-id="${n.id}" data-notif-page="${n.page}">
+      <div class="resident-notif-icon ${n.iconClass}">${n.icon}</div>
+      <div class="resident-notif-body">
+        <div class="resident-notif-title">
+          <span>${n.title}</span>
+          ${!n.read ? '<span class="resident-notif-badge">جدید</span>' : ''}
+        </div>
+        <div class="resident-notif-desc">${n.desc}</div>
+        <div class="resident-notif-time">${n.time}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // بایند کلیک
+  list.querySelectorAll('.resident-notif-item').forEach(item => {
+    item.onclick = () => {
+      const id = item.dataset.notifId;
+      const page = item.dataset.notifPage;
+
+      const notifications = loadResidentNotifications();
+      const notif = notifications.find(n => n.id === id);
+      if (notif) {
+        notif.read = true;
+        saveResidentNotifications(notifications);
+      }
+
+      closeResidentNotifPanel();
+
+      if (page) {
+        switchResidentPage(page);
+      }
+    };
+  });
+}
+
+function openResidentNotifPanel() {
+  const panel = document.getElementById('residentNotifPanel');
+  if (panel) panel.classList.add('open');
+
+  // علامت‌گذاری همه به‌عنوان خوانده‌شده
+  const notifications = loadResidentNotifications();
+  notifications.forEach(n => n.read = true);
+  saveResidentNotifications(notifications);
+
+  setTimeout(() => renderResidentNotifications(), 500);
+}
+
+function closeResidentNotifPanel() {
+  const panel = document.getElementById('residentNotifPanel');
+  if (panel) panel.classList.remove('open');
+}
+
+function clearResidentNotifications() {
+  if (!confirm('⚠️ همه اعلان‌ها پاک شوند؟')) return;
+  saveResidentNotifications([]);
+  renderResidentNotifications();
+  showResidentToast('اعلان‌ها پاک شدند', 'success');
+}
+
+function bindResidentNotifications() {
+  const btn = document.getElementById('residentNotifBtn');
+  const panel = document.getElementById('residentNotifPanel');
+  const clearBtn = document.getElementById('residentNotifClearBtn');
+
+  if (btn) {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const isOpen = panel?.classList.contains('open');
+      if (isOpen) closeResidentNotifPanel();
+      else openResidentNotifPanel();
+    };
+  }
+
+  if (clearBtn) {
+    clearBtn.onclick = (e) => {
+      e.stopPropagation();
+      clearResidentNotifications();
+    };
+  }
+
+  document.addEventListener('click', (e) => {
+    if (panel && !panel.contains(e.target) && !btn?.contains(e.target)) {
+      closeResidentNotifPanel();
+    }
+  });
+
+  // آپدیت هر ۳۰ ثانیه
+  setInterval(() => {
+    renderResidentNotifications();
+  }, 30000);
+}
