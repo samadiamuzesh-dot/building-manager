@@ -1265,8 +1265,7 @@ function showVotingResults(votingId) {
 
     // بایند مجدد
     bindResidentPayModal();
-bindResidentNotifications();
-renderResidentNotifications();
+
     modal.classList.remove('open');
   });
 }
@@ -1461,9 +1460,10 @@ function initResidentApp() {
    document.getElementById('residentRegisterBtn')?.addEventListener('click', registerResident);
 
   // چت و پرداخت
-  bindResidentMessagesPage();
- bindResidentPayModal();
-
+// چت و پرداخت
+bindResidentMessagesPage();
+bindResidentPayModal();
+bindResidentNotifications();   
    // ✅ اطمینان از بسته بودن پنل اعلان‌ها
 setTimeout(() => {
   const panel = document.getElementById('residentNotifPanel');
