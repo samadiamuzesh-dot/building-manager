@@ -1700,13 +1700,12 @@ function saveNotices(notices) {
 function saveVotings(votings) {
   localStorage.setItem('ham_sakhteman_votings', JSON.stringify(votings));
 }
-
 /* ============================================================
-   🔔 اعلان‌ها
+   🔔 اعلان‌ها — کامل
    ============================================================ */
 
 const RESIDENT_NOTIF_KEY = 'ham_sakhteman_resident_notifications';
-const RESIDENT_LAST_SEEN_KEY = 'ham_sakhteman_resident_last_seen';
+const RESIDENT_NOTIF_READ_KEY = 'ham_sakhteman_resident_notif_read';
 
 function loadResidentNotifications() {
   const raw = localStorage.getItem(RESIDENT_NOTIF_KEY);
@@ -1718,6 +1717,17 @@ function saveResidentNotifications(notifs) {
   localStorage.setItem(RESIDENT_NOTIF_KEY, JSON.stringify(notifs));
 }
 
+function loadNotifReadIds() {
+  const raw = localStorage.getItem(RESIDENT_NOTIF_READ_KEY);
+  if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
+  return [];
+}
+
+function saveNotifReadIds(ids) {
+  localStorage.setItem(RESIDENT_NOTIF_READ_KEY, JSON.stringify(ids));
+}
+
+/* ✅ تولید اعلان‌ها */
 function generateResidentNotifications() {
   const session = getResidentSession();
   if (!session) return [];
@@ -1727,8 +1737,9 @@ function generateResidentNotifications() {
 
   const notifications = [];
   const now = new Date();
+  const readIds = loadNotifReadIds();
 
-  // ===== شارژهای پرداخت‌نشده =====
+  // ===== ۱. شارژهای پرداخت‌نشده =====
   const charges = loadCharges().filter(c =>
     Number(c.unitId) === Number(myUnitId) && !c.paid
   );
@@ -1736,7 +1747,6 @@ function generateResidentNotifications() {
   charges.forEach(c => {
     notifications.push({
       id: `charge-${c.id}`,
-      type: 'charge',
       icon: '💰',
       iconClass: 'blue',
       title: `شارژ ${c.month} ${toPersianNumR(c.year)}`,
@@ -1744,11 +1754,10 @@ function generateResidentNotifications() {
       time: c.issuedAt ? new Date(c.issuedAt).toLocaleDateString('fa-IR') : '—',
       createdAt: c.issuedAt || c.createdAt || '',
       page: 'charges',
-      read: false,
     });
   });
 
-  // ===== پیام‌های جدید از مدیر =====
+  // ===== ۲. پیام‌های خوانده‌نشده از مدیر =====
   const messages = loadMessages().filter(m =>
     Number(m.unitId) === Number(myUnitId) && m.direction === 'sent' && !m.read
   );
@@ -1756,7 +1765,6 @@ function generateResidentNotifications() {
   messages.forEach(m => {
     notifications.push({
       id: `message-${m.id}`,
-      type: 'message',
       icon: '💬',
       iconClass: 'green',
       title: 'پیام جدید از مدیر',
@@ -1764,11 +1772,10 @@ function generateResidentNotifications() {
       time: m.date || '—',
       createdAt: m.createdAt || '',
       page: 'messages',
-      read: false,
     });
   });
 
-  // ===== رأی‌گیری‌های فعال که رأی ندادی =====
+  // ===== ۳. رأی‌گیری‌های فعال (که رأی ندادی) =====
   const votings = loadVotings();
   votings.forEach(v => {
     const start = new Date(v.startDateTime || v.createdAt);
@@ -1779,65 +1786,57 @@ function generateResidentNotifications() {
       if (!myVote) {
         notifications.push({
           id: `voting-${v.id}`,
-          type: 'voting',
           icon: '🗳️',
-          iconClass: 'red',
+          iconClass: 'purple',
           title: `رأی‌گیری: ${v.title}`,
           desc: 'هنوز رأی نداده‌اید',
           time: v.startDate || '—',
           createdAt: v.createdAt || '',
           page: 'voting',
-          read: false,
         });
       }
     }
   });
 
-  // ===== اطلاعیه‌های امروز =====
-  const today = new Date().toLocaleDateString('fa-IR');
-  const notices = loadNotices().filter(n => n.date === today);
-
+  // ===== ۴. همه اطلاعیه‌ها =====
+  const notices = loadNotices();
   notices.forEach(n => {
     notifications.push({
       id: `notice-${n.id}`,
-      type: 'notice',
       icon: '📢',
       iconClass: 'orange',
       title: n.title || 'اطلاعیه جدید',
-      desc: (n.body || '').substring(0, 60) + ((n.body || '').length > 60 ? '...' : ''),
+      desc: (n.body || '').substring(0, 80) + ((n.body || '').length > 80 ? '...' : ''),
       time: n.date || '—',
       createdAt: n.createdAt || '',
       page: 'notices',
-      read: false,
     });
   });
 
-  // مرتب‌سازی
+  // مرتب‌سازی: جدیدترین اول
   notifications.sort((a, b) =>
     (b.createdAt || '').localeCompare(a.createdAt || '')
   );
 
-  // حفظ وضعیت خوانده‌شده
-  const existing = loadResidentNotifications();
-  const readIds = existing.filter(n => n.read).map(n => n.id);
-
+  // اضافه کردن وضعیت خوانده‌شده
   notifications.forEach(n => {
-    if (readIds.includes(n.id)) n.read = true;
+    n.read = readIds.includes(n.id);
   });
 
-  saveResidentNotifications(notifications);
   return notifications;
 }
 
+/* ✅ نمایش اعلان‌ها */
 function renderResidentNotifications() {
   const list = document.getElementById('residentNotifList');
   const dot = document.getElementById('residentNotifDot');
 
   if (!list) return;
 
-  const notifications = generateResidentNotifications() || [];
+  const notifications = generateResidentNotifications();
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  // نقطه قرمز
   if (dot) {
     dot.style.display = unreadCount > 0 ? 'block' : 'none';
   }
@@ -1868,108 +1867,101 @@ function renderResidentNotifications() {
 
   // بایند کلیک
   list.querySelectorAll('.resident-notif-item').forEach(item => {
-    item.onclick = () => {
+    item.addEventListener('click', () => {
       const id = item.dataset.notifId;
       const page = item.dataset.notifPage;
 
-      const notifications = loadResidentNotifications();
-      const notif = notifications.find(n => n.id === id);
-      if (notif) {
-        notif.read = true;
-        saveResidentNotifications(notifications);
+      // علامت‌گذاری خوانده‌شده
+      const readIds = loadNotifReadIds();
+      if (!readIds.includes(id)) {
+        readIds.push(id);
+        saveNotifReadIds(readIds);
       }
 
       closeResidentNotifPanel();
+      renderResidentNotifications();
 
+      // رفتن به صفحه
       if (page) {
         switchResidentPage(page);
       }
-    };
+    });
   });
 }
 
+/* ✅ باز کردن پنل */
 function openResidentNotifPanel() {
   const panel = document.getElementById('residentNotifPanel');
   if (panel) panel.classList.add('open');
-
-  // علامت‌گذاری همه به‌عنوان خوانده‌شده
-  const notifications = loadResidentNotifications();
-  notifications.forEach(n => n.read = true);
-  saveResidentNotifications(notifications);
-
-  setTimeout(() => renderResidentNotifications(), 500);
+  renderResidentNotifications();
 }
 
+/* ✅ بستن پنل */
 function closeResidentNotifPanel() {
   const panel = document.getElementById('residentNotifPanel');
   if (panel) panel.classList.remove('open');
 }
 
+/* ✅ پاک کردن همه */
 function clearResidentNotifications() {
   if (!confirm('⚠️ همه اعلان‌ها پاک شوند؟')) return;
-  saveResidentNotifications([]);
+
+  // همه رو به عنوان خوانده‌شده علامت بزن
+  const notifications = generateResidentNotifications();
+  const ids = notifications.map(n => n.id);
+  saveNotifReadIds(ids);
+
   renderResidentNotifications();
-  showResidentToast('اعلان‌ها پاک شدند', 'success');
+  showResidentToast('همه اعلان‌ها پاک شدند', 'success');
 }
 
+/* ✅ بایند دکمه‌ها */
 function bindResidentNotifications() {
   const btn = document.getElementById('residentNotifBtn');
   const panel = document.getElementById('residentNotifPanel');
   const clearBtn = document.getElementById('residentNotifClearBtn');
 
-  // ✅ اطمینان از بسته بودن پنل در شروع
+  // اطمینان از بسته بودن پنل
   if (panel) panel.classList.remove('open');
 
-  if (btn && panel) {
-    btn.addEventListener('click', (e) => {
+  // دکمه زنگوله
+  if (btn) {
+    btn.onclick = (e) => {
       e.stopPropagation();
       e.preventDefault();
-      
-      const isOpen = panel.classList.contains('open');
-      console.log('🔔 کلیک شد — وضعیت:', isOpen ? 'باز' : 'بسته');
-      
-      if (isOpen) {
-        panel.classList.remove('open');
-        console.log('پنل بسته شد');
+
+      if (panel.classList.contains('open')) {
+        closeResidentNotifPanel();
       } else {
-        panel.classList.add('open');
-        console.log('پنل باز شد');
-        // علامت‌گذاری همه به‌عنوان خوانده‌شده
-        const notifications = loadResidentNotifications();
-        notifications.forEach(n => n.read = true);
-        saveResidentNotifications(notifications);
-        setTimeout(() => renderResidentNotifications(), 100);
+        openResidentNotifPanel();
       }
-    });
+    };
   }
 
+  // دکمه پاک کردن
   if (clearBtn) {
-    clearBtn.addEventListener('click', (e) => {
+    clearBtn.onclick = (e) => {
       e.stopPropagation();
       e.preventDefault();
       clearResidentNotifications();
-    });
+    };
   }
 
-  // ✅ بستن با کلیک بیرون
+  // بستن با کلیک بیرون
   document.addEventListener('click', (e) => {
     if (!panel) return;
     if (!panel.classList.contains('open')) return;
-    
-    // اگه کلیک روی دکمه یا خود پنل نبود → ببند
     if (!panel.contains(e.target) && !btn?.contains(e.target)) {
-      panel.classList.remove('open');
+      closeResidentNotifPanel();
     }
   });
 
-  // ✅ بستن با دکمه Escape
+  // بستن با Escape
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && panel?.classList.contains('open')) {
-      panel.classList.remove('open');
-    }
+    if (e.key === 'Escape') closeResidentNotifPanel();
   });
 
-  // آپدیت خودکار هر ۳۰ ثانیه
+  // آپدیت هر ۳۰ ثانیه
   setInterval(() => {
     if (getResidentSession()) {
       renderResidentNotifications();
