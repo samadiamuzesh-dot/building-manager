@@ -124,7 +124,13 @@
     <h2 id="residentHeaderName">—</h2>
     <p id="residentHeaderUnit">—</p>
   </div>
- <button class="resident-logout-btn" id="residentLogoutBtn" title="خروج">🚪</button>
+  <div style="display:flex; gap:8px; position:relative;">
+    <button class="resident-logout-btn" id="residentNotifBtn" title="اعلان‌ها" style="position:relative;">
+      🔔
+      <span class="resident-notif-dot" id="residentNotifDot" style="display:none;"></span>
+    </button>
+    <button class="resident-logout-btn" id="residentLogoutBtn" title="خروج">🚪</button>
+  </div>
 </header>
   <!-- محتوای پنل -->
   <main class="resident-content">
