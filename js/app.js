@@ -7177,21 +7177,25 @@ function bindSettingsPage() {
   document.getElementById('setResetData')?.addEventListener('click', resetAllData);
 }
 
-/* ============ ۱۹) راه‌اندازی ============ */
+
 function init() {
   console.log('INIT RUN ✅');
 
   const urlParams = new URLSearchParams(window.location.search);
   const isSignup = urlParams.get('signup') === '1';
 
-  if (!isSignup) {
+  // در حالت ثبت‌نام جدید، پنل قبلی نمایش داده نشود.
+  if (isSignup) {
+    document.body.classList.add('signup-mode');
+    UNITS = [];
+  } else {
     if (typeof isLoggedIn === 'function' && !isLoggedIn()) {
       window.location.replace('login.html');
       return;
     }
-  }
 
-  loadUnits();
+    loadUnits();
+  }
 
   document.querySelectorAll('select').forEach(select => {
     const id = select.id;
@@ -7228,9 +7232,9 @@ function init() {
     }
   });
 
-  const data = loadData();
+  const data = isSignup ? null : loadData();
 
-  if (!data || !data.building || isSignup) {
+  if (isSignup || !data || !data.building) {
     openWelcomeModal();
   } else {
     renderBuildingCard();
@@ -7248,9 +7252,7 @@ function init() {
     const mainItem = e.target.closest('.nav-item-main');
     if (mainItem) {
       const parent = mainItem.closest('.has-submenu');
-      if (parent) {
-        parent.classList.toggle('open');
-      }
+      if (parent) parent.classList.toggle('open');
       return;
     }
 
@@ -7293,6 +7295,7 @@ function init() {
   initNotificationsAndProfile();
 
   updateSidebarLockStates();
+
   let t;
   window.addEventListener('resize', () => {
     clearTimeout(t);
@@ -7304,6 +7307,7 @@ function init() {
 
   switchPage('dashboard');
 }
+
 
 function getExpectedUnitsCount(building) {
   if (!building) return 0;
