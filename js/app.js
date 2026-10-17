@@ -973,21 +973,26 @@ function selectPlan(planType) {
     confirmProPlan();
   }
 }
-
-function confirmFreePlan() {
-  const totalUnits = getTotalUnitsFromWizard();
-
-  // ✅ چک: اگه کاربر پلن رایگان رو با بیش از ۴ واحد انتخاب کرد
-  if (totalUnits > 4) {
-    const confirmMsg = `⚠️ پلن رایگان فقط برای ساختمان‌های تا ۴ واحد است.\n\n` +
-                       `ساختمان شما ${toPersianNum(totalUnits)} واحد دارد.\n\n` +
-                       `آیا با این حال می‌خواهید پلن رایگان را انتخاب کنید؟\n` +
-                       `(فقط ۴ واحد اول ثبت می‌شوند)`;
-
-    if (!confirm(confirmMsg)) {
-      return;
-    }
+function getTotalUnitsFromWizard() {
+  if (selectedBuildingType === 'complex') {
+    return blockNames.reduce(
+      (sum, b) => sum + (parseInt(b.units) || 0),
+      0
+    );
   }
+
+  const input = document.getElementById('singleUnitsCount');
+
+  console.log('🔎 نوع ساختمان:', selectedBuildingType);
+  console.log('🔎 ورودی تعداد واحدها:', input);
+  console.log('🔎 مقدار ورودی:', input?.value);
+
+  const value = parseInt(input?.value, 10) || 0;
+
+  console.log('🔎 تعداد واحدهای محاسبه‌شده:', value);
+
+  return value;
+}
 
   activatePlan('free', totalUnits, {
     amount: 0,
