@@ -179,18 +179,21 @@ function initLoginPage() {
 
 
 
-document.getElementById('btnStartSignup')?.addEventListener('click', () => {
-  window.location.href = 'index.html?signup=1';
-});
 
+  document.getElementById('btnStartSignup')?.addEventListener('click', () => {
+    window.location.href = 'index.html?signup=1';
+  });
 
-    document.querySelector('.login-tab[data-login-tab="login"]')?.click();
+  document.getElementById('loginPassword')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleLoginSubmit();
+  });
 
-    return;
-  }
-
-  window.location.href = 'index.html?signup=1';
-});
+  document.getElementById('loginPhone')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      document.getElementById('loginPassword').focus();
+    }
+  });
+}
 
 
   document.getElementById('loginPassword')?.addEventListener('keypress', (e) => {
