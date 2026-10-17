@@ -175,10 +175,8 @@ function initLoginPage() {
     });
   });
 
+
   document.getElementById('btnLoginSubmit')?.addEventListener('click', handleLoginSubmit);
-
-
-
 
   document.getElementById('btnStartSignup')?.addEventListener('click', () => {
     window.location.href = 'index.html?signup=1';
@@ -190,19 +188,13 @@ function initLoginPage() {
 
   document.getElementById('loginPhone')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
-      document.getElementById('loginPassword').focus();
+      document.getElementById('loginPassword')?.focus();
     }
   });
 }
 
 
-  document.getElementById('loginPassword')?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleLoginSubmit();
-  });
-  document.getElementById('loginPhone')?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') document.getElementById('loginPassword').focus();
-  });
-}
+
 function handleLoginSubmit() {
   const phoneInput = document.getElementById('loginPhone');
   const passwordInput = document.getElementById('loginPassword');
