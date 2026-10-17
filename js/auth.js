@@ -178,9 +178,8 @@ function initLoginPage() {
   document.getElementById('btnLoginSubmit')?.addEventListener('click', handleLoginSubmit);
 
 
+
 document.getElementById('btnStartSignup')?.addEventListener('click', () => {
-  // اجازه ورود به فرم ثبت‌نام را بده.
-  // بررسی تکراری بودن شماره در فرم انجام می‌شود.
   window.location.href = 'index.html?signup=1';
 });
 
