@@ -7218,7 +7218,10 @@ function init() {
       return;
     }
 
-    loadUnits();
+    if (new URLSearchParams(window.location.search).get('signup') !== '1') {
+  loadUnits();
+} else {
+  UNITS = [];
   }
 
   document.querySelectorAll('select').forEach(select => {
