@@ -2,7 +2,20 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"> 
+<script>
+  if (new URLSearchParams(window.location.search).get('signup') === '1') {
+    document.documentElement.classList.add('signup-mode');
+  }
+</script>
+
+<style>
+  html.signup-mode body > .topbar,
+  html.signup-mode body > .app-body {
+    display: none !important;
+  }
+</style>
+
   <title>آپارتمان پلاس | نرم‌افزار هوشمند مدیریت ساختمان</title> 
   <link rel="stylesheet" href="css/style.css?v=1003">
   
