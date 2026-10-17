@@ -848,17 +848,7 @@ if (
 // فقط اگر شماره واردشده با شماره حساب قبلی یکسان است، رد شود.
 const existingPhone = localStorage.getItem('ham_sakhteman_user_phone');
 
-if (
-  existingPhone &&
-  typeof normalizePhone === 'function' &&
-  normalizePhone(p) === normalizePhone(existingPhone)
-) {
-  showFieldError(
-    'managerPhone',
-    'این شماره موبایل قبلاً ثبت‌نام کرده است. لطفاً شماره دیگری وارد کنید.'
-  );
-  return false;
-}
+
 
     if (!pass) { showFieldError('managerPassword', 'لطفاً رمز عبور را وارد کنید.'); return false; }
     if (pass.length < 6) { showFieldError('managerPassword', 'رمز عبور باید حداقل ۶ کاراکتر باشد.'); return false; }
@@ -7241,11 +7231,13 @@ function bindSettingsPage() {
 function init() {
   console.log('INIT RUN ✅');
 
+
   const urlParams = new URLSearchParams(window.location.search);
   const isSignup = urlParams.get('signup') === '1';
 
-  // در حالت ثبت‌نام جدید، پنل قبلی نمایش داده نشود.
+  // حالت ثبت‌نام را پیش از بارگذاری اطلاعات فعال کن.
   if (isSignup) {
+    document.documentElement.classList.add('signup-mode');
     document.body.classList.add('signup-mode');
     UNITS = [];
   } else {
@@ -7254,10 +7246,7 @@ function init() {
       return;
     }
 
-    if (new URLSearchParams(window.location.search).get('signup') !== '1') {
-  loadUnits();
-} else {
-  UNITS = [];
+    loadUnits();
   }
 
   document.querySelectorAll('select').forEach(select => {
