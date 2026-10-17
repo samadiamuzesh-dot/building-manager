@@ -11,8 +11,27 @@ console.log('APP.JS VERSION: v18 — ApartmentPlus');
 console.log('%c🏢 آپارتمان پلاس | v18', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
 
-const STORAGE_KEY = 'ham_sakhteman_v3';
-const UNITS_KEY = 'ham_sakhteman_units';
+
+function getAccountStorageKey(baseKey) {
+  const phone = localStorage.getItem('ham_sakhteman_user_phone');
+
+  if (!phone) return baseKey;
+
+  const normalizedPhone = typeof normalizePhone === 'function'
+    ? normalizePhone(phone)
+    : phone.replace(/\D/g, '');
+
+  return `${baseKey}_${normalizedPhone}`;
+}
+
+function getStorageKey() {
+  return getAccountStorageKey('ham_sakhteman_v3');
+}
+
+function getUnitsStorageKey() {
+  return getAccountStorageKey('ham_sakhteman_units');
+}
+
 
 /* ============ ۱) ابزار ============ */
 function formatToman(a) { return new Intl.NumberFormat('fa-IR').format(Number(a) || 0) + ' تومان'; }
@@ -180,20 +199,46 @@ function isValidIranMobile(phone) {
 }
 
 /* ============ ۳) ذخیره/بارگذاری ============ */
+
 function loadData() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+  const raw = localStorage.getItem(getStorageKey());
+
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch (e) {}
+  }
+
   return null;
 }
-function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+function saveData(data) {
+  localStorage.setItem(getStorageKey(), JSON.stringify(data));
+}
 
 let UNITS = [];
+
 function loadUnits() {
-  const raw = localStorage.getItem(UNITS_KEY);
-  if (raw) { try { UNITS = JSON.parse(raw); } catch (e) { UNITS = []; } }
-  else { UNITS = []; }
+  const raw = localStorage.getItem(getUnitsStorageKey());
+
+  if (raw) {
+    try {
+      UNITS = JSON.parse(raw);
+    } catch (e) {
+      UNITS = [];
+    }
+  } else {
+    UNITS = [];
+  }
 }
-function saveUnits() { localStorage.setItem(UNITS_KEY, JSON.stringify(UNITS)); }
+
+function saveUnits() {
+  localStorage.setItem(
+    getUnitsStorageKey(),
+    JSON.stringify(UNITS)
+  );
+}
+
 
 
 
@@ -1247,11 +1292,14 @@ function saveWizardData() {
 
   currentBlockFilter = 'all';
   currentStatusFilter = 'all';
-  saveData({ building, manager: { name: mn, phone: mp } });
+if (typeof saveUserAuth === 'function' && mp && password) {
+  saveUserAuth(mp, password);
+}
 
-  if (typeof saveUserAuth === 'function' && mp && password) {
-    saveUserAuth(mp, password);
-  }
+saveData({
+  building,
+  manager: { name: mn, phone: mp }
+});
 
   localStorage.removeItem('ham_sakhteman_logged_out');
 
