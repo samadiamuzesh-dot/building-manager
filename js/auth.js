@@ -177,15 +177,13 @@ function initLoginPage() {
 
   document.getElementById('btnLoginSubmit')?.addEventListener('click', handleLoginSubmit);
 
-document.getElementById('btnStartSignup')?.addEventListener('click', () => {
-  const savedPhone = localStorage.getItem(USER_PHONE_KEY);
-  const savedPassword = localStorage.getItem(USER_PASSWORD_KEY);
 
-  if (savedPhone && savedPassword) {
-    showToastAuth(
-      'برای این مرورگر قبلاً حساب کاربری ثبت شده است. لطفاً از قسمت ورود استفاده کنید.',
-      'warning'
-    );
+document.getElementById('btnStartSignup')?.addEventListener('click', () => {
+  // اجازه ورود به فرم ثبت‌نام را بده.
+  // بررسی تکراری بودن شماره در فرم انجام می‌شود.
+  window.location.href = 'index.html?signup=1';
+});
+
 
     document.querySelector('.login-tab[data-login-tab="login"]')?.click();
 
