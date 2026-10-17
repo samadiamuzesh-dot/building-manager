@@ -18,18 +18,30 @@
 
   <title>آپارتمان پلاس | نرم‌افزار هوشمند مدیریت ساختمان</title> 
   <link rel="stylesheet" href="css/style.css?v=1003">
-  
+
+ 
+<script>
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('signup') === '1') {
+      document.documentElement.classList.add('signup-mode');
+    }
+  })();
+</script>
+
 <style>
-  /* هنگام ثبت‌نام جدید، اطلاعات پنل قبلی دیده نشود */
-  body.signup-mode > .topbar,
-  body.signup-mode > .app-body {
+  /* هنگام ثبت‌نام جدید، اطلاعات پنل قبلی نمایش داده نشود */
+  html.signup-mode body > .topbar,
+  html.signup-mode body > .app-body {
     display: none !important;
   }
 
-  body.signup-mode {
+  html.signup-mode body {
     background: #f8fafc;
   }
 </style>
+
 
 </head>
 <body>
