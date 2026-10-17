@@ -177,13 +177,27 @@ function initLoginPage() {
 
   document.getElementById('btnLoginSubmit')?.addEventListener('click', handleLoginSubmit);
 
-  document.getElementById('btnStartSignup')?.addEventListener('click', () => {
-    localStorage.removeItem(LOGGED_OUT_KEY);
-    localStorage.removeItem(USER_PHONE_KEY);
-    localStorage.removeItem(USER_PASSWORD_KEY);
-    localStorage.removeItem(AUTH_KEY);
-    window.location.href = 'index.html?signup=1';
-  });
+
+document.getElementById('btnStartSignup')?.addEventListener('click', () => {
+  const savedPhone = localStorage.getItem(USER_PHONE_KEY);
+  const savedPassword = localStorage.getItem(USER_PASSWORD_KEY);
+
+  // اگر قبلاً حساب ساخته شده، ثبت‌نام مجدد ممنوع است.
+  if (savedPhone && savedPassword) {
+    showToastAuth(
+      'برای این مرورگر قبلاً حساب کاربری ثبت شده است. لطفاً از قسمت ورود استفاده کنید.',
+      'warning'
+    );
+
+    document.querySelector('.login-tab[data-login-tab="login"]')?.click();
+
+    return;
+  }
+
+  // اطلاعات احراز هویت قبلی را حذف نکن.
+  window.location.href = 'index.html?signup=1';
+});
+
 
   document.getElementById('loginPassword')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleLoginSubmit();
