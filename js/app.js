@@ -799,6 +799,7 @@ function wizardValidateStep(step) {
     if (!n) { showFieldError('managerName', 'لطفاً نام و نام خانوادگی را وارد کنید.'); return false; }
     if (n.length < 3) { showFieldError('managerName', 'نام باید حداقل ۳ کاراکتر باشد.'); return false; }
    
+
 if (!p) {
   showFieldError('managerPhone', 'لطفاً شماره تماس را وارد کنید.');
   return false;
@@ -808,6 +809,41 @@ if (!isValidIranMobile(p)) {
   showFieldError('managerPhone', 'شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
   return false;
 }
+
+const savedPhone = localStorage.getItem('ham_sakhteman_user_phone');
+
+if (
+  savedPhone &&
+  typeof normalizePhone === 'function' &&
+  normalizePhone(p) === normalizePhone(savedPhone)
+) {
+  showFieldError(
+    'managerPhone',
+    'این شماره قبلاً ثبت‌نام کرده است.'
+  );
+
+  const phoneInput = document.getElementById('managerPhone');
+  const errorEl = phoneInput?.parentElement.querySelector('.error-message');
+
+  if (errorEl) {
+    errorEl.textContent = '';
+
+    const message = document.createElement('span');
+    message.textContent = 'این شماره قبلاً ثبت‌نام کرده است. ';
+
+    const loginLink = document.createElement('a');
+    loginLink.href = 'login.html';
+    loginLink.textContent = 'ورود به حساب کاربری';
+    loginLink.style.cssText =
+      'color:#4f46e5;font-weight:700;text-decoration:underline;';
+
+    errorEl.append(message, loginLink);
+    errorEl.classList.add('show');
+  }
+
+  return false;
+}
+
 
 // فقط اگر شماره واردشده با شماره حساب قبلی یکسان است، رد شود.
 const existingPhone = localStorage.getItem('ham_sakhteman_user_phone');
