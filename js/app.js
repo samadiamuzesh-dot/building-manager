@@ -798,8 +798,32 @@ function wizardValidateStep(step) {
 
     if (!n) { showFieldError('managerName', 'لطفاً نام و نام خانوادگی را وارد کنید.'); return false; }
     if (n.length < 3) { showFieldError('managerName', 'نام باید حداقل ۳ کاراکتر باشد.'); return false; }
-    if (!p) { showFieldError('managerPhone', 'لطفاً شماره تماس را وارد کنید.'); return false; }
-    if (!isValidIranMobile(p)) { showFieldError('managerPhone', 'شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.'); return false; }
+   
+if (!p) {
+  showFieldError('managerPhone', 'لطفاً شماره تماس را وارد کنید.');
+  return false;
+}
+
+if (!isValidIranMobile(p)) {
+  showFieldError('managerPhone', 'شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
+  return false;
+}
+
+// فقط اگر شماره واردشده با شماره حساب قبلی یکسان است، رد شود.
+const existingPhone = localStorage.getItem('ham_sakhteman_user_phone');
+
+if (
+  existingPhone &&
+  typeof normalizePhone === 'function' &&
+  normalizePhone(p) === normalizePhone(existingPhone)
+) {
+  showFieldError(
+    'managerPhone',
+    'این شماره موبایل قبلاً ثبت‌نام کرده است. لطفاً شماره دیگری وارد کنید.'
+  );
+  return false;
+}
+
     if (!pass) { showFieldError('managerPassword', 'لطفاً رمز عبور را وارد کنید.'); return false; }
     if (pass.length < 6) { showFieldError('managerPassword', 'رمز عبور باید حداقل ۶ کاراکتر باشد.'); return false; }
     if (!passConfirm) { showFieldError('managerPasswordConfirm', 'لطفاً تکرار رمز عبور را وارد کنید.'); return false; }
