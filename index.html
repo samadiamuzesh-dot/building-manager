@@ -3985,19 +3985,24 @@
   </div>
 
   <!-- دکمه‌ها -->
-  <div class="wizard-actions" style="margin-top:20px;">
-    <button id="wizardPrevBtn4" class="btn btn-cancel">→ قبلی</button>
+  <!-- دکمه‌های مرحله ۴ (فقط قبلی) -->
+  <div class="wizard-actions" style="margin-top:20px;" id="wizardActionsStep4">
+    <button type="button" id="wizardPrevBtn4" class="btn btn-cancel">→ قبلی</button>
   </div>
-</div>
+</div><!-- پایان wizard-page مرحله ۴ -->
 
-      
-        <button id="wizardNextBtn" class="btn btn-primary btn-block">
-          بعدی ←
-        </button>
-      </div>
-
-    </div>
+  <!-- دکمه‌های مشترک مراحل ۱ تا ۳ -->
+  <div class="wizard-actions" id="wizardActionsMain" style="display:flex; gap:12px; margin-top:24px;">
+    <button type="button" id="wizardPrevBtn" class="btn btn-cancel" style="display:none;">
+      → قبلی
+    </button>
+    <button type="button" id="wizardNextBtn" class="btn btn-primary" style="flex:1;">
+      ادامه ←
+    </button>
   </div>
+
+</div><!-- پایان modal-welcome -->
+</div><!-- پایان welcomeModal -->
 
   <!-- ============ فوتر ============ -->
  <footer class="app-footer">
