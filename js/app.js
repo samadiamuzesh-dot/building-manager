@@ -982,17 +982,12 @@ function getTotalUnitsFromWizard() {
   }
 
   const input = document.getElementById('singleUnitsCount');
-
-  console.log('🔎 نوع ساختمان:', selectedBuildingType);
-  console.log('🔎 ورودی تعداد واحدها:', input);
-  console.log('🔎 مقدار ورودی:', input?.value);
-
   const value = parseInt(input?.value, 10) || 0;
-
-  console.log('🔎 تعداد واحدهای محاسبه‌شده:', value);
-
   return value;
 }
+
+function confirmFreePlan() {
+  const totalUnits = getTotalUnitsFromWizard();
 
   activatePlan('free', totalUnits, {
     amount: 0,
