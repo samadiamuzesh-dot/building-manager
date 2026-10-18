@@ -748,10 +748,23 @@ function updateWizardUI() {
     if (selectedBuildingType === 'complex') buildBlockInputs();
   }
 
-  if (wizardStep === 4) {
-    updatePlanPage();
+const prev = document.getElementById('wizardPrevBtn');
+const next = document.getElementById('wizardNextBtn');
+const mainActions = document.getElementById('wizardActionsMain');
+const step4Actions = document.getElementById('wizardActionsStep4');
+
+if (wizardStep < 4) {
+  if (mainActions) mainActions.style.display = 'flex';
+  if (step4Actions) step4Actions.style.display = 'none';
+  if (prev) prev.style.display = wizardStep > 1 ? 'block' : 'none';
+  if (next) {
+    next.style.display = 'block';
+    next.textContent = 'ادامه ←';
   }
-}
+} else {
+  if (mainActions) mainActions.style.display = 'none';
+  if (step4Actions) step4Actions.style.display = 'flex';
+} 
 
 function updatePlanPage() {
   const bn = document.getElementById('buildingNameInput')?.value.trim() || '—';
