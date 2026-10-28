@@ -1,14 +1,18 @@
 /* ============================================================
-   آپارتمان پلاس | v16 (اصلاح‌شده نهایی)
+   آپارتمان پلاس | v19
    ============================================================
 
    🎨 طراحی و توسعه: الهام صمدی
    👩‍💼 مدیر پروژه: الهام صمدی
 
+   اصلاحات v19:
+   - واحدهای خالی برای کاربر جدید (بدون داده آزمایشی)
+   - محدودیت افزودن واحد بعد از مشخص کردن تعداد و پرداخت
+   - نمایش صحیح نام ساختمان در سایدبار
    ============================================================ */
 
-console.log('APP.JS VERSION: v18 — ApartmentPlus');
-console.log('%c🏢 آپارتمان پلاس | v18', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
+console.log('APP.JS VERSION: v19 — ApartmentPlus (empty units + unit limit + sidebar name fix)');
+console.log('%c🏢 آپارتمان پلاس | v19', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
 
 
@@ -243,7 +247,7 @@ function saveUnits() {
 
 
 /* ============ ۴) ساخت واحدهای خالی ============ */
-function buildDemoUnits(building) {
+function buildEmptyUnits(building) {
   UNITS = [];
   let id = 1;
 
@@ -263,10 +267,11 @@ function buildDemoUnits(building) {
           tenant: { name: null, phone: null, registered: false, approved: false },
           debt: 0,
           chargeAmount: 0,
-          area: 100 + (i * 5),
-          peopleCount: i % 3 === 0 ? 0 : 2 + (i % 4),
-          parkingCount: i % 2 === 0 ? 1 : 0,
-          status: 'auto',
+          area: 0,
+          peopleCount: 0,
+          parkingCount: 0,
+          storageCount: 0,
+          status: 'empty',
         });
       }
     });
@@ -284,15 +289,21 @@ function buildDemoUnits(building) {
         tenant: { name: null, phone: null, registered: false, approved: false },
         debt: 0,
         chargeAmount: 0,
-        area: 100 + (i * 5),
-        peopleCount: i % 3 === 0 ? 0 : 2 + (i % 4),
-        parkingCount: i % 2 === 0 ? 1 : 0,
-        status: 'auto',
+        area: 0,
+        peopleCount: 0,
+        parkingCount: 0,
+        storageCount: 0,
+        status: 'empty',
       });
     }
   }
 
   saveUnits();
+}
+
+// سازگاری با نام قدیمی
+function buildDemoUnits(building) {
+  buildEmptyUnits(building);
 }
 
 /* ============ ۵) کارت ساختمان ============ */
@@ -307,8 +318,37 @@ function renderBuildingCard() {
     return;
   }
   const b = data.building;
-  if (nameEl) nameEl.textContent = b.name || '—';
-  if (codeEl) codeEl.textContent = b.code || '—';
+  const displayName = (b.name && String(b.name).trim()) ? String(b.name).trim() : 'بدون نام';
+  const displayCode = (b.code && String(b.code).trim()) ? String(b.code).trim() : '—';
+  if (nameEl) nameEl.textContent = displayName;
+  if (codeEl) codeEl.textContent = displayCode;
+}
+
+/** حداکثر تعداد واحد مجاز بر اساس ساختمان / پلن */
+function getMaxAllowedUnits() {
+  const data = loadData();
+  const building = data?.building;
+  if (building) {
+    const fromBuilding = getExpectedUnitsCount(building);
+    if (fromBuilding > 0) return fromBuilding;
+  }
+  const plan = typeof loadPlan === 'function' ? loadPlan() : null;
+  if (plan && plan.totalUnits > 0) return Number(plan.totalUnits);
+  return 0;
+}
+
+/** به‌روزرسانی وضعیت دکمه «افزودن واحد» */
+function updateAddUnitButtonState() {
+  const btn = document.getElementById('btnAddUnit');
+  if (!btn) return;
+  const max = getMaxAllowedUnits();
+  const atLimit = max > 0 && UNITS.length >= max;
+  btn.disabled = atLimit;
+  btn.style.opacity = atLimit ? '0.55' : '1';
+  btn.style.cursor = atLimit ? 'not-allowed' : '';
+  btn.title = atLimit
+    ? `حداکثر ${toPersianNum(max)} واحد (بر اساس ثبت‌نام و پرداخت) مجاز است`
+    : 'افزودن واحد جدید';
 }
 
 /* ============ ۶) اطلاعات صفحات ============ */
@@ -1268,9 +1308,14 @@ function getTotalUnitsFromWizard() {
 
 function saveWizardData() {
   const mn = wizardAuthData.name || document.getElementById('managerName')?.value.trim() || '';
-  const mp = wizardAuthData.phone || document.getElementById('managerPhone')?.value.trim() || '';
+  let mp = wizardAuthData.phone || document.getElementById('managerPhone')?.value.trim() || '';
   const password = wizardAuthData.password || document.getElementById('managerPassword')?.value || '';
-  const bn = document.getElementById('buildingNameInput')?.value.trim();
+  const bn = (document.getElementById('buildingNameInput')?.value || '').trim();
+
+  // نرمال‌سازی شماره موبایل قبل از ذخیره (برای کلید ذخیره‌سازی یکسان)
+  if (typeof normalizePhone === 'function' && mp) {
+    mp = normalizePhone(mp);
+  }
 
   let blocks = [];
   let totalUnits = 0;
@@ -1290,7 +1335,7 @@ function saveWizardData() {
   const code = generateBuildingCode(selectedBuildingType, totalUnits);
 
   const building = {
-    name: bn,
+    name: bn || 'ساختمان بدون نام',
     type: selectedBuildingType,
     code: code,
     blocks: blocks,
@@ -1300,23 +1345,27 @@ function saveWizardData() {
 
   currentBlockFilter = 'all';
   currentStatusFilter = 'all';
-if (typeof saveUserAuth === 'function' && mp && password) {
-  saveUserAuth(mp, password);
-}
 
-saveData({
-  building,
-  manager: { name: mn, phone: mp }
-});
+  // اول احراز هویت (تنظیم شماره در localStorage) تا کلید ذخیره‌سازی درست شود
+  if (typeof saveUserAuth === 'function' && mp && password) {
+    saveUserAuth(mp, password);
+  }
+
+  saveData({
+    building,
+    manager: { name: mn, phone: mp }
+  });
 
   localStorage.removeItem('ham_sakhteman_logged_out');
 
   UNITS = [];
   saveUnits();
 
+  // ساخت واحدهای خالی (بدون داده آزمایشی)
+  buildEmptyUnits(building);
+
   renderBuildingCard();
   buildBlockFilterOptions(building);
-  buildDemoUnits(building);
 }
 
 function bindPlanSelection() {
@@ -1604,6 +1653,8 @@ function renderUnitsPage() {
   const countLabel = document.getElementById('unitsCountLabel');
   if (!tbody) return;
 
+  updateAddUnitButtonState();
+
   const units = getUnitsPageFiltered();
 
   if (countLabel) {
@@ -1778,6 +1829,17 @@ function clearInputError(inputEl) {
 }
 
 function openUnitModal(unitId = null) {
+  // جلوگیری از باز شدن مودال افزودن وقتی به سقف واحد رسیده‌ایم
+  if (!unitId) {
+    const maxUnits = getMaxAllowedUnits();
+    if (maxUnits > 0 && UNITS.length >= maxUnits) {
+      toastError(
+        `شما فقط می‌توانید حداکثر ${toPersianNum(maxUnits)} واحد داشته باشید. امکان افزودن واحد بیشتر وجود ندارد.`
+      );
+      return;
+    }
+  }
+
   currentEditUnitId = unitId;
 
   const modal = document.getElementById('unitModal');
@@ -1912,6 +1974,17 @@ function closeUnitModal() {
 }
 
 function saveUnit() {
+  // جلوگیری از افزودن واحد بیش از سقف ثبت‌نام / پرداخت
+  if (!currentEditUnitId) {
+    const maxUnits = getMaxAllowedUnits();
+    if (maxUnits > 0 && UNITS.length >= maxUnits) {
+      toastError(
+        `شما فقط می‌توانید حداکثر ${toPersianNum(maxUnits)} واحد داشته باشید. برای افزودن واحد بیشتر، تعداد واحد را در ثبت‌نام افزایش دهید یا پلن را ارتقا دهید.`
+      );
+      return;
+    }
+  }
+
   const block = document.getElementById('unitBlock').value.trim();
   const number = parseInt(document.getElementById('unitNumber').value);
   const floor = document.getElementById('unitFloor').value.trim();
