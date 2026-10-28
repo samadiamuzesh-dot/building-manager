@@ -1374,7 +1374,10 @@ function getTotalUnitsFromWizard() {
 
 function saveWizardData() {
   const mn = wizardAuthData.name || document.getElementById('managerName')?.value.trim() || '';
-  let mp = wizardAuthData.phone || document.getElementById('managerPhone')?.value.trim() || '';
+ let mp = wizardAuthData.phone
+  || document.getElementById('managerPhone')?.value.trim()
+  || (JSON.parse(localStorage.getItem('ham_sakhteman_auth') || '{}').phone || '')
+  || '';
   const password = wizardAuthData.password || document.getElementById('managerPassword')?.value || '';
   const bn = (document.getElementById('buildingNameInput')?.value || '').trim();
 
