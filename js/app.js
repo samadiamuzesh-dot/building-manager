@@ -1103,13 +1103,15 @@ function getTotalUnitsFromWizard() {
 function confirmFreePlan() {
   const totalUnits = getTotalUnitsFromWizard();
 
+  // ✅ اول اطلاعات کاربر و ساختمان ذخیره شود (تا user_phone ست شود)
+  saveWizardData();
+
+  // ✅ بعد پلن فعال شود (که getPlanKey بتواند شماره را ببیند)
   activatePlan('free', totalUnits, {
     amount: 0,
     status: 'free',
     paidAt: new Date().toISOString(),
   });
-
-  saveWizardData();
 
   showSuccessPage({
     planName: 'رایگان',
