@@ -2648,7 +2648,7 @@ function bindUnitDetailModal() {
    ذخیره‌سازی شارژها
    ============================================================ */
 function getChargesKey() {
-  return 'ham_sakhteman_charges';
+  return getAccountStorageKey('ham_sakhteman_charges');
 }
 
 function loadCharges() {
@@ -3415,7 +3415,7 @@ function getSessionsForCategory(category) {
 }
 
 function getSideIncomesKey() {
-  return 'ham_sakhteman_side_incomes';
+  return getAccountStorageKey('ham_sakhteman_side_incomes');
 }
 
 function loadSideIncomes() {
@@ -4467,7 +4467,7 @@ let currentExpenseYear = String(getTodayPersianYear());
 let currentEditExpenseId = null;
 
 function getExpensesKey() {
-  return 'ham_sakhteman_expenses';
+  return getAccountStorageKey('ham_sakhteman_expenses');
 }
 
 function loadExpenses() {
@@ -4879,7 +4879,7 @@ let noticeSelectedUnits = [];
 let noticeImageData = null;
 
 function getNoticesKey() {
-  return 'ham_sakhteman_notices';
+  return getAccountStorageKey('ham_sakhteman_notices');
 }
 
 function loadNotices() {
@@ -5365,7 +5365,7 @@ let messagesSearchQuery = '';
 let messagesFilterType = 'all';
 
 function getMessagesKey() {
-  return 'ham_sakhteman_messages';
+  return getAccountStorageKey('ham_sakhteman_messages');
 }
 
 function loadMessages() {
