@@ -736,9 +736,21 @@ function updateWizardUI() {
 
   const prev = document.getElementById('wizardPrevBtn');
   const next = document.getElementById('wizardNextBtn');
-  if (prev) prev.style.display = wizardStep > 1 ? 'block' : 'none';
-  if (next) next.style.display = wizardStep < 4 ? 'block' : 'none';
-  if (next) next.textContent = wizardStep < 3 ? 'بعدی ←' : 'ادامه ←';
+  const mainActions = document.getElementById('wizardActionsMain');
+  const step4Actions = document.getElementById('wizardActionsStep4');
+
+  if (wizardStep < 4) {
+    if (mainActions) mainActions.style.display = 'flex';
+    if (step4Actions) step4Actions.style.display = 'none';
+    if (prev) prev.style.display = wizardStep > 1 ? 'block' : 'none';
+    if (next) {
+      next.style.display = 'block';
+      next.textContent = wizardStep < 3 ? 'بعدی ←' : 'ادامه ←';
+    }
+  } else {
+    if (mainActions) mainActions.style.display = 'none';
+    if (step4Actions) step4Actions.style.display = 'flex';
+  }
 
   if (wizardStep === 3) {
     const cf = document.getElementById('complexForm');
@@ -747,24 +759,7 @@ function updateWizardUI() {
     if (sf) sf.style.display = selectedBuildingType === 'single' ? 'block' : 'none';
     if (selectedBuildingType === 'complex') buildBlockInputs();
   }
-
-const prev = document.getElementById('wizardPrevBtn');
-const next = document.getElementById('wizardNextBtn');
-const mainActions = document.getElementById('wizardActionsMain');
-const step4Actions = document.getElementById('wizardActionsStep4');
-
-if (wizardStep < 4) {
-  if (mainActions) mainActions.style.display = 'flex';
-  if (step4Actions) step4Actions.style.display = 'none';
-  if (prev) prev.style.display = wizardStep > 1 ? 'block' : 'none';
-  if (next) {
-    next.style.display = 'block';
-    next.textContent = 'ادامه ←';
-  }
-} else {
-  if (mainActions) mainActions.style.display = 'none';
-  if (step4Actions) step4Actions.style.display = 'flex';
-} 
+}
 
 function updatePlanPage() {
   const bn = document.getElementById('buildingNameInput')?.value.trim() || '—';
