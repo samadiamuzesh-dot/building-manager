@@ -9,10 +9,14 @@ const LOGGED_OUT_KEY = 'ham_sakhteman_logged_out';
 
 function saveUserAuth(phone, password) {
   const hash = simpleHashAuth(password);
-  localStorage.setItem(USER_PHONE_KEY, phone);
+  // همیشه شماره را نرمال‌سازی کن تا کلید localStorage یکسان بماند
+  const normalized = typeof normalizePhone === 'function'
+    ? normalizePhone(phone)
+    : String(phone).replace(/\D/g, '');
+  localStorage.setItem(USER_PHONE_KEY, normalized);
   localStorage.setItem(USER_PASSWORD_KEY, hash);
   localStorage.setItem(AUTH_KEY, JSON.stringify({
-    phone: phone,
+    phone: normalized,
     createdAt: new Date().toISOString(),
   }));
   localStorage.removeItem(LOGGED_OUT_KEY);
