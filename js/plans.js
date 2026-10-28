@@ -90,8 +90,15 @@ function formatPrice(price) {
 
 const PLAN_KEY = 'ham_sakhteman_plan';
 
+function getPlanKey() {
+  const phone = localStorage.getItem('ham_sakhteman_user_phone');
+  if (!phone) return PLAN_KEY;
+  const normalized = phone.replace(/\D/g, '');
+  return PLAN_KEY + '_' + normalized;
+}
+
 function loadPlan() {
-  const raw = localStorage.getItem(PLAN_KEY);
+  const raw = localStorage.getItem(getPlanKey());
   if (raw) {
     try { return JSON.parse(raw); } catch (e) { return null; }
   }
@@ -99,7 +106,7 @@ function loadPlan() {
 }
 
 function savePlan(plan) {
-  localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+  localStorage.setItem(getPlanKey(), JSON.stringify(plan));
 }
 
 function getUserPlan() {
