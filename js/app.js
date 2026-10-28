@@ -5921,7 +5921,7 @@ let votingCandidates = [];
 let editingVotingId = null;
 
 function getVotingKey() {
-  return 'ham_sakhteman_votings';
+  return getAccountStorageKey('ham_sakhteman_votings');
 }
 
 function loadVotings() {
@@ -7132,7 +7132,7 @@ function bindReportsPage() {
    صفحه تنظیمات
    ============================================================ */
 function getSettingsKey() {
-  return 'ham_sakhteman_settings';
+  return getAccountStorageKey('ham_sakhteman_settings');
 }
 
 function loadSettings() {
