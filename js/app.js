@@ -1,18 +1,18 @@
 /* ============================================================
-   آپارتمان پلاس | v19
+   آپارتمان پلاس | v20
    ============================================================
 
    🎨 طراحی و توسعه: الهام صمدی
    👩‍💼 مدیر پروژه: الهام صمدی
 
-   اصلاحات v19:
-   - واحدهای خالی برای کاربر جدید (بدون داده آزمایشی)
-   - محدودیت افزودن واحد بعد از مشخص کردن تعداد و پرداخت
-   - نمایش صحیح نام ساختمان در سایدبار
+   اصلاحات v20:
+   - کاربر جدید: لیست واحدها کاملاً خالی شروع می‌شود (خودش واحد اضافه می‌کند)
+   - محدودیت سخت افزودن واحد بعد از ثبت‌نام و پرداخت (بر اساس تعداد ثبت‌شده)
+   - نمایش پایدار و فوری نام ساختمان در سایدبار
    ============================================================ */
 
-console.log('APP.JS VERSION: v19 — ApartmentPlus (empty units + unit limit + sidebar name fix)');
-console.log('%c🏢 آپارتمان پلاس | v19', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
+console.log('APP.JS VERSION: v20 — ApartmentPlus (empty start + hard unit limit + sidebar name)');
+console.log('%c🏢 آپارتمان پلاس | v20', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
 
 
@@ -312,6 +312,8 @@ function renderBuildingCard() {
   const nameEl = document.getElementById('buildingName');
   const codeEl = document.getElementById('buildingCode');
 
+  if (!nameEl && !codeEl) return;
+
   if (!data || !data.building) {
     if (nameEl) nameEl.textContent = 'در حال بارگذاری...';
     if (codeEl) codeEl.textContent = '—';
@@ -320,8 +322,14 @@ function renderBuildingCard() {
   const b = data.building;
   const displayName = (b.name && String(b.name).trim()) ? String(b.name).trim() : 'بدون نام';
   const displayCode = (b.code && String(b.code).trim()) ? String(b.code).trim() : '—';
-  if (nameEl) nameEl.textContent = displayName;
+  if (nameEl) {
+    nameEl.textContent = displayName;
+    nameEl.title = displayName;
+  }
   if (codeEl) codeEl.textContent = displayCode;
+
+  // اطمینان از به‌روزرسانی فوری در DOM
+  nameEl && nameEl.setAttribute('data-building-name', displayName);
 }
 
 /** حداکثر تعداد واحد مجاز بر اساس ساختمان / پلن */
@@ -349,6 +357,15 @@ function updateAddUnitButtonState() {
   btn.title = atLimit
     ? `حداکثر ${toPersianNum(max)} واحد (بر اساس ثبت‌نام و پرداخت) مجاز است`
     : 'افزودن واحد جدید';
+
+  // متن دکمه را هم برای وضوح بیشتر عوض کن
+  const originalText = btn.dataset.originalText || btn.textContent.trim();
+  if (!btn.dataset.originalText) btn.dataset.originalText = originalText;
+  if (atLimit) {
+    btn.innerHTML = `🔒 سقف ${toPersianNum(max)} واحد`;
+  } else {
+    btn.innerHTML = btn.dataset.originalText || '＋ افزودن واحد';
+  }
 }
 
 /* ============ ۶) اطلاعات صفحات ============ */
@@ -426,6 +443,10 @@ function switchPage(pageKey) {
   if (pageKey === 'settings') renderSettingsPage();
   if (pageKey === 'subscription') renderSubscriptionPage();
   if (pageKey === 'support') renderSupportPage();
+
+  // همیشه نام ساختمان در سایدبار را تازه نگه دار
+  renderBuildingCard();
+  updateAddUnitButtonState();
 }
 
 /* ============ ۷) فیلتر بلوک داشبورد ============ */
@@ -732,7 +753,8 @@ function renderDashboard() {
   const data = loadData();
   if (!data || !data.building) return;
 
-  if (UNITS.length === 0) buildDemoUnits(data.building);
+  // دیگر واحد خالی از قبل ساخته نمی‌شود — کاربر خودش اضافه می‌کند
+  // if (UNITS.length === 0) buildDemoUnits(data.building);
 
   const select = document.getElementById('blockFilter');
   if (select && select.options.length <= 1) {
@@ -743,6 +765,7 @@ function renderDashboard() {
   renderDashboardUnits();
   renderDonutChart(paidUnits, debtUnits);
   renderLineChart();
+  updateAddUnitButtonState();
 }
 
 /* ============ ۱۳) مودال Wizard ============ */
@@ -1361,11 +1384,12 @@ function saveWizardData() {
   UNITS = [];
   saveUnits();
 
-  // ساخت واحدهای خالی (بدون داده آزمایشی)
-  buildEmptyUnits(building);
+  // کاربر جدید: لیست واحدها خالی می‌ماند تا خودش اضافه کند (تا سقف تعداد ثبت‌شده)
+  // buildEmptyUnits حذف شد — واحدها از قبل ساخته نمی‌شوند
 
   renderBuildingCard();
   buildBlockFilterOptions(building);
+  updateAddUnitButtonState();
 }
 
 function bindPlanSelection() {
@@ -1435,9 +1459,10 @@ function showSuccessPage(info) {
     const d = loadData();
     if (d?.building) {
       buildBlockFilterOptions(d.building);
-      if (UNITS.length === 0) buildDemoUnits(d.building);
+      // واحد از قبل ساخته نمی‌شود
     }
     renderDashboard();
+    updateAddUnitButtonState();
     updateSidebarLockStates();
 
     setTimeout(() => {
@@ -7420,13 +7445,10 @@ function init() {
   } else {
     renderBuildingCard();
     buildBlockFilterOptions(data.building);
+    updateAddUnitButtonState();
 
-    const expectedUnits = getExpectedUnitsCount(data.building);
-
-    if (UNITS.length === 0) {
-      console.log('⚠️ UNITS mismatch — rebuilding. Expected:', expectedUnits, 'Got:', UNITS.length);
-      buildDemoUnits(data.building);
-    }
+    // دیگر واحد خالی از قبل ساخته نمی‌شود.
+    // کاربر خودش از طریق «افزودن واحد» تا سقف تعداد ثبت‌شده اضافه می‌کند.
   }
 
   document.getElementById('menu')?.addEventListener('click', (e) => {
