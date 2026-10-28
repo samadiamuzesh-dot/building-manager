@@ -524,7 +524,6 @@ function saveWizardData() {
     });
   } else {
     totalUnits = parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
-    // ✅ برای تک‌بلوک هم یک بلوک پیش‌فرض بساز
     blocks = [{ name: 'اصلی', units: totalUnits }];
   }
 
@@ -550,17 +549,15 @@ function saveWizardData() {
 
   localStorage.removeItem('ham_sakhteman_logged_out');
 
-  // ✅ پاک کردن UNITS قدیمی و ساختن جدید
-  UNITS = [];
-  saveUnits();
-  buildDemoUnits(building);
-
-  // ✅ پاک کردن داده‌های سایر صفحات (شارژ، هزینه، ...) تا کاربر جدید از صفر شروع کند
   const keysToClear = ['charges', 'expenses', 'sideIncomes', 'notices', 'messages', 'payments'];
   keysToClear.forEach(k => {
     const fullKey = getAccountStorageKey('ham_sakhteman_' + k);
     localStorage.removeItem(fullKey);
   });
+
+  UNITS = [];
+  saveUnits();
+  buildDemoUnits(building);
 
   renderBuildingCard();
   buildBlockFilterOptions(building);
