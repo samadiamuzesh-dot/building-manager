@@ -731,6 +731,69 @@ function renderLineChart() {
     }
   });
 }
+function renderStats() {
+  const data = loadData();
+  if (!data || !data.building) return { paidUnits: 0, debtUnits: 0, unitsCount: 0 };
+
+  const building = data.building;
+
+  // ✅ اگر UNITS خالی است، همین‌جا بساز
+  if (!Array.isArray(UNITS) || UNITS.length === 0) {
+    buildDemoUnits(building);
+  }
+
+  const units = getFilteredUnits();
+
+  const unitsCount = Number(building.totalUnits) || units.length;
+  const paidUnits = units.filter(u => Number(u.debt) === 0).length;
+  const debtUnits = units.filter(u => Number(u.debt) > 0).length;
+
+  const currentMonth = getTodayPersianMonth();
+  const currentYear = String(getTodayPersianYear());
+
+  const allCharges = (typeof loadCharges === 'function' ? loadCharges() : []) || [];
+  const chargesIncome = allCharges
+    .filter(c => c.paid === true && c.month === currentMonth && c.year === currentYear)
+    .reduce((s, c) => s + (Number(c.total) || 0), 0);
+
+  const allSideIncomes = (typeof loadSideIncomes === 'function' ? loadSideIncomes() : []) || [];
+  const sideIncomeSum = allSideIncomes
+    .filter(i => i.month === currentMonth && i.year === currentYear)
+    .reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+  const income = chargesIncome + sideIncomeSum;
+
+  const expensesThisMonth = (typeof loadExpenses === 'function' ? loadExpenses() : [])
+    .filter(e => e.month === currentMonth && e.year === currentYear);
+  const expense = expensesThisMonth.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+  const balance = income - expense;
+
+  let blocksCount = 1;
+  if (building.type === 'complex' && Array.isArray(building.blocks)) {
+    blocksCount = building.blocks.length;
+  }
+
+  const elUnits   = document.getElementById('statUnits');
+  const elIncome  = document.getElementById('statIncome');
+  const elDebtors = document.getElementById('statDebtors');
+  const elExpense = document.getElementById('statExpense');
+  const elBlocks  = document.getElementById('statBlocks');
+  const elBalance = document.getElementById('statBalance');
+
+  if (elUnits)   elUnits.textContent   = formatNumber(unitsCount);
+  if (elIncome)  elIncome.textContent  = formatToman(income);
+  if (elDebtors) elDebtors.textContent = formatNumber(debtUnits);
+  if (elExpense) elExpense.textContent = formatToman(expense);
+  if (elBlocks)  elBlocks.textContent  = formatNumber(blocksCount);
+  if (elBalance) elBalance.textContent = formatToman(balance);
+
+  const paidPercent = unitsCount > 0 ? Math.round((paidUnits / unitsCount) * 100) : 0;
+  const elP = document.getElementById('donutPercent');
+  if (elP) elP.textContent = formatNumber(paidPercent) + '٪';
+
+  return { paidUnits, debtUnits, unitsCount };
+}
 /* ============ ۱۲) رندر داشبورد ============ */
 function renderDashboard() {
   const data = loadData();
