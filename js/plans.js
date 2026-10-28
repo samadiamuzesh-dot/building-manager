@@ -91,8 +91,18 @@ function formatPrice(price) {
 const PLAN_KEY = 'ham_sakhteman_plan';
 
 function getPlanKey() {
-  const phone = localStorage.getItem('ham_sakhteman_user_phone');
+  let phone = localStorage.getItem('ham_sakhteman_user_phone');
+
+  // اگر user_phone خالی بود، از auth بخوان
+  if (!phone) {
+    try {
+      const auth = JSON.parse(localStorage.getItem('ham_sakhteman_auth') || '{}');
+      phone = auth.phone || null;
+    } catch (e) {}
+  }
+
   if (!phone) return PLAN_KEY;
+
   const normalized = phone.replace(/\D/g, '');
   return PLAN_KEY + '_' + normalized;
 }
