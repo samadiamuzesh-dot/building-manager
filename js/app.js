@@ -312,26 +312,16 @@ function renderBuildingCard() {
   const nameEl = document.getElementById('buildingName');
   const codeEl = document.getElementById('buildingCode');
 
-  if (!nameEl && !codeEl) return;
-
   if (!data || !data.building) {
     if (nameEl) nameEl.textContent = 'در حال بارگذاری...';
     if (codeEl) codeEl.textContent = '—';
     return;
   }
+
   const b = data.building;
-  const displayName = (b.name && String(b.name).trim()) ? String(b.name).trim() : 'بدون نام';
-  const displayCode = (b.code && String(b.code).trim()) ? String(b.code).trim() : '—';
-  if (nameEl) {
-    nameEl.textContent = displayName;
-    nameEl.title = displayName;
-  }
-  if (codeEl) codeEl.textContent = displayCode;
-
-  // اطمینان از به‌روزرسانی فوری در DOM
-  nameEl && nameEl.setAttribute('data-building-name', displayName);
+  if (nameEl) nameEl.textContent = b.name || 'ساختمان من';
+  if (codeEl) codeEl.textContent = b.code || '—';
 }
-
 /** حداکثر تعداد واحد مجاز بر اساس ساختمان / پلن */
 function getMaxAllowedUnits() {
   const data = loadData();
@@ -514,73 +504,66 @@ function bindBlockFilter() {
 }
 
 /* ============ ۸) کارت‌های آماری داشبورد ============ */
-function renderStats() {
-  const data = loadData();
-  if (!data || !data.building) return { paidUnits: 0, debtUnits: 0, unitsCount: 0 };
+function saveWizardData() {
+  const mn = wizardAuthData.name || document.getElementById('managerName')?.value.trim() || '';
+  const mp = wizardAuthData.phone || document.getElementById('managerPhone')?.value.trim() || '';
+  const password = wizardAuthData.password || document.getElementById('managerPassword')?.value || '';
+  const bn = document.getElementById('buildingNameInput')?.value.trim() || 'ساختمان من';
 
-  const building = data.building;
-  const units = getFilteredUnits();
+  let blocks = [];
+  let totalUnits = 0;
 
-  const unitsCount = units.length;
-  const paidUnits  = units.filter(u => u.debt === 0).length;
-  const debtUnits  = units.filter(u => u.debt > 0).length;
-
-   // ✅ شارژ دریافتی این ماه (فقط شارژهای پرداخت‌شده)
-  const allCharges = loadCharges();
-  const currentMonth = getTodayPersianMonth();
-  const currentYear = String(getTodayPersianYear());
-
-  const paidChargesThisMonth = allCharges.filter(c =>
-    c.paid === true &&
-    c.month === currentMonth &&
-    c.year === currentYear
-  );
-  const chargesIncome = paidChargesThisMonth.reduce((s, c) => s + (Number(c.total) || 0), 0);
-
-  // ✅ درآمد جانبی این ماه
-  const allSideIncomes = loadSideIncomes();
-  const sideIncomesThisMonth = allSideIncomes.filter(i =>
-    i.month === currentMonth &&
-    i.year === currentYear
-  );
-  const sideIncomeSum = sideIncomesThisMonth.reduce((s, i) => s + (Number(i.amount) || 0), 0);
-
-  // ✅ کل درآمد = شارژ + جانبی
-  const income = chargesIncome + sideIncomeSum;
-
-  // ✅ هزینه‌های این ماه
-  const expensesThisMonth = loadExpenses().filter(e =>
-    e.month === currentMonth &&
-    e.year === currentYear
-  );
-  const expense = expensesThisMonth.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-
-  // ✅ مانده
-  const balance = income - expense;
-  let blocksCount = 1;
-  if (building.type === 'complex') {
-    blocksCount = building.blocks.length;
+  if (selectedBuildingType === 'complex') {
+    blockNames.forEach((b) => {
+      const name = (b.name || '').trim() || 'بلوک';
+      const u = parseInt(b.units) || 0;
+      if (u > 0) {
+        blocks.push({ name, units: u });
+        totalUnits += u;
+      }
+    });
+  } else {
+    totalUnits = parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
+    // ✅ برای تک‌بلوک هم یک بلوک پیش‌فرض بساز
+    blocks = [{ name: 'اصلی', units: totalUnits }];
   }
 
-  const elUnits   = document.getElementById('statUnits');
-  const elIncome  = document.getElementById('statIncome');
-  const elDebtors = document.getElementById('statDebtors');
-  const elExpense = document.getElementById('statExpense');
-  const elBlocks  = document.getElementById('statBlocks');
-  const elBalance = document.getElementById('statBalance');
+  const code = generateBuildingCode(selectedBuildingType, totalUnits);
 
-  if (elUnits)   elUnits.textContent   = formatNumber(unitsCount);
-  if (elIncome)  elIncome.textContent  = formatToman(income);
-  if (elDebtors) elDebtors.textContent = formatNumber(debtUnits);
-  if (elExpense) elExpense.textContent = formatToman(expense);
-  if (elBlocks)  elBlocks.textContent  = formatNumber(blocksCount);
-  if (elBalance) elBalance.textContent = formatToman(balance);
+  const building = {
+    name: bn,
+    type: selectedBuildingType,
+    code: code,
+    blocks: blocks,
+    totalUnits: totalUnits,
+    createdAt: new Date().toISOString(),
+  };
 
-  const paidPercent = unitsCount > 0 ? Math.round((paidUnits / unitsCount) * 100) : 0;
-  const elP = document.getElementById('donutPercent');
-  if (elP) elP.textContent = formatNumber(paidPercent) + '٪';
+  currentBlockFilter = 'all';
+  currentStatusFilter = 'all';
 
-  return { paidUnits, debtUnits, unitsCount };
+  if (typeof saveUserAuth === 'function' && mp && password) {
+    saveUserAuth(mp, password);
+  }
+
+  saveData({ building, manager: { name: mn, phone: mp } });
+
+  localStorage.removeItem('ham_sakhteman_logged_out');
+
+  // ✅ پاک کردن UNITS قدیمی و ساختن جدید
+  UNITS = [];
+  saveUnits();
+  buildDemoUnits(building);
+
+  // ✅ پاک کردن داده‌های سایر صفحات (شارژ، هزینه، ...) تا کاربر جدید از صفر شروع کند
+  const keysToClear = ['charges', 'expenses', 'sideIncomes', 'notices', 'messages', 'payments'];
+  keysToClear.forEach(k => {
+    const fullKey = getAccountStorageKey('ham_sakhteman_' + k);
+    localStorage.removeItem(fullKey);
+  });
+
+  renderBuildingCard();
+  buildBlockFilterOptions(building);
 }
 
 /* ============ ۹) جدول داشبورد ============ */
