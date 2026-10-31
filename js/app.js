@@ -515,7 +515,10 @@ function renderDashboardUnits() {
   const units = getFilteredUnits();
 
   if (units.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:30px;">واحدی یافت نشد.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:36px;">
+      هنوز واحدی ثبت نشده است.<br>
+      <span style="font-size:12.5px;opacity:0.75;">از منوی «واحدها» واحدهای ساختمان را اضافه کنید.</span>
+    </td></tr>`;
     return;
   }
 
@@ -730,7 +733,11 @@ function renderStats() {
   if (elBlocks)  elBlocks.textContent  = formatNumber(blocksCount);
   if (elBalance) elBalance.textContent = formatToman(balance);
 
-  const paidPercent = unitsCount > 0 ? Math.round((paidUnits / unitsCount) * 100) : 0;
+  // اگر هنوز واحدی اضافه نشده، درصد صفر باشد
+  const actualUnitsCount = units.length;
+  const paidPercent = actualUnitsCount > 0
+    ? Math.round((paidUnits / actualUnitsCount) * 100)
+    : 0;
   const elP = document.getElementById('donutPercent');
   if (elP) elP.textContent = formatNumber(paidPercent) + '٪';
 
