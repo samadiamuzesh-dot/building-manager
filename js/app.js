@@ -9234,17 +9234,19 @@ function printProfitPdf() {
 /* ============================================================
    🆘 صفحه پشتیبانی
    ============================================================ */
-const TICKETS_KEY = 'ham_sakhteman_tickets';
+function getTicketsKey() {
+  return getAccountStorageKey('ham_sakhteman_tickets');
+}
 let currentTicketId = null;
 
 function loadTickets() {
-  const raw = localStorage.getItem(TICKETS_KEY);
+  const raw = localStorage.getItem(getTicketsKey());
   if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
   return [];
 }
 
 function saveTickets(tickets) {
-  localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
+  localStorage.setItem(getTicketsKey(), JSON.stringify(tickets));
 }
 
 function getPersianDateTime() {
@@ -9614,7 +9616,7 @@ function renderSubscriptionPage() {
       btnPro.className = 'btn btn-outline plan-select-btn';
       btnPro.onclick = null;
     } else {
-      btnPro.textContent = 'ارتقا به حرفه‌ای';
+      btnPro.textContent = 'اشتراک';
       btnPro.disabled = false;
       btnPro.className = 'btn btn-primary plan-select-btn';
       btnPro.onclick = () => {
