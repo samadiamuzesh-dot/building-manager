@@ -1,19 +1,18 @@
 /* ============================================================
-   آپارتمان پلاس | v22
+   آپارتمان پلاس | v23
    ============================================================
 
    🎨 طراحی و توسعه: الهام صمدی
    👩‍💼 مدیر پروژه: الهام صمدی
 
-   اصلاحات v22:
-   - نمودار روند درآمد دیگر داده جعلی نشان نمی‌دهد
-   - داشبورد وضعیت واحدها و همه صفحات برای کاربر جدید خالی/صفر
-   - پاک‌سازی کامل داده‌ها هنگام ثبت‌نام جدید
-   - اعلان‌ها per-account شدند
+   اصلاحات v23:
+   - تیکت‌های پشتیبانی per-account و در ثبت‌نام جدید خالی
+   - وضعیت واحدهای داشبورد برای کاربر جدید خالی
+   - پاک‌سازی کامل تیکت‌ها و واحدها هنگام ثبت‌نام
    ============================================================ */
 
-console.log('APP.JS VERSION: v22 — ApartmentPlus (full empty state: no fake charts/data)');
-console.log('%c🏢 آپارتمان پلاس | v22', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
+console.log('APP.JS VERSION: v23 — ApartmentPlus (tickets + units status empty for new users)');
+console.log('%c🏢 آپارتمان پلاس | v23', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
 
 
@@ -1404,6 +1403,8 @@ function saveWizardData() {
     'ham_sakhteman_settings',
     'ham_sakhteman_plan',
     'ham_sakhteman_profile',
+    'ham_sakhteman_tickets',
+    'ham_sakhteman_units',
   ];
   keysToClear.forEach(k => {
     try {
@@ -1414,6 +1415,8 @@ function saveWizardData() {
   });
   try {
     localStorage.removeItem('ham_sakhteman_notifications');
+    localStorage.removeItem(getAccountStorageKey('ham_sakhteman_tickets'));
+    localStorage.removeItem('ham_sakhteman_tickets'); // کلید قدیمی سراسری
   } catch (e) {}
 
   // کاربر جدید: لیست واحدها خالی می‌ماند تا خودش اضافه کند (تا سقف تعداد ثبت‌شده)
@@ -9264,17 +9267,19 @@ function printProfitPdf() {
 /* ============================================================
    🆘 صفحه پشتیبانی
    ============================================================ */
-const TICKETS_KEY = 'ham_sakhteman_tickets';
+function getTicketsKey() {
+  return getAccountStorageKey('ham_sakhteman_tickets');
+}
 let currentTicketId = null;
 
 function loadTickets() {
-  const raw = localStorage.getItem(TICKETS_KEY);
+  const raw = localStorage.getItem(getTicketsKey());
   if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
   return [];
 }
 
 function saveTickets(tickets) {
-  localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
+  localStorage.setItem(getTicketsKey(), JSON.stringify(tickets));
 }
 
 function getPersianDateTime() {
