@@ -11,7 +11,7 @@
    - پاک‌سازی کامل داده‌ها هنگام ثبت‌نام جدید
    - اعلان‌ها per-account شدند
    ============================================================ */
-
+console.log('APP.JS VERSION: v23 — ApartmentPlus (tickets + units status empty for new users)');
 console.log('APP.JS VERSION: v22 — ApartmentPlus (full empty state: no fake charts/data)');
 console.log('%c🏢 آپارتمان پلاس | v22', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
