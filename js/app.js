@@ -1,19 +1,19 @@
 /* ============================================================
-   آپارتمان پلاس | v21
+   آپارتمان پلاس | v22
    ============================================================
 
    🎨 طراحی و توسعه: الهام صمدی
    👩‍💼 مدیر پروژه: الهام صمدی
 
-   اصلاحات v21:
-   - کاربر جدید: همه صفحات خالی/صفر شروع می‌شوند
-   - داشبورد: فقط تعداد بلوک و واحد ثبت‌نامی نمایش داده می‌شود، بقیه صفر
-   - واحدها از قبل ساخته نمی‌شوند (کاربر خودش اضافه می‌کند تا سقف)
-   - حذف تابع تکراری saveWizardData و جلوگیری از ساخت خودکار واحد
+   اصلاحات v22:
+   - نمودار روند درآمد دیگر داده جعلی نشان نمی‌دهد
+   - داشبورد وضعیت واحدها و همه صفحات برای کاربر جدید خالی/صفر
+   - پاک‌سازی کامل داده‌ها هنگام ثبت‌نام جدید
+   - اعلان‌ها per-account شدند
    ============================================================ */
 
-console.log('APP.JS VERSION: v21 — ApartmentPlus (clean empty state for new users)');
-console.log('%c🏢 آپارتمان پلاس | v21', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
+console.log('APP.JS VERSION: v22 — ApartmentPlus (full empty state: no fake charts/data)');
+console.log('%c🏢 آپارتمان پلاس | v22', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
 
 
@@ -597,19 +597,28 @@ function renderLineChart() {
   ctx.scale(dpr, dpr);
 
   const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'];
-  const units = getFilteredUnits();
-  const paidUnits = units.filter(u => u.debt === 0);
-  const totalPerMonth = paidUnits.reduce((s, u) => s + (u.chargeAmount || 500000), 0);
-  const baseValue = totalPerMonth || 500000;
 
-  const values = [
-    Math.round(baseValue * 0.7),
-    Math.round(baseValue * 0.85),
-    Math.round(baseValue * 0.8),
-    Math.round(baseValue * 1.05),
-    Math.round(baseValue * 0.95),
-    Math.round(baseValue * 1.0),
-  ];
+  // فقط داده واقعی — برای کاربر جدید همه صفر
+  const allCharges = (typeof loadCharges === 'function' ? loadCharges() : []) || [];
+  const currentYear = String(getTodayPersianYear());
+  const values = months.map(m => {
+    return allCharges
+      .filter(c => c.paid === true && c.month === m && String(c.year) === currentYear)
+      .reduce((s, c) => s + (Number(c.total) || 0), 0);
+  });
+
+  const hasData = values.some(v => v > 0);
+
+  // اگر هیچ داده‌ای نیست، نمودار خالی بکش
+  if (!hasData) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '13px Vazirmatn, Tahoma';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('هنوز داده‌ای ثبت نشده است', W / 2, H / 2);
+    return;
+  }
 
   const maxVal = Math.max(...values, 1) * 1.15;
   const padding = { top: 20, right: 20, bottom: 40, left: 60 };
@@ -1386,14 +1395,26 @@ function saveWizardData() {
 
   // پاک کردن همه داده‌های قبلی برای شروع تمیز کاربر جدید
   const keysToClear = [
-    'charges', 'expenses', 'sideIncomes', 'notices',
-    'messages', 'payments', 'votings', 'notifications'
+    'ham_sakhteman_charges',
+    'ham_sakhteman_expenses',
+    'ham_sakhteman_side_incomes',
+    'ham_sakhteman_notices',
+    'ham_sakhteman_messages',
+    'ham_sakhteman_votings',
+    'ham_sakhteman_settings',
+    'ham_sakhteman_plan',
+    'ham_sakhteman_profile',
   ];
   keysToClear.forEach(k => {
     try {
-      localStorage.removeItem(getAccountStorageKey('ham_sakhteman_' + k));
+      localStorage.removeItem(getAccountStorageKey(k));
+      // کلیدهای قدیمی بدون scope هم پاک شوند
+      localStorage.removeItem(k);
     } catch (e) {}
   });
+  try {
+    localStorage.removeItem('ham_sakhteman_notifications');
+  } catch (e) {}
 
   // کاربر جدید: لیست واحدها خالی می‌ماند تا خودش اضافه کند (تا سقف تعداد ثبت‌شده)
 
@@ -6687,6 +6708,17 @@ function renderReportLineChart() {
     return monthCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
   });
 
+  const hasData = values.some(v => v > 0);
+  if (!hasData) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '13px Vazirmatn, Tahoma';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('هنوز داده‌ای ثبت نشده است', W / 2, H / 2);
+    return;
+  }
+
   const maxVal = Math.max(...values, 1) * 1.15;
   const padding = { top: 20, right: 20, bottom: 40, left: 60 };
   const chartW = W - padding.left - padding.right;
@@ -7250,8 +7282,11 @@ function savePaymentSettings() {
 function fillFinancialForm() {
   const settings = loadSettings();
 
-  document.getElementById('setMonthlyCharge').value = settings.monthlyCharge || 500000;
-  document.getElementById('setPaymentDeadline').value = settings.paymentDeadline || 10;
+  // برای کاربر جدید فیلدها خالی باشند
+  document.getElementById('setMonthlyCharge').value =
+    settings.monthlyCharge != null && settings.monthlyCharge !== '' ? settings.monthlyCharge : '';
+  document.getElementById('setPaymentDeadline').value =
+    settings.paymentDeadline != null && settings.paymentDeadline !== '' ? settings.paymentDeadline : '';
 }
 
 function saveFinancialSettings() {
@@ -7554,17 +7589,20 @@ function getExpectedUnitsCount(building) {
 /* ============================================================
    🔔 سیستم اعلان‌ها
    ============================================================ */
-const NOTIF_KEY = 'ham_sakhteman_notifications';
+function getNotifKey() {
+  return getAccountStorageKey('ham_sakhteman_notifications');
+}
+const NOTIF_KEY_LEGACY = 'ham_sakhteman_notifications';
 let notifications = [];
 
 function loadNotifications() {
-  const raw = localStorage.getItem(NOTIF_KEY);
+  const raw = localStorage.getItem(getNotifKey());
   if (raw) { try { notifications = JSON.parse(raw); } catch (e) { notifications = []; } }
   else { notifications = []; }
 }
 
 function saveNotifications() {
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications));
+  localStorage.setItem(getNotifKey(), JSON.stringify(notifications));
 }
 
 function generateAutoNotifications() {
