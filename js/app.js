@@ -1,18 +1,19 @@
 /* ============================================================
-   آپارتمان پلاس | v20
+   آپارتمان پلاس | v21
    ============================================================
 
    🎨 طراحی و توسعه: الهام صمدی
    👩‍💼 مدیر پروژه: الهام صمدی
 
-   اصلاحات v20:
-   - کاربر جدید: لیست واحدها کاملاً خالی شروع می‌شود (خودش واحد اضافه می‌کند)
-   - محدودیت سخت افزودن واحد بعد از ثبت‌نام و پرداخت (بر اساس تعداد ثبت‌شده)
-   - نمایش پایدار و فوری نام ساختمان در سایدبار
+   اصلاحات v21:
+   - کاربر جدید: همه صفحات خالی/صفر شروع می‌شوند
+   - داشبورد: فقط تعداد بلوک و واحد ثبت‌نامی نمایش داده می‌شود، بقیه صفر
+   - واحدها از قبل ساخته نمی‌شوند (کاربر خودش اضافه می‌کند تا سقف)
+   - حذف تابع تکراری saveWizardData و جلوگیری از ساخت خودکار واحد
    ============================================================ */
 
-console.log('APP.JS VERSION: v20 — ApartmentPlus (empty start + hard unit limit + sidebar name)');
-console.log('%c🏢 آپارتمان پلاس | v20', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
+console.log('APP.JS VERSION: v21 — ApartmentPlus (clean empty state for new users)');
+console.log('%c🏢 آپارتمان پلاس | v21', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
 
 
@@ -504,64 +505,7 @@ function bindBlockFilter() {
 }
 
 /* ============ ۸) کارت‌های آماری داشبورد ============ */
-function saveWizardData() {
-  const mn = wizardAuthData.name || document.getElementById('managerName')?.value.trim() || '';
-  const mp = wizardAuthData.phone || document.getElementById('managerPhone')?.value.trim() || '';
-  const password = wizardAuthData.password || document.getElementById('managerPassword')?.value || '';
-  const bn = document.getElementById('buildingNameInput')?.value.trim() || 'ساختمان من';
-
-  let blocks = [];
-  let totalUnits = 0;
-
-  if (selectedBuildingType === 'complex') {
-    blockNames.forEach((b) => {
-      const name = (b.name || '').trim() || 'بلوک';
-      const u = parseInt(b.units) || 0;
-      if (u > 0) {
-        blocks.push({ name, units: u });
-        totalUnits += u;
-      }
-    });
-  } else {
-    totalUnits = parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
-    blocks = [{ name: 'اصلی', units: totalUnits }];
-  }
-
-  const code = generateBuildingCode(selectedBuildingType, totalUnits);
-
-  const building = {
-    name: bn,
-    type: selectedBuildingType,
-    code: code,
-    blocks: blocks,
-    totalUnits: totalUnits,
-    createdAt: new Date().toISOString(),
-  };
-
-  currentBlockFilter = 'all';
-  currentStatusFilter = 'all';
-
-  if (typeof saveUserAuth === 'function' && mp && password) {
-    saveUserAuth(mp, password);
-  }
-
-  saveData({ building, manager: { name: mn, phone: mp } });
-
-  localStorage.removeItem('ham_sakhteman_logged_out');
-
-  const keysToClear = ['charges', 'expenses', 'sideIncomes', 'notices', 'messages', 'payments'];
-  keysToClear.forEach(k => {
-    const fullKey = getAccountStorageKey('ham_sakhteman_' + k);
-    localStorage.removeItem(fullKey);
-  });
-
-  UNITS = [];
-  saveUnits();
-  buildDemoUnits(building);
-
-  renderBuildingCard();
-  buildBlockFilterOptions(building);
-}
+/* saveWizardData قدیمی حذف شد — نسخه صحیح پایین‌تر تعریف شده */
 
 /* ============ ۹) جدول داشبورد ============ */
 function renderDashboardUnits() {
@@ -734,14 +678,15 @@ function renderStats() {
 
   const building = data.building;
 
-  // ✅ اگر UNITS خالی است، همین‌جا بساز
-  if (!Array.isArray(UNITS) || UNITS.length === 0) {
-    buildDemoUnits(building);
-  }
+  // واحد از قبل ساخته نمی‌شود — کاربر خودش اضافه می‌کند
+  // if (!Array.isArray(UNITS) || UNITS.length === 0) {
+  //   buildDemoUnits(building);
+  // }
 
   const units = getFilteredUnits();
 
-  const unitsCount = Number(building.totalUnits) || units.length;
+  // تعداد واحد و بلوک از اطلاعات ثبت‌نام (نه از لیست واحدهای ساخته‌شده)
+  const unitsCount = Number(building.totalUnits) || getExpectedUnitsCount(building) || 0;
   const paidUnits = units.filter(u => Number(u.debt) === 0).length;
   const debtUnits = units.filter(u => Number(u.debt) > 0).length;
 
@@ -1432,8 +1377,18 @@ function saveWizardData() {
   UNITS = [];
   saveUnits();
 
+  // پاک کردن همه داده‌های قبلی برای شروع تمیز کاربر جدید
+  const keysToClear = [
+    'charges', 'expenses', 'sideIncomes', 'notices',
+    'messages', 'payments', 'votings', 'notifications'
+  ];
+  keysToClear.forEach(k => {
+    try {
+      localStorage.removeItem(getAccountStorageKey('ham_sakhteman_' + k));
+    } catch (e) {}
+  });
+
   // کاربر جدید: لیست واحدها خالی می‌ماند تا خودش اضافه کند (تا سقف تعداد ثبت‌شده)
-  // buildEmptyUnits حذف شد — واحدها از قبل ساخته نمی‌شوند
 
   renderBuildingCard();
   buildBlockFilterOptions(building);
@@ -1700,12 +1655,21 @@ function buildUnitsBlockFilter() {
 
 function renderUnitsStats() {
   const allUnits = getUnitsPageFiltered();
+  const data = loadData();
+  const building = data?.building;
 
-  const total = allUnits.length;
+  // تعداد کل واحدها و بلوک‌ها از ثبت‌نام (نه از لیست فعلی)
+  const registeredTotal = building
+    ? (Number(building.totalUnits) || getExpectedUnitsCount(building) || 0)
+    : 0;
+  const blocksCount = (building?.type === 'complex' && Array.isArray(building.blocks))
+    ? building.blocks.length
+    : (building ? 1 : 0);
+
   const empty = allUnits.filter(u => !u.owner?.name).length;
-  const registered = allUnits.filter(u => u.owner?.name);
-  const paid = registered.filter(u => u.debt === 0).length;
-  const debt = registered.filter(u => u.debt > 0).length;
+  const withOwner = allUnits.filter(u => u.owner?.name);
+  const paid = withOwner.filter(u => Number(u.debt) === 0).length;
+  const debt = withOwner.filter(u => Number(u.debt) > 0).length;
   const totalDebt = allUnits.reduce((sum, u) => sum + (Number(u.debt) || 0), 0);
 
   const elTotal = document.getElementById('unitsTotal');
@@ -1713,12 +1677,14 @@ function renderUnitsStats() {
   const elDebt  = document.getElementById('unitsDebt');
   const elEmpty = document.getElementById('unitsEmpty');
   const elTotalDebt = document.getElementById('unitsTotalDebt');
+  const elBlocks = document.getElementById('unitsBlocks'); // اگر وجود داشته باشد
 
-  if (elTotal) elTotal.textContent = formatNumber(total);
+  if (elTotal) elTotal.textContent = formatNumber(registeredTotal);
   if (elPaid)  elPaid.textContent  = formatNumber(paid);
   if (elDebt)  elDebt.textContent  = formatNumber(debt);
   if (elEmpty) elEmpty.textContent = formatNumber(empty);
   if (elTotalDebt) elTotalDebt.textContent = formatToman(totalDebt);
+  if (elBlocks) elBlocks.textContent = formatNumber(blocksCount);
 }
 
 function renderUnitsPage() {
@@ -1730,15 +1696,25 @@ function renderUnitsPage() {
 
   const units = getUnitsPageFiltered();
 
+  const data = loadData();
+  const maxUnits = data?.building
+    ? (Number(data.building.totalUnits) || getExpectedUnitsCount(data.building) || 0)
+    : 0;
+
   if (countLabel) {
-    countLabel.textContent = `${formatNumber(units.length)} واحد`;
+    if (maxUnits > 0) {
+      countLabel.textContent = `${formatNumber(units.length)} از ${formatNumber(maxUnits)} واحد`;
+    } else {
+      countLabel.textContent = `${formatNumber(units.length)} واحد`;
+    }
   }
 
   if (units.length === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="11" style="text-align:center;color:#94a3b8;padding:40px;">
-          واحدی یافت نشد.
+          هنوز واحدی اضافه نشده است.<br>
+          <span style="font-size:13px;opacity:0.8;">با دکمه «افزودن واحد» شروع کنید (حداکثر ${formatNumber(maxUnits)} واحد)</span>
         </td>
       </tr>`;
     return;
