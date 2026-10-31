@@ -1,18 +1,19 @@
 /* ============================================================
-   آپارتمان پلاس | v23
+   آپارتمان پلاس | v22
    ============================================================
 
    🎨 طراحی و توسعه: الهام صمدی
    👩‍💼 مدیر پروژه: الهام صمدی
 
-   اصلاحات v23:
-   - تیکت‌های پشتیبانی per-account و در ثبت‌نام جدید خالی
-   - وضعیت واحدهای داشبورد برای کاربر جدید خالی
-   - پاک‌سازی کامل تیکت‌ها و واحدها هنگام ثبت‌نام
+   اصلاحات v22:
+   - نمودار روند درآمد دیگر داده جعلی نشان نمی‌دهد
+   - داشبورد وضعیت واحدها و همه صفحات برای کاربر جدید خالی/صفر
+   - پاک‌سازی کامل داده‌ها هنگام ثبت‌نام جدید
+   - اعلان‌ها per-account شدند
    ============================================================ */
 
-console.log('APP.JS VERSION: v23 — ApartmentPlus (tickets + units status empty for new users)');
-console.log('%c🏢 آپارتمان پلاس | v23', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
+console.log('APP.JS VERSION: v22 — ApartmentPlus (full empty state: no fake charts/data)');
+console.log('%c🏢 آپارتمان پلاس | v22', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
 
 
@@ -228,11 +229,29 @@ function loadUnits() {
   if (raw) {
     try {
       UNITS = JSON.parse(raw);
+      if (!Array.isArray(UNITS)) UNITS = [];
     } catch (e) {
       UNITS = [];
     }
   } else {
     UNITS = [];
+  }
+
+  // مهاجرت: واحدهای خالیِ ساخته‌شده‌ی خودکار قدیمی را پاک کن
+  // (واحدهایی که نه مالک دارند، نه مستأجر، نه بدهی، نه شارژ)
+  if (UNITS.length > 0) {
+    const allAreEmptyShells = UNITS.every(u => {
+      const noOwner = !u.owner?.name;
+      const noTenant = !u.tenant?.name;
+      const noDebt = !Number(u.debt);
+      const noCharge = !Number(u.chargeAmount);
+      return noOwner && noTenant && noDebt && noCharge;
+    });
+    if (allAreEmptyShells) {
+      UNITS = [];
+      saveUnits();
+      console.log('🧹 واحدهای خالی خودکار قدیمی پاک شدند');
+    }
   }
 }
 
@@ -248,62 +267,14 @@ function saveUnits() {
 
 /* ============ ۴) ساخت واحدهای خالی ============ */
 function buildEmptyUnits(building) {
-  UNITS = [];
-  let id = 1;
-
-  if (building.type === 'complex') {
-    building.blocks.forEach((block) => {
-      const blockName = String(block.name).trim();
-      let count = parseInt(block.units) || 0;
-      if (count < 1) count = 0;
-
-      for (let i = 1; i <= count; i++) {
-        UNITS.push({
-          id: id++,
-          block: blockName,
-          number: i,
-          code: `${blockName}-${toPersianNum(i)}`,
-          owner: { name: null, phone: null, registered: false, approved: false },
-          tenant: { name: null, phone: null, registered: false, approved: false },
-          debt: 0,
-          chargeAmount: 0,
-          area: 0,
-          peopleCount: 0,
-          parkingCount: 0,
-          storageCount: 0,
-          status: 'empty',
-        });
-      }
-    });
-  } else {
-    let count = parseInt(building.totalUnits) || 0;
-    if (count < 1) count = 0;
-
-    for (let i = 1; i <= count; i++) {
-      UNITS.push({
-        id: id++,
-        block: '—',
-        number: i,
-        code: `${building.code}-${toPersianNum(i)}`,
-        owner: { name: null, phone: null, registered: false, approved: false },
-        tenant: { name: null, phone: null, registered: false, approved: false },
-        debt: 0,
-        chargeAmount: 0,
-        area: 0,
-        peopleCount: 0,
-        parkingCount: 0,
-        storageCount: 0,
-        status: 'empty',
-      });
-    }
-  }
-
-  saveUnits();
+  // غیرفعال شد — واحدها از قبل ساخته نمی‌شوند
+  // کاربر خودش از طریق «افزودن واحد» اضافه می‌کند
+  console.warn('buildEmptyUnits غیرفعال است — واحدی ساخته نشد');
 }
 
-// سازگاری با نام قدیمی
+// سازگاری با نام قدیمی — هیچ کاری نمی‌کند
 function buildDemoUnits(building) {
-  buildEmptyUnits(building);
+  // noop
 }
 
 /* ============ ۵) کارت ساختمان ============ */
@@ -1403,8 +1374,6 @@ function saveWizardData() {
     'ham_sakhteman_settings',
     'ham_sakhteman_plan',
     'ham_sakhteman_profile',
-    'ham_sakhteman_tickets',
-    'ham_sakhteman_units',
   ];
   keysToClear.forEach(k => {
     try {
@@ -1415,8 +1384,6 @@ function saveWizardData() {
   });
   try {
     localStorage.removeItem('ham_sakhteman_notifications');
-    localStorage.removeItem(getAccountStorageKey('ham_sakhteman_tickets'));
-    localStorage.removeItem('ham_sakhteman_tickets'); // کلید قدیمی سراسری
   } catch (e) {}
 
   // کاربر جدید: لیست واحدها خالی می‌ماند تا خودش اضافه کند (تا سقف تعداد ثبت‌شده)
@@ -9267,19 +9234,17 @@ function printProfitPdf() {
 /* ============================================================
    🆘 صفحه پشتیبانی
    ============================================================ */
-function getTicketsKey() {
-  return getAccountStorageKey('ham_sakhteman_tickets');
-}
+const TICKETS_KEY = 'ham_sakhteman_tickets';
 let currentTicketId = null;
 
 function loadTickets() {
-  const raw = localStorage.getItem(getTicketsKey());
+  const raw = localStorage.getItem(TICKETS_KEY);
   if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
   return [];
 }
 
 function saveTickets(tickets) {
-  localStorage.setItem(getTicketsKey(), JSON.stringify(tickets));
+  localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
 }
 
 function getPersianDateTime() {
