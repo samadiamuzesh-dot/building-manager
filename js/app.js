@@ -11,7 +11,7 @@
    - پاک‌سازی کامل داده‌ها هنگام ثبت‌نام جدید
    - اعلان‌ها per-account شدند
    ============================================================ */
-console.log('APP.JS VERSION: v23 — ApartmentPlus (tickets + units status empty for new users)');
+console.log('APP.JS VERSION: v25 — ApartmentPlus (single units + paid price + limits)');
 console.log('APP.JS VERSION: v22 — ApartmentPlus (full empty state: no fake charts/data)');
 console.log('%c🏢 آپارتمان پلاس | v22', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
 console.log('%c🎨 طراحی و توسعه: الهام صمدی', 'color: #5b4cdb; font-size: 12px;');
@@ -237,21 +237,119 @@ function loadUnits() {
     UNITS = [];
   }
 
-  // مهاجرت: واحدهای خالیِ ساخته‌شده‌ی خودکار قدیمی را پاک کن
-  // (واحدهایی که نه مالک دارند، نه مستأجر، نه بدهی، نه شارژ)
-  if (UNITS.length > 0) {
-    const allAreEmptyShells = UNITS.every(u => {
-      const noOwner = !u.owner?.name;
-      const noTenant = !u.tenant?.name;
-      const noDebt = !Number(u.debt);
-      const noCharge = !Number(u.chargeAmount);
-      return noOwner && noTenant && noDebt && noCharge;
-    });
-    if (allAreEmptyShells) {
-      UNITS = [];
-      saveUnits();
-      console.log('🧹 واحدهای خالی خودکار قدیمی پاک شدند');
+  // همیشه واحدهای خالی (بدون مالک و بدون مستاجر ثبت‌نام‌شده) را حذف کن
+  // فقط واحدهایی که واقعاً ساکن ثبت‌نام کرده باقی می‌مانند
+  const before = UNITS.length;
+  UNITS = UNITS.filter(u => {
+    const hasOwner = !!(u.owner?.name || u.owner?.registered);
+    const hasTenant = !!(u.tenant?.name || u.tenant?.registered);
+    const hasCharge = Number(u.chargeAmount) > 0;
+    const hasDebt = u.debt != null && Number(u.debt) > 0;
+    // واحد دستی اضافه‌شده توسط مدیر (با متراژ) را نگه دار
+    const manuallyAdded = Number(u.area) > 0 && u.source !== 'resident_register';
+    return hasOwner || hasTenant || hasCharge || hasDebt || manuallyAdded;
+  });
+  if (UNITS.length !== before) {
+    saveUnits();
+    console.log('🧹 واحدهای خالی حذف شدند:', before - UNITS.length);
+  }
+
+  // کلید قدیمی بدون scope را پاک کن تا داده‌های آلوده دوباره لود نشوند
+  try { localStorage.removeItem('ham_sakhteman_units'); } catch (e) {}
+
+  // همگام‌سازی ثبت‌نام ساکنین با لیست واحدها (فقط همان‌هایی که ثبت‌نام کرده‌اند)
+  mergeRegisteredResidentsIntoUnits();
+}
+
+/** ثبت‌نام‌های ساکنین را به لیست واحدهای مدیر اضافه/به‌روز کن */
+function mergeRegisteredResidentsIntoUnits() {
+  let registered = [];
+  try {
+    const raw = localStorage.getItem('ham_sakhteman_registered_residents');
+    if (raw) registered = JSON.parse(raw) || [];
+    if (!Array.isArray(registered)) registered = [];
+  } catch (e) {
+    registered = [];
+  }
+  if (registered.length === 0) return;
+
+  const data = loadData();
+  const buildingCode = (data?.building?.code || '').toUpperCase();
+  let changed = false;
+
+  registered.forEach(r => {
+    if (!r) return;
+    // فقط ساکنین همین ساختمان
+    if (buildingCode && r.buildingCode && String(r.buildingCode).toUpperCase() !== buildingCode) return;
+
+    const block = String(r.block || '—').trim() || '—';
+    const number = parseInt(r.unitNumber, 10);
+    if (!number || number < 1) return;
+
+    let unit = UNITS.find(u =>
+      String(u.block || '').trim() === block && Number(u.number) === number
+    );
+
+    const person = {
+      name: r.name || null,
+      phone: r.phone || null,
+      birthDate: null,
+      nationalId: null,
+      type: 'settled',
+      registered: true,
+      approved: r.status === 'approved',
+    };
+
+    if (!unit) {
+      const newId = UNITS.length > 0
+        ? Math.max(...UNITS.map(u => Number(u.id) || 0)) + 1
+        : 1;
+      const toFa = (typeof toPersianNum === 'function') ? toPersianNum : (n) => String(n);
+      unit = {
+        id: newId,
+        block: block,
+        number: number,
+        code: (block === '—' ? 'S' : block) + '-' + toFa(number),
+        floor: '',
+        area: 0,
+        peopleCount: 1,
+        parkingCount: 0,
+        storageCount: 0,
+        status: 'occupied',
+        owner: { name: null, phone: null, birthDate: null, nationalId: null, type: 'settled', registered: false, approved: false },
+        tenant: { name: null, phone: null, birthDate: null, nationalId: null, type: 'settled', registered: false, approved: false },
+        defaultChargeOwner: 0,
+        defaultChargeTenant: 0,
+        chargeAmount: 0,
+        debt: null,
+        notes: '',
+        createdAt: r.registeredAt || new Date().toISOString(),
+        source: 'resident_register',
+      };
+      UNITS.push(unit);
+      changed = true;
     }
+
+    const role = String(r.role || 'owner').toLowerCase();
+    const isTenant = role === 'tenant' || role === 'مستاجر' || role === 'ساکن';
+
+    if (isTenant) {
+      if (!unit.tenant?.name || unit.tenant.name !== person.name) {
+        unit.tenant = { ...person };
+        unit.status = 'occupied';
+        changed = true;
+      }
+    } else {
+      if (!unit.owner?.name || unit.owner.name !== person.name) {
+        unit.owner = { ...person };
+        unit.status = 'occupied';
+        changed = true;
+      }
+    }
+  });
+
+  if (changed) {
+    saveUnits();
   }
 }
 
@@ -385,7 +483,11 @@ function switchPage(pageKey) {
     if (s) s.textContent = info.subtitle;
   }
 
-  if (pageKey === 'dashboard') renderDashboard();
+  if (pageKey === 'dashboard') {
+    renderDashboard();
+    // بعد از visible شدن صفحه، نمودار را دوباره بکش (رفع اندازه صفر)
+    requestAnimationFrame(() => requestAnimationFrame(() => renderDashboard()));
+  }
   if (pageKey === 'units') {
     buildUnitsBlockFilter();
     renderUnitsStats();
@@ -398,7 +500,10 @@ function switchPage(pageKey) {
   if (pageKey === 'notices') renderNoticesPage();
   if (pageKey === 'messages') renderMessagesPage();
   if (pageKey === 'voting') renderVotingPage();
-  if (pageKey === 'reports') renderReportsPage();
+  if (pageKey === 'reports') {
+    renderReportsPage();
+    requestAnimationFrame(() => requestAnimationFrame(() => renderReportsPage()));
+  }
   if (pageKey === 'profit') renderProfitPage();
   if (pageKey === 'profile') { fillProfileForm(); }
   if (pageKey === 'settings') renderSettingsPage();
@@ -482,30 +587,46 @@ function renderDashboardUnits() {
   const tbody = document.getElementById('dashboardUnitsBody');
   if (!tbody) return;
 
-  const units = getFilteredUnits();
+  // فقط واحدهایی که حداقل یک ساکن/مالک ثبت‌نام کرده
+  const units = getFilteredUnits().filter(u =>
+    (u.owner?.name || u.owner?.registered) || (u.tenant?.name || u.tenant?.registered)
+  );
 
   if (units.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:36px;">
       هنوز واحدی ثبت نشده است.<br>
-      <span style="font-size:12.5px;opacity:0.75;">از منوی «واحدها» واحدهای ساختمان را اضافه کنید.</span>
+      <span style="font-size:12.5px;opacity:0.75;">با ثبت‌نام ساکنین در اپ رزیدنت، واحدها اینجا نمایش داده می‌شوند.</span>
     </td></tr>`;
     return;
   }
 
   tbody.innerHTML = units.map(u => {
-    const ownerName = u.owner?.name ? u.owner.name : '<span style="color:#94a3b8;">ثبت‌نام نکرده</span>';
+    const ownerName = u.owner?.name ? u.owner.name : '<span style="color:#94a3b8;">—</span>';
     const tenantName = u.tenant?.name ? u.tenant.name : '<span style="color:#94a3b8;">—</span>';
-    const ownerPhone = u.owner?.phone || '—';
+    const phone = u.owner?.phone || u.tenant?.phone || '—';
+
+    // بدهی و وضعیت فقط وقتی مدیر مشخص کرده (نه مقدار پیش‌فرض)
+    const hasDebtInfo = u.debt != null && u.debt !== '' && Number(u.debt) > 0;
+    const hasSettledInfo = u.debtExplicit === true || (Number(u.chargeAmount) > 0 && Number(u.debt) === 0);
+    let debtCell = '—';
+    let statusCell = '—';
+    if (hasDebtInfo) {
+      debtCell = formatToman(u.debt);
+      statusCell = '<span class="badge badge-debt">بدهکار</span>';
+    } else if (hasSettledInfo) {
+      debtCell = '—';
+      statusCell = '<span class="badge badge-paid">تسویه</span>';
+    }
 
     return `
       <tr>
-        <td><strong>${u.block}</strong></td>
+        <td><strong>${u.block === '—' ? '—' : u.block}</strong></td>
         <td><strong>${formatNumber(u.number)}</strong></td>
         <td>${ownerName}</td>
         <td>${tenantName}</td>
-        <td>${ownerPhone}</td>
-        <td>${u.debt > 0 ? formatToman(u.debt) : '—'}</td>
-        <td>${u.debt > 0 ? '<span class="badge badge-debt">بدهکار</span>' : '<span class="badge badge-paid">تسویه</span>'}</td>
+        <td style="direction:ltr;text-align:right;">${phone}</td>
+        <td>${debtCell}</td>
+        <td>${statusCell}</td>
       </tr>
     `;
   }).join('');
@@ -515,13 +636,8 @@ function renderDashboardUnits() {
 function renderDonutChart(paidUnits, debtUnits) {
   const canvas = document.getElementById('donutChart');
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
   const size = 180;
-  const dpr = window.devicePixelRatio || 1;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  canvas.width = size * dpr;
-  canvas.height = size * dpr;
-  ctx.scale(dpr, dpr);
+  const { ctx } = prepareCanvas(canvas, size, size);
 
   const cx = size / 2, cy = size / 2, radius = 70, lineWidth = 18;
   const total = paidUnits + debtUnits || 1;
@@ -553,43 +669,74 @@ function renderDonutChart(paidUnits, debtUnits) {
 }
 
 /* ============ ۱۱) نمودار خطی ============ */
+function getLastSixPersianMonths() {
+  const today = getTodayPersian();
+  const result = [];
+  let m = today.month; // 1-12
+  let y = today.year;
+  for (let i = 0; i < 6; i++) {
+    result.unshift({ month: PERSIAN_MONTHS[m - 1], year: String(y), label: PERSIAN_MONTHS[m - 1] });
+    m -= 1;
+    if (m < 1) { m = 12; y -= 1; }
+  }
+  return result;
+}
+
+function getIncomeForMonth(monthName, yearStr) {
+  const y = String(yearStr);
+  const charges = (typeof loadCharges === 'function' ? loadCharges() : []) || [];
+  const side = (typeof loadSideIncomes === 'function' ? loadSideIncomes() : []) || [];
+  const fromCharges = charges
+    .filter(c => c.paid === true && c.month === monthName && String(c.year) === y)
+    .reduce((s, c) => s + (Number(c.total) || 0), 0);
+  const fromSide = side
+    .filter(i => i.month === monthName && String(i.year) === y)
+    .reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  return fromCharges + fromSide;
+}
+
+
+/** اندازه واقعی canvas (با fallback وقتی صفحه تازه visible شده) */
+function getCanvasDrawSize(canvas, fallbackW, fallbackH) {
+  if (!canvas) return { W: fallbackW || 400, H: fallbackH || 220 };
+  const parent = canvas.parentElement;
+  let W = 0, H = 0;
+  if (parent) {
+    const rect = parent.getBoundingClientRect();
+    W = rect.width;
+    H = rect.height;
+  }
+  if (!W) W = canvas.clientWidth || canvas.offsetWidth || 0;
+  if (!H) H = canvas.clientHeight || canvas.offsetHeight || 0;
+  if (!W) W = fallbackW || 400;
+  if (!H) H = fallbackH || 220;
+  return { W: Math.max(120, Math.floor(W)), H: Math.max(100, Math.floor(H)) };
+}
+
+function prepareCanvas(canvas, fallbackW, fallbackH) {
+  const ctx = canvas.getContext('2d');
+  const { W, H } = getCanvasDrawSize(canvas, fallbackW, fallbackH);
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  canvas.width = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+  return { ctx, W, H };
+}
+
 function renderLineChart() {
   const canvas = document.getElementById('lineChart');
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const W = rect.width, H = rect.height;
-  const dpr = window.devicePixelRatio || 1;
+  const { ctx, W, H } = prepareCanvas(canvas, 400, 220);
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-  ctx.scale(dpr, dpr);
-
-  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'];
-
-  // فقط داده واقعی — برای کاربر جدید همه صفر
-  const allCharges = (typeof loadCharges === 'function' ? loadCharges() : []) || [];
-  const currentYear = String(getTodayPersianYear());
-  const values = months.map(m => {
-    return allCharges
-      .filter(c => c.paid === true && c.month === m && String(c.year) === currentYear)
-      .reduce((s, c) => s + (Number(c.total) || 0), 0);
-  });
+  const lastSix = getLastSixPersianMonths();
+  const months = lastSix.map(x => x.label);
+  const values = lastSix.map(x => getIncomeForMonth(x.month, x.year));
 
   const hasData = values.some(v => v > 0);
-
-  // اگر هیچ داده‌ای نیست، نمودار خالی بکش
-  if (!hasData) {
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '13px Vazirmatn, Tahoma';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('هنوز داده‌ای ثبت نشده است', W / 2, H / 2);
-    return;
-  }
-
   const maxVal = Math.max(...values, 1) * 1.15;
   const padding = { top: 20, right: 20, bottom: 40, left: 60 };
   const chartW = W - padding.left - padding.right;
@@ -606,7 +753,7 @@ function renderLineChart() {
   }
 
   const points = values.map((v, i) => ({
-    x: padding.left + (chartW / (values.length - 1)) * i,
+    x: padding.left + (values.length > 1 ? (chartW / (values.length - 1)) * i : chartW / 2),
     y: padding.top + chartH - (v / maxVal) * chartH,
   }));
 
@@ -665,30 +812,36 @@ function renderStats() {
   //   buildDemoUnits(building);
   // }
 
-  const units = getFilteredUnits();
+  const units = getFilteredUnits().filter(u =>
+    (u.owner?.name || u.owner?.registered) || (u.tenant?.name || u.tenant?.registered)
+  );
 
-  // تعداد واحد و بلوک از اطلاعات ثبت‌نام (نه از لیست واحدهای ساخته‌شده)
-  const unitsCount = Number(building.totalUnits) || getExpectedUnitsCount(building) || 0;
-  const paidUnits = units.filter(u => Number(u.debt) === 0).length;
+  // سقف واحدها از ثبت‌نام ساختمان؛ آمار پرداخت فقط روی واحدهای ثبت‌شده
+  const capacityUnits = Number(building.totalUnits) || getExpectedUnitsCount(building) || units.length;
+  const unitsCount = capacityUnits;
+  // بدهکار = بدهی مثبت | تسویه‌شده = بدهی صفر و توسط مدیر مشخص شده
   const debtUnits = units.filter(u => Number(u.debt) > 0).length;
+  const paidUnits = units.filter(u =>
+    Number(u.debt) === 0 && (u.debtExplicit === true || Number(u.chargeAmount) > 0)
+  ).length;
 
   const currentMonth = getTodayPersianMonth();
   const currentYear = String(getTodayPersianYear());
 
   const allCharges = (typeof loadCharges === 'function' ? loadCharges() : []) || [];
   const chargesIncome = allCharges
-    .filter(c => c.paid === true && c.month === currentMonth && c.year === currentYear)
+    .filter(c => c.paid === true && c.month === currentMonth && String(c.year) === currentYear)
     .reduce((s, c) => s + (Number(c.total) || 0), 0);
 
   const allSideIncomes = (typeof loadSideIncomes === 'function' ? loadSideIncomes() : []) || [];
   const sideIncomeSum = allSideIncomes
-    .filter(i => i.month === currentMonth && i.year === currentYear)
+    .filter(i => i.month === currentMonth && String(i.year) === currentYear)
     .reduce((s, i) => s + (Number(i.amount) || 0), 0);
 
   const income = chargesIncome + sideIncomeSum;
 
   const expensesThisMonth = (typeof loadExpenses === 'function' ? loadExpenses() : [])
-    .filter(e => e.month === currentMonth && e.year === currentYear);
+    .filter(e => e.month === currentMonth && String(e.year) === currentYear);
   const expense = expensesThisMonth.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
   const balance = income - expense;
@@ -712,10 +865,10 @@ function renderStats() {
   if (elBlocks)  elBlocks.textContent  = formatNumber(blocksCount);
   if (elBalance) elBalance.textContent = formatToman(balance);
 
-  // اگر هنوز واحدی اضافه نشده، درصد صفر باشد
-  const actualUnitsCount = units.length;
-  const paidPercent = actualUnitsCount > 0
-    ? Math.round((paidUnits / actualUnitsCount) * 100)
+  // درصد پرداخت = تسویه‌شده / (تسویه‌شده + بدهکار)
+  const classified = paidUnits + debtUnits;
+  const paidPercent = classified > 0
+    ? Math.round((paidUnits / classified) * 100)
     : 0;
   const elP = document.getElementById('donutPercent');
   if (elP) elP.textContent = formatNumber(paidPercent) + '٪';
@@ -748,12 +901,16 @@ let selectedBuildingType = null;
 let blockNames = [];
 let selectedPlanType = null;
 let wizardAuthData = { name: '', phone: '', password: '' };
+let wizardBuildingName = '';
+let wizardSingleUnits = 0;
 
 function openWelcomeModal() {
   wizardStep = 1;
   selectedBuildingType = null;
   blockNames = [];
   selectedPlanType = null;
+  wizardBuildingName = '';
+  wizardSingleUnits = 0;
   updateWizardUI();
   document.getElementById('welcomeModal').classList.add('open');
 }
@@ -796,10 +953,14 @@ function updateWizardUI() {
     if (sf) sf.style.display = selectedBuildingType === 'single' ? 'block' : 'none';
     if (selectedBuildingType === 'complex') buildBlockInputs();
   }
+
+  if (wizardStep === 4) {
+    updatePlanPage();
+  }
 }
 
 function updatePlanPage() {
-  const bn = document.getElementById('buildingNameInput')?.value.trim() || '—';
+  const bn = (wizardBuildingName || document.getElementById('buildingNameInput')?.value || '').trim() || '—';
 
   let totalUnits = 0;
   let blocksCount = 1;
@@ -808,7 +969,7 @@ function updatePlanPage() {
     blocksCount = blockNames.length;
     totalUnits = blockNames.reduce((s, b) => s + (parseInt(b.units) || 0), 0);
   } else {
-    totalUnits = parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
+    totalUnits = wizardSingleUnits || parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
   }
 
   const elBuilding = document.getElementById('planSummaryBuilding');
@@ -953,6 +1114,7 @@ const existingPhone = localStorage.getItem('ham_sakhteman_user_phone');
     const bn = document.getElementById('buildingNameInput')?.value.trim();
     if (!bn) { toastWarning('نام ساختمان را وارد کنید.'); return false; }
     if (!selectedBuildingType) { toastWarning('نوع را انتخاب کنید.'); return false; }
+    wizardBuildingName = bn;
     return true;
   }
 
@@ -965,10 +1127,16 @@ const existingPhone = localStorage.getItem('ham_sakhteman_user_phone');
           toastWarning(`اسم بلوک ${toPersianNum(i + 1)} را وارد کنید.`);
           return false;
         }
+        const u = parseInt(blockNames[i].units) || 0;
+        if (u < 1) {
+          toastWarning(`تعداد واحدهای بلوک «${blockNames[i].name}» را وارد کنید.`);
+          return false;
+        }
       }
     } else {
       const u = parseInt(document.getElementById('singleUnitsCount')?.value);
       if (!u || u < 1) { toastWarning('تعداد واحدها را وارد کنید.'); return false; }
+      wizardSingleUnits = u;
     }
     return true;
   }
@@ -1025,10 +1193,7 @@ function getTotalUnitsFromWizard() {
       0
     );
   }
-
-  const input = document.getElementById('singleUnitsCount');
-  const value = parseInt(input?.value, 10) || 0;
-  return value;
+  return wizardSingleUnits || parseInt(document.getElementById('singleUnitsCount')?.value, 10) || 0;
 }
 
 function confirmFreePlan() {
@@ -1302,7 +1467,7 @@ function getTotalUnitsFromWizard() {
   if (selectedBuildingType === 'complex') {
     return blockNames.reduce((s, b) => s + (parseInt(b.units) || 0), 0);
   }
-  return parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
+  return wizardSingleUnits || parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
 }
 
 function saveWizardData() {
@@ -1312,7 +1477,7 @@ function saveWizardData() {
   || (JSON.parse(localStorage.getItem('ham_sakhteman_auth') || '{}').phone || '')
   || '';
   const password = wizardAuthData.password || document.getElementById('managerPassword')?.value || '';
-  const bn = (document.getElementById('buildingNameInput')?.value || '').trim();
+  const bn = (wizardBuildingName || document.getElementById('buildingNameInput')?.value || '').trim();
 
   // نرمال‌سازی شماره موبایل قبل از ذخیره (برای کلید ذخیره‌سازی یکسان)
   if (typeof normalizePhone === 'function' && mp) {
@@ -1331,7 +1496,7 @@ function saveWizardData() {
       totalUnits += (parseInt(b.units) || 5);
     });
   } else {
-    totalUnits = parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
+    totalUnits = wizardSingleUnits || parseInt(document.getElementById('singleUnitsCount')?.value) || 0;
   }
 
   const code = generateBuildingCode(selectedBuildingType, totalUnits);
@@ -1430,7 +1595,7 @@ function showSuccessPage(info) {
       <div class="success-info">
         <div class="success-info-row">
           <span>🏢 ساختمان:</span>
-          <strong>${document.getElementById('buildingNameInput')?.value || '—'}</strong>
+          <strong>${wizardBuildingName || document.getElementById('buildingNameInput')?.value || '—'}</strong>
         </div>
         <div class="success-info-row">
           <span>💎 پلن شما:</span>
@@ -1719,38 +1884,49 @@ function renderUnitsPage() {
   }
 
   tbody.innerHTML = units.map(u => {
+    const ownerRegistered = u.owner?.registered || u.owner?.name;
+    const tenantRegistered = u.tenant?.registered || u.tenant?.name;
+
     const ownerName = u.owner?.name
-      ? u.owner.name
+      ? (u.owner.name + (u.owner.registered && !u.owner.approved
+          ? ' <span class="badge" style="background:#fef3c7;color:#b45309;font-size:10px;padding:1px 6px;border-radius:8px;">در انتظار</span>'
+          : ''))
       : '<span style="color:#94a3b8;">ثبت‌نام نکرده</span>';
 
     const tenantName = u.tenant?.name
-      ? u.tenant.name
+      ? (u.tenant.name + (u.tenant.registered && !u.tenant.approved
+          ? ' <span class="badge" style="background:#fef3c7;color:#b45309;font-size:10px;padding:1px 6px;border-radius:8px;">در انتظار</span>'
+          : ''))
       : '<span style="color:#94a3b8;">—</span>';
 
-    const ownerPhone = u.owner?.phone || '—';
+    // اولویت نمایش موبایل: مالک، در غیر این صورت ساکن
+    const displayPhone = u.owner?.phone || u.tenant?.phone || '—';
     const area = u.area ? formatNumber(u.area) + ' متر' : '—';
     const peopleCount = u.peopleCount ? formatNumber(u.peopleCount) + ' نفر' : '—';
     const parkingCount = u.parkingCount ? formatNumber(u.parkingCount) : '—';
 
     let statusBadge;
-    if (typeof isUnitEmpty === 'function' && !isUnitEmpty(u)) {
+    if (ownerRegistered || tenantRegistered || (typeof isUnitEmpty === 'function' && !isUnitEmpty(u))) {
       statusBadge = '<span class="badge-occupied">🏠 پر</span>';
     } else {
       statusBadge = '<span class="badge-empty">🚪 خالی</span>';
     }
 
+    // بدهی: فقط اگر مدیر مقدار مثبت گذاشته
+    const debtDisplay = (u.debt != null && Number(u.debt) > 0) ? formatToman(u.debt) : '—';
+
     return `
       <tr data-unit-id="${u.id}">
-        <td><strong>${u.block}</strong></td>
+        <td><strong>${u.block === '—' ? '—' : u.block}</strong></td>
         <td><strong>${formatNumber(u.number)}</strong></td>
         <td>${ownerName}</td>
         <td>${tenantName}</td>
-        <td>${ownerPhone}</td>
+        <td style="direction:ltr;text-align:right;">${displayPhone}</td>
         <td>${area}</td>
         <td>${peopleCount}</td>
         <td>${parkingCount}</td>
         <td>${statusBadge}</td>
-        <td>${u.debt > 0 ? formatToman(u.debt) : '—'}</td>
+        <td>${debtDisplay}</td>
         <td>
           <div class="row-actions">
             <button class="row-action-btn" data-action="view" data-id="${u.id}" title="جزئیات">✏️</button>
@@ -2108,6 +2284,44 @@ function saveUnit() {
     return;
   }
 
+  // محدودیت تعداد/شماره واحد بر اساس تعریف ثبت‌نام (هر بلوک یا کل ساختمان)
+  const maxForBlock = getMaxUnitsForBlock(block);
+  if (maxForBlock > 0 && number > maxForBlock) {
+    if (typeof switchUnitTab === 'function') switchUnitTab('main');
+    const data = loadData();
+    const isComplex = data?.building?.type === 'complex';
+    if (isComplex) {
+      toastError(
+        `بلوک «${block}» فقط تا ${toPersianNum(maxForBlock)} واحد دارد. نمی‌توانید واحد شماره ${toPersianNum(number)} را اضافه کنید.`
+      );
+    } else {
+      toastError(
+        `این ساختمان فقط تا ${toPersianNum(maxForBlock)} واحد دارد. نمی‌توانید واحد شماره ${toPersianNum(number)} را اضافه کنید.`
+      );
+    }
+    return;
+  }
+
+  // محدودیت تعداد واحدهای موجود در همان بلوک
+  if (!currentEditUnitId && maxForBlock > 0) {
+    const unitsInBlock = UNITS.filter(u => String(u.block).trim() === String(block).trim()).length;
+    if (unitsInBlock >= maxForBlock) {
+      if (typeof switchUnitTab === 'function') switchUnitTab('main');
+      const data = loadData();
+      const isComplex = data?.building?.type === 'complex';
+      if (isComplex) {
+        toastError(
+          `ظرفیت بلوک «${block}» تکمیل است (حداکثر ${toPersianNum(maxForBlock)} واحد).`
+        );
+      } else {
+        toastError(
+          `ظرفیت ساختمان تکمیل است (حداکثر ${toPersianNum(maxForBlock)} واحد).`
+        );
+      }
+      return;
+    }
+  }
+
   const code = `${block}-${toPersianNum(number)}`;
   const isEdit = !!currentEditUnitId;
 
@@ -2136,6 +2350,7 @@ function saveUnit() {
     defaultChargeTenant,
     chargeAmount: charge,
     debt,
+    debtExplicit: true,
     notes,
     ownerSettlementId: ownerSettlementId || null,
     tenantSettlementId: tenantSettlementId || null,
@@ -2639,7 +2854,8 @@ function saveCharges(charges) {
 
 function getChargesForMonth(month, year) {
   const charges = loadCharges();
-  return charges.filter(c => c.month === month && c.year === String(year));
+  const y = String(year);
+  return charges.filter(c => c.month === month && String(c.year) === y);
 }
 
 /* ============================================================
@@ -2683,7 +2899,64 @@ function renderChargesPage() {
   if (elExpenses) elExpenses.textContent = formatToman(expenseSum);
   if (elCount) elCount.textContent = `${formatNumber(total)} مورد`;
 
+  renderPendingPaymentsBanner();
   renderChargesTable(charges);
+}
+
+/** بنر پرداخت‌های در انتظار تأیید ساکن */
+function renderPendingPaymentsBanner() {
+  let host = document.getElementById('pendingPaymentsBanner');
+  const page = document.getElementById('page-charges');
+  if (!page) return;
+
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'pendingPaymentsBanner';
+    host.style.cssText = 'margin: 0 0 16px 0;';
+    const tableBox = page.querySelector('.table-box');
+    if (tableBox && tableBox.parentElement) {
+      tableBox.parentElement.insertBefore(host, tableBox);
+    } else {
+      page.insertBefore(host, page.firstChild);
+    }
+  }
+
+  const all = (loadCharges() || []).filter(c => c.pendingApproval && !c.paid);
+  if (all.length === 0) {
+    host.innerHTML = '';
+    host.style.display = 'none';
+    return;
+  }
+  host.style.display = 'block';
+
+  const rows = all.map(c => {
+    const unit = UNITS.find(u => Number(u.id) === Number(c.unitId));
+    const label = unit
+      ? ((unit.block && unit.block !== '—') ? (unit.block + '-' + toPersianNum(unit.number)) : ('واحد ' + toPersianNum(unit.number)))
+      : '—';
+    const track = c.trackingCode ? (' — پیگیری: <span dir="ltr">' + c.trackingCode + '</span>') : '';
+    return (
+      '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:#fff;border-radius:10px;padding:10px 12px;border:1px solid #fde68a;">' +
+        '<div style="font-size:13px;color:#334155;">' +
+          '<strong>' + label + '</strong> — ' + c.month + ' ' + toPersianNum(c.year) +
+          ' — ' + formatToman(c.total) + ' — ' + (c.payMethod || '—') + track +
+        '</div>' +
+        '<button type="button" class="btn btn-primary" data-approve-charge="' + c.id + '" style="padding:6px 14px;font-size:13px;">✅ تأیید پرداخت</button>' +
+      '</div>'
+    );
+  }).join('');
+
+  host.innerHTML =
+    '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:14px;padding:14px 16px;">' +
+      '<div style="font-weight:800;color:#b45309;margin-bottom:10px;">⏳ ' + formatNumber(all.length) + ' پرداخت در انتظار تأیید</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;">' + rows + '</div>' +
+    '</div>';
+
+  host.querySelectorAll('[data-approve-charge]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      approveResidentPayment(Number(btn.dataset.approveCharge));
+    });
+  });
 }
 
 function renderChargesTable(charges) {
@@ -2711,34 +2984,55 @@ function renderChargesTable(charges) {
     const ownerName = unit?.owner?.name || '<span style="color:#94a3b8;">ثبت‌نام نکرده</span>';
 
     let payMethodBadge = '<span style="color:#94a3b8;">—</span>';
-    if (c.paid && c.payMethod) {
-      const methodIcons = {
-        'نقدی': '💵',
-        'کارت به کارت': '💳',
-        'انتقال بانکی': '🏦',
-        'آنلاین': '🌐',
-        'چک': '📝',
-      };
+    const methodIcons = {
+      'نقدی': '💵',
+      'کارت به کارت': '💳',
+      'انتقال بانکی': '🏦',
+      'آنلاین': '🌐',
+      'چک': '📝',
+    };
+    if (c.payMethod) {
       const icon = methodIcons[c.payMethod] || '💰';
-      payMethodBadge = `<span class="badge badge-paid">${icon} ${c.payMethod}</span>`;
+      payMethodBadge = `<span class="badge ${c.paid ? 'badge-paid' : 'badge-debt'}">${icon} ${c.payMethod}</span>`;
+      if (c.trackingCode) {
+        payMethodBadge += `<div style="font-size:11px;color:#64748b;margin-top:4px;direction:ltr;">${c.trackingCode}</div>`;
+      }
     } else if (c.paid) {
       payMethodBadge = '<span class="badge badge-paid">💰 نامشخص</span>';
     }
 
+    let statusBadge;
+    if (c.paid) {
+      statusBadge = '<span class="badge badge-paid">✅ پرداخت شده</span>';
+    } else if (c.pendingApproval) {
+      statusBadge = '<span class="badge" style="background:#fef3c7;color:#b45309;">⏳ در انتظار تأیید</span>';
+    } else {
+      statusBadge = '<span class="badge badge-debt">⚠️ پرداخت نشده</span>';
+    }
+
+    let actions = `<button class="row-action-btn" data-charge-id="${c.id}" title="${c.paid ? 'مدیریت پرداخت' : 'ثبت پرداخت'}">💳</button>`;
+    if (c.pendingApproval && !c.paid) {
+      actions = `
+        <button class="row-action-btn" data-approve-charge="${c.id}" title="تأیید پرداخت ساکن"
+          style="background:#dcfce7;color:#15803d;border:1px solid #86efac;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer;">
+          ✅ تأیید
+        </button>
+        <button class="row-action-btn" data-charge-id="${c.id}" title="جزئیات">💳</button>
+      `;
+    }
+
     return `
-      <tr class="charge-row">
+      <tr class="charge-row ${c.pendingApproval && !c.paid ? 'charge-pending' : ''}">
         <td><strong>${blockName}</strong></td>
         <td><strong>${unitNumber}</strong></td>
         <td>${ownerName}</td>
         <td>${formatToman(c.amount || 0)}</td>
         <td>${c.extra > 0 ? formatToman(c.extra) : '—'}</td>
         <td><strong>${formatToman(c.total || 0)}</strong></td>
-        <td>${c.paid
-              ? '<span class="badge badge-paid">✅ پرداخت شده</span>'
-              : '<span class="badge badge-debt">⚠️ پرداخت نشده</span>'}</td>
+        <td>${statusBadge}</td>
         <td>${payMethodBadge}</td>
         <td>
-          <button class="row-action-btn" data-charge-id="${c.id}" title="${c.paid ? 'مدیریت پرداخت' : 'ثبت پرداخت'}">💳</button>
+          <div class="row-actions" style="display:flex;gap:6px;flex-wrap:wrap;">${actions}</div>
         </td>
       </tr>
     `;
@@ -2763,14 +3057,58 @@ function bindChargesPage() {
   }
 
   const tbody = document.getElementById('chargesTableBody');
-  if (tbody) {
+  if (tbody && !tbody._chargesBound) {
+    tbody._chargesBound = true;
     tbody.addEventListener('click', (e) => {
+      const approveBtn = e.target.closest('[data-approve-charge]');
+      if (approveBtn) {
+        const chargeId = Number(approveBtn.dataset.approveCharge);
+        approveResidentPayment(chargeId);
+        return;
+      }
       const btn = e.target.closest('[data-charge-id]');
       if (!btn) return;
       const chargeId = Number(btn.dataset.chargeId);
       openPayChargeModal(chargeId);
     });
   }
+}
+
+/** تأیید پرداخت اعلام‌شده توسط ساکن (کارت به کارت / انتقال) */
+function approveResidentPayment(chargeId) {
+  const charges = loadCharges();
+  const charge = charges.find(c => c.id === chargeId);
+  if (!charge) {
+    toastWarning('شارژ پیدا نشد.');
+    return;
+  }
+  if (charge.paid) {
+    toastWarning('این شارژ قبلاً پرداخت شده است.');
+    return;
+  }
+  if (!confirm('آیا پرداخت ساکن را تأیید می‌کنید؟ پس از تأیید، شارژ تسویه می‌شود.')) return;
+
+  const now = new Date();
+  charge.paid = true;
+  charge.pendingApproval = false;
+  charge.paidDate = now.toLocaleDateString('fa-IR');
+  charge.paidAt = now.toISOString();
+  charge.approvedByManager = true;
+  charge.approvedAt = now.toISOString();
+  if (!charge.payMethod) charge.payMethod = 'کارت به کارت';
+
+  saveCharges(charges);
+  if (typeof updateUnitsDebtFromCharges === 'function') updateUnitsDebtFromCharges();
+
+  renderChargesPage();
+  if (typeof renderUnitsStats === 'function') renderUnitsStats();
+  if (typeof renderUnitsPage === 'function') renderUnitsPage();
+  if (typeof renderDashboard === 'function') renderDashboard();
+  if (typeof renderPaymentsPage === 'function') {
+    try { renderPaymentsPage(); } catch (e) {}
+  }
+
+  toastSuccess('پرداخت ساکن تأیید و شارژ تسویه شد.');
 }
 
 /* ============================================================
@@ -3073,10 +3411,11 @@ function updateUnitsDebtFromCharges() {
 
   UNITS.forEach(unit => {
     const unpaid = charges.filter(c =>
-      c.unitId === unit.id && !c.paid
+      Number(c.unitId) === Number(unit.id) && !c.paid
     );
     const totalDebt = unpaid.reduce((s, c) => s + (Number(c.total) || 0), 0);
     unit.debt = totalDebt;
+    unit.debtExplicit = true;
   });
 
   saveUnits();
@@ -6460,13 +6799,13 @@ function bindVotingPage() {
 let reportPeriod = 'thisMonth';
 
 function getReportDateRange() {
-  const currentMonth = currentChargeMonth;
-  const currentYear = currentChargeYear;
+  const currentMonth = currentChargeMonth || getTodayPersianMonth();
+  const currentYear = String(currentChargeYear || getTodayPersianYear());
 
   if (reportPeriod === 'thisMonth') {
     return {
       label: `${currentMonth} ${toPersianNum(currentYear)}`,
-      filterFn: (item) => item.month === currentMonth && item.year === currentYear,
+      filterFn: (item) => item.month === currentMonth && String(item.year) === currentYear,
     };
   }
 
@@ -6474,28 +6813,28 @@ function getReportDateRange() {
     const idx = PERSIAN_MONTHS.indexOf(currentMonth);
     const lastIdx = idx > 0 ? idx - 1 : 11;
     const lastMonth = PERSIAN_MONTHS[lastIdx];
-    const lastYear = idx > 0 ? currentYear : String(parseInt(currentYear) - 1);
+    const lastYear = idx > 0 ? currentYear : String(parseInt(currentYear, 10) - 1);
 
     return {
       label: `${lastMonth} ${toPersianNum(lastYear)}`,
-      filterFn: (item) => item.month === lastMonth && item.year === lastYear,
+      filterFn: (item) => item.month === lastMonth && String(item.year) === String(lastYear),
     };
   }
 
   if (reportPeriod === 'specificMonth') {
     const month = document.getElementById('reportMonthSelect')?.value || currentMonth;
-    const year = document.getElementById('reportMonthYearSelect')?.value || currentYear;
+    const year = String(document.getElementById('reportMonthYearSelect')?.value || currentYear);
 
     return {
       label: `${month} ${toPersianNum(year)}`,
-      filterFn: (item) => item.month === month && item.year === year,
+      filterFn: (item) => item.month === month && String(item.year) === year,
     };
   }
 
   if (reportPeriod === 'thisYear') {
     return {
       label: `سال ${toPersianNum(currentYear)}`,
-      filterFn: (item) => item.year === currentYear,
+      filterFn: (item) => String(item.year) === currentYear,
     };
   }
 
@@ -6583,28 +6922,29 @@ function renderReportsPage() {
   const totalIncome = chargesIncome + sideIncomesSum;
   const balance = totalIncome - expensesSum;
   const totalDebt = UNITS.reduce((s, u) => s + (Number(u.debt) || 0), 0);
-  document.getElementById('reportIncome').textContent = formatToman(totalIncome);
-  document.getElementById('reportExpense').textContent = formatToman(expensesSum);
-  document.getElementById('reportBalance').textContent = formatToman(balance);
-  document.getElementById('reportDebt').textContent = formatToman(totalDebt);
+  const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setTxt('reportIncome', formatToman(totalIncome));
+  setTxt('reportExpense', formatToman(expensesSum));
+  setTxt('reportBalance', formatToman(balance));
+  setTxt('reportDebt', formatToman(totalDebt));
 
-  document.getElementById('reportChargesCount').textContent = formatNumber(allCharges.length);
-  document.getElementById('reportChargesPaid').textContent = formatNumber(paidCharges.length);
-  document.getElementById('reportChargesUnpaid').textContent = formatNumber(unpaidCharges.length);
-  document.getElementById('reportChargesSum').textContent = formatToman(chargesSum);
-  document.getElementById('reportChargesIncome').textContent = formatToman(chargesIncome);
-  document.getElementById('reportChargesDebt').textContent = formatToman(chargesDebt);
+  setTxt('reportChargesCount', formatNumber(allCharges.length));
+  setTxt('reportChargesPaid', formatNumber(paidCharges.length));
+  setTxt('reportChargesUnpaid', formatNumber(unpaidCharges.length));
+  setTxt('reportChargesSum', formatToman(chargesSum));
+  setTxt('reportChargesIncome', formatToman(chargesIncome));
+  setTxt('reportChargesDebt', formatToman(chargesDebt));
 
-  document.getElementById('reportExpensesCount').textContent = formatNumber(allExpenses.length);
-  document.getElementById('reportExpensesSum').textContent = formatToman(expensesSum);
-  document.getElementById('reportExpensesAvg').textContent = formatToman(expensesAvg);
-  document.getElementById('reportExpensesMax').textContent = formatToman(expensesMax);
+  setTxt('reportExpensesCount', formatNumber(allExpenses.length));
+  setTxt('reportExpensesSum', formatToman(expensesSum));
+  setTxt('reportExpensesAvg', formatToman(expensesAvg));
+  setTxt('reportExpensesMax', formatToman(expensesMax));
 
   const paidPercent = allCharges.length > 0
     ? Math.round((paidCharges.length / allCharges.length) * 100)
     : 0;
 
-  document.getElementById('reportDonutPercent').textContent = formatNumber(paidPercent) + '٪';
+  setTxt('reportDonutPercent', formatNumber(paidPercent) + '٪');
 
   renderReportDonutChart(paidCharges.length, unpaidCharges.length);
   renderReportLineChart();
@@ -6615,15 +6955,8 @@ function renderReportsPage() {
 function renderReportDonutChart(paid, unpaid) {
   const canvas = document.getElementById('reportDonutChart');
   if (!canvas) return;
-
-  const ctx = canvas.getContext('2d');
   const size = 180;
-  const dpr = window.devicePixelRatio || 1;
-
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  canvas.width = size * dpr;
-  canvas.height = size * dpr;
-  ctx.scale(dpr, dpr);
+  const { ctx } = prepareCanvas(canvas, size, size);
 
   const cx = size / 2, cy = size / 2, radius = 70, lineWidth = 18;
   const total = paid + unpaid || 1;
@@ -6657,38 +6990,20 @@ function renderReportDonutChart(paid, unpaid) {
 function renderReportLineChart() {
   const canvas = document.getElementById('reportLineChart');
   if (!canvas) return;
+  const { ctx, W, H } = prepareCanvas(canvas, 400, 220);
 
-  const ctx = canvas.getContext('2d');
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const W = rect.width, H = rect.height;
-  const dpr = window.devicePixelRatio || 1;
-
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-  ctx.scale(dpr, dpr);
-
-  const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
-
-  const allCharges = loadCharges();
-  const values = months.map(month => {
-    const monthCharges = allCharges.filter(c =>
-      c.month === month && c.paid && c.year === currentChargeYear
-    );
-    return monthCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
-  });
+  // روند درآمد ۶ ماه اخیر (شارژ پرداخت‌شده + درآمد جانبی)
+  const lastSix = (typeof getLastSixPersianMonths === 'function')
+    ? getLastSixPersianMonths()
+    : PERSIAN_MONTHS.slice(0, 6).map(m => ({ month: m, year: String(getTodayPersianYear()), label: m }));
+  const months = lastSix.map(x => x.label);
+  const values = lastSix.map(x =>
+    (typeof getIncomeForMonth === 'function')
+      ? getIncomeForMonth(x.month, x.year)
+      : 0
+  );
 
   const hasData = values.some(v => v > 0);
-  if (!hasData) {
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '13px Vazirmatn, Tahoma';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('هنوز داده‌ای ثبت نشده است', W / 2, H / 2);
-    return;
-  }
-
   const maxVal = Math.max(...values, 1) * 1.15;
   const padding = { top: 20, right: 20, bottom: 40, left: 60 };
   const chartW = W - padding.left - padding.right;
@@ -6705,7 +7020,7 @@ function renderReportLineChart() {
   }
 
   const points = values.map((v, i) => ({
-    x: padding.left + (chartW / (values.length - 1)) * i,
+    x: padding.left + (values.length > 1 ? (chartW / (values.length - 1)) * i : chartW / 2),
     y: padding.top + chartH - (v / maxVal) * chartH,
   }));
 
@@ -7553,6 +7868,21 @@ function getExpectedUnitsCount(building) {
   if (building.type === 'complex') {
     return building.blocks.reduce((sum, b) => sum + (parseInt(b.units) || 0), 0);
   }
+  return parseInt(building.totalUnits) || 0;
+}
+
+/** حداکثر شماره/تعداد واحد مجاز برای یک بلوک خاص (بر اساس ثبت‌نام) */
+function getMaxUnitsForBlock(blockName) {
+  const data = loadData();
+  const building = data?.building;
+  if (!building) return 0;
+
+  if (building.type === 'complex') {
+    const block = (building.blocks || []).find(b => String(b.name).trim() === String(blockName).trim());
+    return block ? (parseInt(block.units) || 0) : 0;
+  }
+
+  // تک‌بلوک / ساختمان: سقف کل واحدها
   return parseInt(building.totalUnits) || 0;
 }
 
@@ -9564,10 +9894,6 @@ function renderSubscriptionPage() {
       : 'نامحدود';
   }
 
-  if (elUnits) {
-    elUnits.textContent = formatNumber(plan?.totalUnits || UNITS.length);
-  }
-
   const btnFree = document.getElementById('subBtnFree');
   if (btnFree) {
     if (currentPlan === 'free') {
@@ -9599,14 +9925,28 @@ function renderSubscriptionPage() {
   const btnPro = document.getElementById('subBtnPro');
   const elProPrice = document.getElementById('subProPrice');
 
-  const totalUnits = UNITS.length;
-  const result = calculatePrice(totalUnits);
+  // قیمت نمایشی: اگر قبلاً پرداخت شده، مبلغ پرداخت‌شده را نشان بده؛ وگرنه بر اساس تعداد واحد محاسبه کن
+  const data = loadData();
+  const registeredUnits = data?.building
+    ? (Number(data.building.totalUnits) || getExpectedUnitsCount(data.building) || 0)
+    : 0;
+  const totalUnitsForPrice = registeredUnits || plan?.totalUnits || UNITS.length || 0;
 
-    let price = result.price;
-  if (price === 0) price = 4 * 100000;
+  let price;
+  if (currentPlan === 'pro' && plan?.payment?.amount > 0) {
+    price = Number(plan.payment.amount);
+  } else {
+    const result = calculatePrice(totalUnitsForPrice);
+    price = result.price > 0 ? result.price : (4 * 100000);
+  }
 
   if (elProPrice) {
     elProPrice.textContent = (price / 1000000).toFixed(1).replace('.0', '');
+  }
+
+  // تعداد واحدها در کارت وضعیت: از اطلاعات ثبت‌نام / پلن
+  if (elUnits) {
+    elUnits.textContent = formatNumber(registeredUnits || plan?.totalUnits || UNITS.length || 0);
   }
 
   if (btnPro) {
@@ -9616,13 +9956,13 @@ function renderSubscriptionPage() {
       btnPro.className = 'btn btn-outline plan-select-btn';
       btnPro.onclick = null;
     } else {
-      btnPro.textContent = 'اشتراک';
+      btnPro.textContent = 'ارتقا به حرفه‌ای';
       btnPro.disabled = false;
       btnPro.className = 'btn btn-primary plan-select-btn';
       btnPro.onclick = () => {
         const paymentInfo = {
           planType: 'pro',
-          totalUnits: totalUnits,
+          totalUnits: totalUnitsForPrice,
           amount: price,
           orderId: 'SUB-' + Date.now(),
           isUpgrade: true,
@@ -9634,16 +9974,18 @@ function renderSubscriptionPage() {
 }
 
 function processMockPaymentSuccess(paymentInfo) {
+  // اول داده‌های ثبت‌نام (نام ساختمان، مدیر و ...) ذخیره شود تا کلید per-account درست شود
+  if (!paymentInfo.isUpgrade) {
+    saveWizardData();
+  }
+
+  // سپس پلن فعال شود (حالا شماره موبایل ست شده و کلید scoped درست است)
   activatePlan('pro', paymentInfo.totalUnits, {
     amount: paymentInfo.amount,
     status: 'paid',
     paidAt: new Date().toISOString(),
     orderId: paymentInfo.orderId,
   });
-
-  if (!paymentInfo.isUpgrade) {
-    saveWizardData();
-  }
 
   showSuccessPage({
     planName: 'حرفه‌ای',
