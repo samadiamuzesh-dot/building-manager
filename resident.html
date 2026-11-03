@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <meta name="theme-color" content="#5b4cdb">
   <title>آپارتمان پلاس | اپلیکیشن ساکنین</title>
-  <link rel="manifest" href="resident-manifest.json">
         <link rel="stylesheet" href="css/resident-style.css?v=12">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap">
+    <!-- این خط را جایگزین لینک قبلی منیفست کنید -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6366f1">
+  <link rel="apple-touch-icon" href="assets/logo.png">
 </head>
 <body>
 
@@ -136,7 +138,9 @@
       <span class="resident-notif-dot" id="residentNotifDot" style="display:none;"></span>
     </button>
     <button class="resident-logout-btn" id="residentLogoutBtn" title="خروج">🚪</button>
-
+<button id="installBtn" class="resident-submit-btn" style="display: none; padding: 8px 12px; font-size: 12px; margin: 0 5px; background: #10b981; width: auto;">
+  📲 نصب اپلیکیشن
+</button>
     <!-- ✅ پنل اعلان‌ها -->
     <div id="residentNotifPanel" class="resident-notif-panel">
       <div class="resident-notif-header">
@@ -369,5 +373,27 @@
 
   </div>
 </div>
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+
+  // دکمه نصب سفارشی
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const btn = document.getElementById('installBtn');
+    if (btn) {
+      btn.style.display = 'inline-flex';
+      btn.onclick = async () => {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') btn.style.display = 'none';
+        deferredPrompt = null;
+      };
+    }
+  });
+</script>
 </body>
 </html>
