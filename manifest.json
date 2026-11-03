@@ -1,0 +1,27 @@
+{
+  "name": "آپارتمان پلاس - مدیریت ساختمان",
+  "short_name": "آپارتمان پلاس",
+  "description": "نرم‌افزار هوشمند مدیریت شارژ و حسابداری ساختمان",
+  "start_url": "resident.html",
+  "scope": "/building-manager/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "lang": "fa",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "assets/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
