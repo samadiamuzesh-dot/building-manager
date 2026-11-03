@@ -43,6 +43,36 @@
       <button class="resident-submit-btn" id="residentVerifyCodeBtn">
         ادامه ←
       </button>
+
+      <p style="text-align:center;margin-top:16px;font-size:13px;color:#64748b;">
+        قبلاً ثبت‌نام کرده‌اید؟
+        <a href="#" id="residentShowLogin" style="color:#5b4cdb;font-weight:800;">ورود</a>
+      </p>
+    </div>
+
+    <!-- ورود ساکن ثبت‌نام‌شده -->
+    <div id="residentLoginStep" class="resident-step" style="display:none;">
+      <h2 class="resident-step-title">ورود ساکن</h2>
+      <p class="resident-step-desc">با شماره موبایل و رمزی که موقع ثبت‌نام گذاشتید وارد شوید</p>
+
+      <div class="resident-form-group">
+        <label for="residentLoginCode">🏢 کد ساختمان</label>
+        <input type="text" id="residentLoginCode" class="resident-form-input" placeholder="مثلاً: M-123456" dir="ltr" />
+      </div>
+      <div class="resident-form-group">
+        <label for="residentLoginPhone">📱 شماره موبایل</label>
+        <input type="tel" id="residentLoginPhone" class="resident-form-input" placeholder="09xxxxxxxxx" dir="ltr" />
+      </div>
+      <div class="resident-form-group">
+        <label for="residentLoginPassword">🔒 رمز عبور</label>
+        <input type="password" id="residentLoginPassword" class="resident-form-input" dir="ltr" />
+        <div class="resident-error-msg" id="residentLoginError"></div>
+      </div>
+
+      <button class="resident-submit-btn" id="residentLoginBtn">ورود ←</button>
+      <p style="text-align:center;margin-top:16px;font-size:13px;">
+        <a href="#" id="residentBackToRegister" style="color:#5b4cdb;font-weight:800;">→ ثبت‌نام جدید</a>
+      </p>
     </div>
 
     <!-- مرحله ۲: انتخاب واحد -->
@@ -302,7 +332,7 @@
 
 <!-- Toast Container -->
 <div id="residentToastContainer" class="resident-toast-container"></div>
-<script src="js/resident-app.js?v=13"></script>
+<script src="js/resident-app.js?v=14"></script>
   <!-- ============ مودال پرداخت آنلاین ============ -->
 <div class="resident-modal-backdrop" id="residentPayModal">
   <div class="resident-modal">
@@ -333,6 +363,9 @@
           <strong id="residentPayDueDate">—</strong>
         </div>
       </div>
+
+      <!-- اطلاعات حساب مدیر برای کارت به کارت -->
+      <div id="residentPayBankInfo" class="resident-pay-summary" style="display:none; margin-top:12px;"></div>
 
       <!-- درگاه شبیه‌سازی -->
       <div class="resident-pay-gateway">

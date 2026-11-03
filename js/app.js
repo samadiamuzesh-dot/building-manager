@@ -11,6 +11,7 @@
    - پاک‌سازی کامل داده‌ها هنگام ثبت‌نام جدید
    - اعلان‌ها per-account شدند
    ============================================================ */
+console.log('APP.JS VERSION: v26 — accounting/report/sync fixes');
 console.log('APP.JS VERSION: v25 — ApartmentPlus (single units + paid price + limits)');
 console.log('APP.JS VERSION: v22 — ApartmentPlus (full empty state: no fake charts/data)');
 console.log('%c🏢 آپارتمان پلاس | v22', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
@@ -47,6 +48,173 @@ function toPersianNum(n) {
 }
 function formatPrice(n) {
   return new Intl.NumberFormat('fa-IR').format(Number(n) || 0) + ' تومان';
+}
+
+/* ============================================================
+   🧮 ابزارهای حسابداری (v26)
+   ============================================================ */
+function toEnDigits(s) {
+  return String(s == null ? '' : s)
+    .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** تاریخ شمسی متنی (۱۴۰۵/۸/۱۳ یا 1405-08-13) → {year, month, day} یا null */
+function parsePersianDateParts(str) {
+  if (!str) return null;
+  const parts = toEnDigits(str).trim().split(/[\/\-.]/).map(p => parseInt(p, 10));
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  const [y, m, d] = parts;
+  if (y < 1300 || y > 1500 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return { year: y, month: m, day: d };
+}
+
+/** کلید عددی قابل مرتب‌سازی برای تاریخ شمسی: 14050813 */
+function persianDateSortKey(str, isoFallback) {
+  const p = parsePersianDateParts(str);
+  if (p) return p.year * 10000 + p.month * 100 + p.day;
+  if (isoFallback) {
+    const d = new Date(isoFallback);
+    if (!isNaN(d)) {
+      const j = gregorianToPersian(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      return j.year * 10000 + j.month * 100 + j.day;
+    }
+  }
+  return 0;
+}
+
+/** ISO → {year, month, day} شمسی */
+function isoToPersianParts(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  return gregorianToPersian(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+
+/**
+ * دوره نقدی یک پرداخت (ماهی که پول واقعاً وارد صندوق شد).
+ * اولویت: تاریخ پرداخت واردشده → زمان ثبت پرداخت → دوره شارژ
+ */
+function getChargeCashPeriod(c) {
+  const p = parsePersianDateParts(c.paidDate) || isoToPersianParts(c.paidAt);
+  if (p) return { month: PERSIAN_MONTHS[p.month - 1], year: String(p.year), key: p.year * 10000 + p.month * 100 + p.day };
+  return { month: c.month, year: String(c.year), key: 0 };
+}
+
+/** آیا پرداخت شارژ در ماه/سال داده‌شده وصول شده؟ (مبنای نقدی) */
+function isChargeCollectedIn(c, monthName, yearStr) {
+  if (!c || c.paid !== true) return false;
+  const p = getChargeCashPeriod(c);
+  return p.month === monthName && String(p.year) === String(yearStr);
+}
+
+/** دوره هزینه/درآمد جانبی: ماه و سالی که کاربر انتخاب کرده */
+function getEntryDateKey(item) {
+  const p = parsePersianDateParts(item.date);
+  if (p) return p.year * 10000 + p.month * 100 + p.day;
+  const mi = PERSIAN_MONTHS.indexOf(item.month);
+  const y = parseInt(toEnDigits(item.year), 10);
+  if (mi >= 0 && y) return y * 10000 + (mi + 1) * 100 + 1;
+  return persianDateSortKey(null, item.createdAt);
+}
+
+/** n ماه اخیر به‌صورت {month, year} — با عبور درست از مرز سال */
+function getLastNPersianMonths(n, endMonthIdx, endYear) {
+  const today = getTodayPersian();
+  let m = endMonthIdx != null ? endMonthIdx + 1 : today.month;
+  let y = endYear != null ? Number(endYear) : today.year;
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    result.unshift({ month: PERSIAN_MONTHS[m - 1], year: String(y), label: PERSIAN_MONTHS[m - 1] });
+    m -= 1;
+    if (m < 1) { m = 12; y -= 1; }
+  }
+  return result;
+}
+
+/** برچسب کوتاه مبلغ برای محور نمودار: ۱٫۲ م / ۳۵۰ ه */
+function formatAxisAmount(v) {
+  const n = Number(v) || 0;
+  if (n >= 1e9) return formatNumber(Math.round(n / 1e8) / 10) + ' میلیارد';
+  if (n >= 1e6) return formatNumber(Math.round(n / 1e5) / 10) + ' م';
+  if (n >= 1e3) return formatNumber(Math.round(n / 1e3)) + ' ه';
+  return formatNumber(n);
+}
+
+/** خطوط راهنما + برچسب محور Y برای نمودارها */
+function drawYAxis(ctx, padding, chartW, chartH, maxVal) {
+  ctx.save();
+  ctx.strokeStyle = '#f1f5f9';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '10.5px Vazirmatn, Tahoma';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + (chartH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(padding.left + chartW, y);
+    ctx.stroke();
+    const val = maxVal * (1 - i / 4);
+    ctx.fillText(formatAxisAmount(val), padding.left - 6, y);
+  }
+  ctx.restore();
+}
+
+function drawEmptyChartText(ctx, W, H, text) {
+  ctx.save();
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '13px Vazirmatn, Tahoma';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text || 'هنوز داده‌ای ثبت نشده', W / 2, H / 2 - 10);
+  ctx.restore();
+}
+
+/** سهم یک بلوک از هزینه/درآمد مشترک (بر اساس تعداد واحدها) */
+function getBlockShare(blockName) {
+  if (!blockName || blockName === 'all') return 1;
+  const total = UNITS.length;
+  if (!total) return 0;
+  const inBlock = UNITS.filter(u => String(u.block).trim() === String(blockName).trim()).length;
+  return inBlock / total;
+}
+
+/** برچسب واحد: «A-۱۲» یا «واحد ۱۲» */
+function unitLabelOf(unit) {
+  if (!unit) return '—';
+  return (unit.block && unit.block !== '—')
+    ? `${unit.block}-${toPersianNum(unit.number)}`
+    : `واحد ${toPersianNum(unit.number)}`;
+}
+
+/** پرداخت‌کننده اصلی شارژ: مستاجر اگر هست، وگرنه مالک */
+function payerOf(unit) {
+  if (!unit) return { name: null, phone: null };
+  if (unit.tenant?.name) return { name: unit.tenant.name, phone: unit.tenant.phone };
+  return { name: unit.owner?.name || null, phone: unit.owner?.phone || null };
+}
+
+/** پاک کردن کامل اطلاعات پرداخت یک شارژ (برای لغو/رد) */
+function clearChargePayment(charge) {
+  charge.paid = false;
+  charge.paidDate = null;
+  charge.paidAt = null;
+  charge.payMethod = null;
+  charge.payDescription = null;
+  charge.trackingCode = null;
+  charge.pendingApproval = false;
+  charge.pendingAt = null;
+  charge.approvedByManager = false;
+  charge.approvedAt = null;
+  charge.paidByResident = false;
 }
 
 /* ============================================================
@@ -278,7 +446,7 @@ function mergeRegisteredResidentsIntoUnits() {
   let changed = false;
 
   registered.forEach(r => {
-    if (!r) return;
+    if (!r || r.status === 'rejected') return;
     // فقط ساکنین همین ساختمان
     if (buildingCode && r.buildingCode && String(r.buildingCode).toUpperCase() !== buildingCode) return;
 
@@ -334,13 +502,13 @@ function mergeRegisteredResidentsIntoUnits() {
     const isTenant = role === 'tenant' || role === 'مستاجر' || role === 'ساکن';
 
     if (isTenant) {
-      if (!unit.tenant?.name || unit.tenant.name !== person.name) {
+      if (!unit.tenant?.name || unit.tenant.name !== person.name || !!unit.tenant.approved !== person.approved) {
         unit.tenant = { ...person };
         unit.status = 'occupied';
         changed = true;
       }
     } else {
-      if (!unit.owner?.name || unit.owner.name !== person.name) {
+      if (!unit.owner?.name || unit.owner.name !== person.name || !!unit.owner.approved !== person.approved) {
         unit.owner = { ...person };
         unit.status = 'occupied';
         changed = true;
@@ -504,7 +672,10 @@ function switchPage(pageKey) {
     renderReportsPage();
     requestAnimationFrame(() => requestAnimationFrame(() => renderReportsPage()));
   }
-  if (pageKey === 'profit') renderProfitPage();
+  if (pageKey === 'profit') {
+    renderProfitPage();
+    requestAnimationFrame(() => requestAnimationFrame(() => renderProfitPage()));
+  }
   if (pageKey === 'profile') { fillProfileForm(); }
   if (pageKey === 'settings') renderSettingsPage();
   if (pageKey === 'subscription') renderSubscriptionPage();
@@ -514,6 +685,28 @@ function switchPage(pageKey) {
   renderBuildingCard();
   updateAddUnitButtonState();
 }
+
+/* ============ همگام‌سازی زنده با پنل ساکن (تب/پنجره دیگر همین مرورگر) ============ */
+(function bindCrossTabSync() {
+  if (typeof window === 'undefined' || !window.addEventListener) return;
+  let timer = null;
+  window.addEventListener('storage', (e) => {
+    if (!e.key || !e.key.startsWith('ham_sakhteman_')) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      try {
+        loadUnits();
+        const active = document.querySelector('.page.active');
+        const key = active ? active.id.replace('page-', '') : 'dashboard';
+        // صفحات فرم‌دار را وسط ویرایش رفرش نکن
+        if (['settings', 'profile'].includes(key)) return;
+        if (document.querySelector('.modal-overlay.open, .modal.open')) return;
+        switchPage(key);
+        if (typeof refreshNotifications === 'function') refreshNotifications();
+      } catch (err) { console.warn('cross-tab sync', err); }
+    }, 300);
+  });
+})();
 
 /* ============ ۷) فیلتر بلوک داشبورد ============ */
 let currentBlockFilter = 'all';
@@ -654,7 +847,7 @@ function renderDonutChart(paidUnits, debtUnits) {
     ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + paidAngle);
     ctx.strokeStyle = '#22c55e';
     ctx.lineWidth = lineWidth;
-    ctx.lineCap = 'round';
+    ctx.lineCap = 'butt';
     ctx.stroke();
   }
 
@@ -663,7 +856,7 @@ function renderDonutChart(paidUnits, debtUnits) {
     ctx.arc(cx, cy, radius, -Math.PI / 2 + paidAngle, -Math.PI / 2 + Math.PI * 2);
     ctx.strokeStyle = '#ef4444';
     ctx.lineWidth = lineWidth;
-    ctx.lineCap = 'round';
+    ctx.lineCap = 'butt';
     ctx.stroke();
   }
 }
@@ -686,8 +879,9 @@ function getIncomeForMonth(monthName, yearStr) {
   const y = String(yearStr);
   const charges = (typeof loadCharges === 'function' ? loadCharges() : []) || [];
   const side = (typeof loadSideIncomes === 'function' ? loadSideIncomes() : []) || [];
+  // مبنای نقدی: ماهی که پرداخت واقعاً انجام شده (نه ماه صدور شارژ)
   const fromCharges = charges
-    .filter(c => c.paid === true && c.month === monthName && String(c.year) === y)
+    .filter(c => isChargeCollectedIn(c, monthName, y))
     .reduce((s, c) => s + (Number(c.total) || 0), 0);
   const fromSide = side
     .filter(i => i.month === monthName && String(i.year) === y)
@@ -738,18 +932,13 @@ function renderLineChart() {
 
   const hasData = values.some(v => v > 0);
   const maxVal = Math.max(...values, 1) * 1.15;
-  const padding = { top: 20, right: 20, bottom: 40, left: 60 };
+  const padding = { top: 20, right: 20, bottom: 40, left: 64 };
   const chartW = W - padding.left - padding.right;
   const chartH = H - padding.top - padding.bottom;
 
-  ctx.strokeStyle = '#f1f5f9';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = padding.top + (chartH / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, y);
-    ctx.lineTo(padding.left + chartW, y);
-    ctx.stroke();
+  drawYAxis(ctx, padding, chartW, chartH, hasData ? maxVal : 0);
+  if (!hasData) {
+    drawEmptyChartText(ctx, W, H, 'هنوز درآمدی در ۶ ماه اخیر ثبت نشده');
   }
 
   const points = values.map((v, i) => ({
@@ -829,8 +1018,9 @@ function renderStats() {
   const currentYear = String(getTodayPersianYear());
 
   const allCharges = (typeof loadCharges === 'function' ? loadCharges() : []) || [];
+  // وصولی واقعی همین ماه (شامل پرداخت بدهی ماه‌های قبل)
   const chargesIncome = allCharges
-    .filter(c => c.paid === true && c.month === currentMonth && String(c.year) === currentYear)
+    .filter(c => isChargeCollectedIn(c, currentMonth, currentYear))
     .reduce((s, c) => s + (Number(c.total) || 0), 0);
 
   const allSideIncomes = (typeof loadSideIncomes === 'function' ? loadSideIncomes() : []) || [];
@@ -844,7 +1034,9 @@ function renderStats() {
     .filter(e => e.month === currentMonth && String(e.year) === currentYear);
   const expense = expensesThisMonth.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
-  const balance = income - expense;
+  // ✅ «مانده کل در صندوق» = موجودی واقعی (اولیه + همه وصولی‌ها + جانبی − همه هزینه‌ها)
+  // قبلاً فقط درآمد منهای هزینه همین ماه نمایش داده می‌شد
+  const balance = getFundBalance();
 
   let blocksCount = 1;
   if (building.type === 'complex' && Array.isArray(building.blocks)) {
@@ -863,7 +1055,7 @@ function renderStats() {
   if (elDebtors) elDebtors.textContent = formatNumber(debtUnits);
   if (elExpense) elExpense.textContent = formatToman(expense);
   if (elBlocks)  elBlocks.textContent  = formatNumber(blocksCount);
-  if (elBalance) elBalance.textContent = formatToman(balance);
+  if (elBalance) elBalance.textContent = (balance < 0 ? '−' : '') + formatToman(Math.abs(balance));
 
   // درصد پرداخت = تسویه‌شده / (تسویه‌شده + بدهکار)
   const classified = paidUnits + debtUnits;
@@ -1850,10 +2042,86 @@ function renderUnitsStats() {
   if (elBlocks) elBlocks.textContent = formatNumber(blocksCount);
 }
 
+/* ============================================================
+   👥 تأیید ثبت‌نام ساکنین (اتصال پنل ساکن ↔ مدیر)
+   ============================================================ */
+function loadRegisteredResidentsForBuilding() {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem('ham_sakhteman_registered_residents') || '[]') || []; } catch (e) { list = []; }
+  const code = (loadData()?.building?.code || '').toUpperCase();
+  return { all: list, mine: list.filter(r => r && (!code || String(r.buildingCode || '').toUpperCase() === code)) };
+}
+
+function renderPendingResidentsBanner() {
+  const page = document.getElementById('page-units');
+  if (!page) return;
+  let host = document.getElementById('pendingResidentsBanner');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'pendingResidentsBanner';
+    host.style.cssText = 'margin: 0 0 16px 0;';
+    const tableBox = page.querySelector('.table-box');
+    if (tableBox && tableBox.parentElement) tableBox.parentElement.insertBefore(host, tableBox);
+    else page.insertBefore(host, page.firstChild);
+  }
+
+  const pending = loadRegisteredResidentsForBuilding().mine.filter(r => r.status === 'pending');
+  if (pending.length === 0) { host.innerHTML = ''; host.style.display = 'none'; return; }
+  host.style.display = 'block';
+
+  const rows = pending.map(r => {
+    const unitLbl = (r.block && r.block !== '—') ? `${escapeHtml(r.block)}-${toPersianNum(r.unitNumber)}` : `واحد ${toPersianNum(r.unitNumber)}`;
+    const roleLbl = (r.role === 'tenant' || r.role === 'مستاجر') ? 'مستاجر' : 'مالک';
+    return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:#fff;border-radius:10px;padding:10px 12px;border:1px solid #c7d2fe;">
+        <div style="font-size:13px;color:#334155;"><strong>${unitLbl}</strong> — ${escapeHtml(r.name)} (${roleLbl}) — <span dir="ltr">${escapeHtml(r.phone)}</span></div>
+        <div style="display:flex;gap:6px;">
+          <button type="button" class="btn btn-primary" data-approve-resident="${r.id}" style="padding:6px 14px;font-size:13px;">✅ تأیید</button>
+          <button type="button" class="btn btn-danger" data-reject-resident="${r.id}" style="padding:6px 14px;font-size:13px;">✖ رد</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  host.innerHTML = `<div style="background:#eef2ff;border:1px solid #a5b4fc;border-radius:14px;padding:14px 16px;">
+      <div style="font-weight:800;color:#4338ca;margin-bottom:10px;">👥 ${formatNumber(pending.length)} ثبت‌نام ساکن در انتظار تأیید</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">${rows}</div>
+    </div>`;
+
+  host.querySelectorAll('[data-approve-resident]').forEach(b => b.addEventListener('click', () => setResidentRegistrationStatus(Number(b.dataset.approveResident), 'approved')));
+  host.querySelectorAll('[data-reject-resident]').forEach(b => b.addEventListener('click', () => setResidentRegistrationStatus(Number(b.dataset.rejectResident), 'rejected')));
+}
+
+function setResidentRegistrationStatus(residentId, status) {
+  const { all } = loadRegisteredResidentsForBuilding();
+  const r = all.find(x => Number(x.id) === Number(residentId));
+  if (!r) return;
+  if (status === 'rejected' && !confirm(`ثبت‌نام «${r.name}» رد شود؟ اطلاعات او از واحد حذف می‌شود.`)) return;
+
+  r.status = status;
+  r.reviewedAt = new Date().toISOString();
+  localStorage.setItem('ham_sakhteman_registered_residents', JSON.stringify(all));
+
+  const block = String(r.block || '—').trim() || '—';
+  const unit = UNITS.find(u => String(u.block || '').trim() === block && Number(u.number) === Number(r.unitNumber));
+  if (unit) {
+    const isTenant = r.role === 'tenant' || r.role === 'مستاجر' || r.role === 'ساکن';
+    const slot = isTenant ? 'tenant' : 'owner';
+    if (unit[slot] && unit[slot].phone === r.phone) {
+      if (status === 'approved') unit[slot].approved = true;
+      else unit[slot] = { name: null, phone: null, birthDate: null, nationalId: null, type: 'settled', registered: false, approved: false };
+    }
+    saveUnits();
+  }
+  renderPendingResidentsBanner();
+  renderUnitsPage();
+  toastSuccess(status === 'approved' ? 'ثبت‌نام ساکن تأیید شد.' : 'ثبت‌نام رد شد.');
+}
+
 function renderUnitsPage() {
   const tbody = document.getElementById('unitsTableBody');
   const countLabel = document.getElementById('unitsCountLabel');
   if (!tbody) return;
+
+  try { renderPendingResidentsBanner(); } catch (e) { console.warn(e); }
 
   updateAddUnitButtonState();
 
@@ -2884,7 +3152,10 @@ function renderChargesPage() {
     .filter(c => c.paid)
     .reduce((s, c) => s + (Number(c.total) || 0), 0);
 
-  const expenseSum = charges.reduce((s, c) => s + (Number(c.extra) || 0), 0);
+  // مانده وصول‌نشده همین دوره (قبلاً به اشتباه جمع «extra» با عنوان هزینه‌ها نمایش داده می‌شد)
+  const expenseSum = charges
+    .filter(c => !c.paid)
+    .reduce((s, c) => s + (Number(c.total) || 0), 0);
   const elTotal = document.getElementById('chargeTotal');
   const elPaid = document.getElementById('chargePaid');
   const elUnpaid = document.getElementById('chargeUnpaid');
@@ -2934,14 +3205,17 @@ function renderPendingPaymentsBanner() {
     const label = unit
       ? ((unit.block && unit.block !== '—') ? (unit.block + '-' + toPersianNum(unit.number)) : ('واحد ' + toPersianNum(unit.number)))
       : '—';
-    const track = c.trackingCode ? (' — پیگیری: <span dir="ltr">' + c.trackingCode + '</span>') : '';
+    const track = c.trackingCode ? (' — پیگیری: <span dir="ltr">' + escapeHtml(c.trackingCode) + '</span>') : '';
     return (
       '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:#fff;border-radius:10px;padding:10px 12px;border:1px solid #fde68a;">' +
         '<div style="font-size:13px;color:#334155;">' +
           '<strong>' + label + '</strong> — ' + c.month + ' ' + toPersianNum(c.year) +
           ' — ' + formatToman(c.total) + ' — ' + (c.payMethod || '—') + track +
         '</div>' +
-        '<button type="button" class="btn btn-primary" data-approve-charge="' + c.id + '" style="padding:6px 14px;font-size:13px;">✅ تأیید پرداخت</button>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<button type="button" class="btn btn-primary" data-approve-charge="' + c.id + '" style="padding:6px 14px;font-size:13px;">✅ تأیید پرداخت</button>' +
+          '<button type="button" class="btn btn-danger" data-reject-charge="' + c.id + '" style="padding:6px 14px;font-size:13px;">✖ رد</button>' +
+        '</div>' +
       '</div>'
     );
   }).join('');
@@ -2955,6 +3229,11 @@ function renderPendingPaymentsBanner() {
   host.querySelectorAll('[data-approve-charge]').forEach(btn => {
     btn.addEventListener('click', () => {
       approveResidentPayment(Number(btn.dataset.approveCharge));
+    });
+  });
+  host.querySelectorAll('[data-reject-charge]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      rejectResidentPayment(Number(btn.dataset.rejectCharge));
     });
   });
 }
@@ -2978,10 +3257,11 @@ function renderChargesTable(charges) {
   }
 
   tbody.innerHTML = charges.map(c => {
-    const unit = UNITS.find(u => u.id === c.unitId);
-    const blockName = unit?.block || '—';
-    const unitNumber = unit ? toPersianNum(unit.number) : '—';
-    const ownerName = unit?.owner?.name || '<span style="color:#94a3b8;">ثبت‌نام نکرده</span>';
+    const unit = UNITS.find(u => Number(u.id) === Number(c.unitId));
+    const blockName = unit?.block || c.block || '—';
+    const unitNumber = unit ? toPersianNum(unit.number) : (c.unitNumber ? toPersianNum(c.unitNumber) : '—');
+    const payer = payerOf(unit);
+    const ownerName = payer.name ? escapeHtml(payer.name) : '<span style="color:#94a3b8;">ثبت‌نام نکرده</span>';
 
     let payMethodBadge = '<span style="color:#94a3b8;">—</span>';
     const methodIcons = {
@@ -2995,7 +3275,7 @@ function renderChargesTable(charges) {
       const icon = methodIcons[c.payMethod] || '💰';
       payMethodBadge = `<span class="badge ${c.paid ? 'badge-paid' : 'badge-debt'}">${icon} ${c.payMethod}</span>`;
       if (c.trackingCode) {
-        payMethodBadge += `<div style="font-size:11px;color:#64748b;margin-top:4px;direction:ltr;">${c.trackingCode}</div>`;
+        payMethodBadge += `<div style="font-size:11px;color:#64748b;margin-top:4px;direction:ltr;">${escapeHtml(c.trackingCode)}</div>`;
       }
     } else if (c.paid) {
       payMethodBadge = '<span class="badge badge-paid">💰 نامشخص</span>';
@@ -3016,6 +3296,10 @@ function renderChargesTable(charges) {
         <button class="row-action-btn" data-approve-charge="${c.id}" title="تأیید پرداخت ساکن"
           style="background:#dcfce7;color:#15803d;border:1px solid #86efac;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer;">
           ✅ تأیید
+        </button>
+        <button class="row-action-btn" data-reject-charge="${c.id}" title="رد اعلام پرداخت"
+          style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer;">
+          ✖ رد
         </button>
         <button class="row-action-btn" data-charge-id="${c.id}" title="جزئیات">💳</button>
       `;
@@ -3066,6 +3350,11 @@ function bindChargesPage() {
         approveResidentPayment(chargeId);
         return;
       }
+      const rejectBtn = e.target.closest('[data-reject-charge]');
+      if (rejectBtn) {
+        rejectResidentPayment(Number(rejectBtn.dataset.rejectCharge));
+        return;
+      }
       const btn = e.target.closest('[data-charge-id]');
       if (!btn) return;
       const chargeId = Number(btn.dataset.chargeId);
@@ -3089,10 +3378,14 @@ function approveResidentPayment(chargeId) {
   if (!confirm('آیا پرداخت ساکن را تأیید می‌کنید؟ پس از تأیید، شارژ تسویه می‌شود.')) return;
 
   const now = new Date();
+  // تاریخ وصول = تاریخی که ساکن واریز را اعلام کرده (نه لحظه تأیید مدیر)
+  const declaredAt = charge.pendingAt || now.toISOString();
   charge.paid = true;
   charge.pendingApproval = false;
-  charge.paidDate = now.toLocaleDateString('fa-IR');
-  charge.paidAt = now.toISOString();
+  charge.paidDate = charge.paidDate || getTodayPersianDateFromIso(declaredAt);
+  charge.paidAt = declaredAt;
+  charge.rejectedAt = null;
+  charge.rejectReason = null;
   charge.approvedByManager = true;
   charge.approvedAt = now.toISOString();
   if (!charge.payMethod) charge.payMethod = 'کارت به کارت';
@@ -3109,6 +3402,36 @@ function approveResidentPayment(chargeId) {
   }
 
   toastSuccess('پرداخت ساکن تأیید و شارژ تسویه شد.');
+}
+
+/** ISO → «۱۴۰۵/۰۸/۱۳» */
+function getTodayPersianDateFromIso(iso) {
+  const p = isoToPersianParts(iso) || getTodayPersian();
+  return toPersianNum(`${p.year}/${String(p.month).padStart(2, '0')}/${String(p.day).padStart(2, '0')}`);
+}
+
+/** رد اعلام پرداخت ساکن (مثلاً شماره پیگیری نامعتبر) */
+function rejectResidentPayment(chargeId) {
+  const charges = loadCharges();
+  const charge = charges.find(c => Number(c.id) === Number(chargeId));
+  if (!charge || charge.paid || !charge.pendingApproval) {
+    toastWarning('این اعلام پرداخت پیدا نشد یا قبلاً بررسی شده.');
+    return;
+  }
+  const reason = prompt('دلیل رد پرداخت (برای ساکن نمایش داده می‌شود):', 'واریز با این شماره پیگیری پیدا نشد');
+  if (reason === null) return;
+
+  const tracking = charge.trackingCode;
+  clearChargePayment(charge);
+  charge.rejectedAt = new Date().toISOString();
+  charge.rejectReason = reason.trim() || 'رد شده توسط مدیر';
+  charge.lastRejectedTracking = tracking || null;
+
+  saveCharges(charges);
+  updateUnitsDebtFromCharges();
+  renderChargesPage();
+  if (typeof renderDashboard === 'function') renderDashboard();
+  toastInfo('اعلام پرداخت رد شد و شارژ دوباره «پرداخت نشده» است.');
 }
 
 /* ============================================================
@@ -3138,22 +3461,52 @@ function openIssueChargeModal() {
     }
   }
 
-  document.getElementById('chargeCalcType').value = 'combined';
+  // ✅ به‌جای اعداد ساختگی (۵۰۰ هزار، ۵ هزار/متر ...) از تنظیمات مالی و آخرین صدور استفاده می‌شود
+  const settings = loadSettings();
+  const monthly = Number(settings.monthlyCharge) || 0;
+  const last = settings.lastChargeConfig || null;
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+
+  if (last) {
+    setVal('chargeCalcType', last.type || 'fixed');
+    setVal('issueBaseCharge', last.baseCharge);
+    setVal('issuePricePerMeter', last.pricePerMeter);
+    setVal('issueBaseChargeForArea', last.baseChargeForArea);
+    setVal('issuePricePerPerson', last.pricePerPerson);
+    setVal('issueBaseChargeCombined', last.baseChargeCombined);
+    setVal('issuePricePerMeterCombined', last.pricePerMeterCombined);
+    setVal('issuePricePerPersonCombined', last.pricePerPersonCombined);
+    setVal('issueExtraChargeCombined', last.extraChargeCombined);
+    setVal('issueDefaultCustomAmount', last.defaultCustomAmount);
+    setChk('includeBaseCharge', last.includeBaseCharge);
+    setChk('includeAreaCharge', last.includeAreaCharge);
+    setChk('includeWaterCharge', last.includeWaterCharge);
+    setChk('includeExtraCharge', last.includeExtraCharge);
+  } else {
+    setVal('chargeCalcType', 'fixed');
+    setVal('issueBaseCharge', monthly);
+    setVal('issuePricePerMeter', '');
+    setVal('issueBaseChargeForArea', '');
+    setVal('issuePricePerPerson', '');
+    setVal('issueBaseChargeCombined', monthly);
+    setVal('issuePricePerMeterCombined', '');
+    setVal('issuePricePerPersonCombined', '');
+    setVal('issueExtraChargeCombined', '');
+    setVal('issueDefaultCustomAmount', monthly);
+    setChk('includeBaseCharge', true);
+    setChk('includeAreaCharge', false);
+    setChk('includeWaterCharge', false);
+    setChk('includeExtraCharge', false);
+  }
   document.getElementById('issueUnitStatusFilter').value = 'all';
-  document.getElementById('issueBaseCharge').value = 500000;
-  document.getElementById('issuePricePerMeter').value = 5000;
-  document.getElementById('issueBaseChargeForArea').value = 100000;
-  document.getElementById('issuePricePerPerson').value = 50000;
-  document.getElementById('issueBaseChargeCombined').value = 300000;
-  document.getElementById('issuePricePerMeterCombined').value = 2000;
-  document.getElementById('issuePricePerPersonCombined').value = 50000;
-  document.getElementById('issueExtraChargeCombined').value = 0;
-  document.getElementById('issueDefaultCustomAmount').value = 500000;
-  document.getElementById('includeBaseCharge').checked = true;
-  document.getElementById('includeAreaCharge').checked = true;
-  document.getElementById('includeWaterCharge').checked = true;
-  document.getElementById('includeExtraCharge').checked = false;
-  document.getElementById('issueDueDate').value = '';
+
+  // مهلت پرداخت از تنظیمات: روز N همان ماه
+  const deadline = Number(settings.paymentDeadline) || 0;
+  const mIdx = PERSIAN_MONTHS.indexOf(currentChargeMonth) + 1;
+  document.getElementById('issueDueDate').value = (deadline > 0 && mIdx > 0)
+    ? toPersianNum(`${currentChargeYear}/${String(mIdx).padStart(2, '0')}/${String(Math.min(deadline, mIdx <= 6 ? 31 : 30)).padStart(2, '0')}`)
+    : '';
   document.getElementById('issueDescription').value = '';
 
   toggleChargeSections();
@@ -3226,7 +3579,10 @@ function calculateUnitCharge(unit, chargeConfig) {
   }
 
   if (type === 'default') {
-    return unit.chargeAmount || 0;
+    // شارژ پیش‌فرض واحد: اگر مستاجر دارد مبلغ مستاجر، وگرنه مبلغ مالک
+    const hasTenant = !!(unit.tenant?.name || unit.tenant?.registered);
+    const roleDefault = hasTenant ? Number(unit.defaultChargeTenant) : Number(unit.defaultChargeOwner);
+    return roleDefault > 0 ? roleDefault : (Number(unit.chargeAmount) || 0);
   }
 
   if (type === 'combined') {
@@ -3335,14 +3691,6 @@ function issueChargeConfirm() {
     return;
   }
 
-  // چک: آیا برای این ماه قبلاً شارژ صادر شده؟
-  const existingCharges = getChargesForMonth(month, year);
-  if (existingCharges.length > 0) {
-    if (!confirm(`⚠️ برای ${month} ${toPersianNum(year)} قبلاً ${existingCharges.length} شارژ صادر شده.\n\nآیا شارژهای قبلی حذف و شارژ جدید صادر شود؟`)) {
-      return;
-    }
-  }
-
   let units = UNITS;
 
   if (blockFilter !== 'all') {
@@ -3360,23 +3708,45 @@ function issueChargeConfirm() {
     return;
   }
 
-  // حذف شارژهای قبلی این ماه
-  let charges = loadCharges();
+  // ✅ اصلاح حسابداری: فقط شارژهای «همین واحدها» در این ماه بررسی می‌شوند
+  // و شارژهای پرداخت‌شده یا در انتظار تأیید هرگز حذف نمی‌شوند.
+  const unitIds = new Set(units.map(u => Number(u.id)));
+  const existingCharges = getChargesForMonth(month, year).filter(c => unitIds.has(Number(c.unitId)));
+  const lockedCharges = existingCharges.filter(c => c.paid || c.pendingApproval);
+  const replaceableCharges = existingCharges.filter(c => !c.paid && !c.pendingApproval);
+  const lockedUnitIds = new Set(lockedCharges.map(c => Number(c.unitId)));
+
   if (existingCharges.length > 0) {
-    const existingIds = existingCharges.map(c => c.id);
-    charges = charges.filter(c => !existingIds.includes(c.id));
+    let msg = `⚠️ برای ${month} ${toPersianNum(year)} قبلاً برای ${toPersianNum(existingCharges.length)} واحد شارژ صادر شده.`;
+    if (replaceableCharges.length) msg += `\n• ${toPersianNum(replaceableCharges.length)} شارژ پرداخت‌نشده با مبلغ جدید جایگزین می‌شود.`;
+    if (lockedCharges.length) msg += `\n• ${toPersianNum(lockedCharges.length)} شارژ پرداخت‌شده/در انتظار تأیید دست نمی‌خورد.`;
+    msg += '\n\nادامه می‌دهید؟';
+    if (!confirm(msg)) return;
   }
 
-  let lastId = charges.length > 0 ? Math.max(...charges.map(c => c.id || 0)) : 0;
+  let charges = loadCharges();
+  if (replaceableCharges.length > 0) {
+    const replaceIds = new Set(replaceableCharges.map(c => c.id));
+    charges = charges.filter(c => !replaceIds.has(c.id));
+  }
 
-  const newCharges = units.map(u => {
-    const amount = calculateUnitCharge(u, chargeConfig);
+  let lastId = charges.length > 0 ? Math.max(...charges.map(c => Number(c.id) || 0)) : 0;
+
+  const targetUnits = units.filter(u => !lockedUnitIds.has(Number(u.id)));
+  if (targetUnits.length === 0) {
+    toastInfo('همه واحدهای انتخاب‌شده برای این ماه پرداخت کرده‌اند؛ شارژ جدیدی صادر نشد.');
+    return;
+  }
+
+  const newCharges = targetUnits.map(u => {
+    const amount = Math.max(0, Math.round(calculateUnitCharge(u, chargeConfig)));
     return {
       id: ++lastId,
       month: month,
       year: String(year),
       unitId: u.id,
       block: u.block,
+      unitNumber: u.number,
       amount: amount,
       extra: 0,
       total: amount,
@@ -3384,12 +3754,25 @@ function issueChargeConfirm() {
       paidDate: null,
       dueDate: dueDate,
       description: description,
+      calcType: chargeConfig.type,
       issuedAt: new Date().toISOString(),
     };
-  });
+  }).filter(c => c.total > 0);
+
+  if (newCharges.length === 0) {
+    toastWarning('مبلغ شارژ برای همه واحدها صفر شد. تنظیمات محاسبه را بررسی کنید.');
+    return;
+  }
 
   charges = charges.concat(newCharges);
   saveCharges(charges);
+
+  // آخرین تنظیمات صدور برای دفعه بعد
+  try {
+    const st = loadSettings();
+    st.lastChargeConfig = chargeConfig;
+    saveSettings(st);
+  } catch (e) {}
 
   updateUnitsDebtFromCharges();
 
@@ -3400,8 +3783,8 @@ function issueChargeConfirm() {
   renderChargesPage();
 
   const msg = blockFilter === 'all'
-    ? `شارژ ${month} ${toPersianNum(year)} برای ${units.length} واحد صادر شد.`
-    : `شارژ بلوک ${blockFilter} برای ${month} ${toPersianNum(year)} (${units.length} واحد) صادر شد.`;
+    ? `شارژ ${month} ${toPersianNum(year)} برای ${toPersianNum(newCharges.length)} واحد صادر شد.`
+    : `شارژ بلوک ${blockFilter} برای ${month} ${toPersianNum(year)} (${toPersianNum(newCharges.length)} واحد) صادر شد.`;
 
   toastSuccess(msg);
 }
@@ -3496,7 +3879,7 @@ function openPayChargeModal(chargeId) {
 
   if (subtitle) subtitle.textContent = `واحد ${unitLabel} — ${charge.month} ${toPersianNum(charge.year)}`;
 
-  const today = new Date().toLocaleDateString('fa-IR');
+  const today = getTodayPersianDateFromIso(new Date().toISOString());
   const payDate = document.getElementById('payDate');
   if (payDate) payDate.value = charge.paidDate || today;
 
@@ -3543,10 +3926,7 @@ function confirmPayCharge() {
   if (charge.paid) {
     if (!confirm('⚠️ آیا از لغو پرداخت این شارژ مطمئن هستید؟')) return;
 
-    charge.paid = false;
-    charge.paidDate = null;
-    charge.payMethod = null;
-    charge.payDescription = null;
+    clearChargePayment(charge);
     saveCharges(charges);
     updateUnitsDebtFromCharges();
     closePayChargeModal();
@@ -3563,11 +3943,19 @@ function confirmPayCharge() {
     return;
   }
 
+  if (!parsePersianDateParts(payDate)) {
+    toastWarning('تاریخ پرداخت را به شکل ۱۴۰۵/۰۸/۱۳ وارد کنید.');
+    return;
+  }
+
   charge.paid = true;
   charge.paidDate = payDate;
   charge.payMethod = payMethod;
   charge.payDescription = payDescription;
   charge.paidAt = new Date().toISOString();
+  charge.pendingApproval = false;
+  charge.rejectedAt = null;
+  charge.rejectReason = null;
 
   saveCharges(charges);
   updateUnitsDebtFromCharges();
@@ -3600,6 +3988,7 @@ let paymentsSortColumn = 'date';
 let paymentsSortDirection = 'desc';
 let paymentsSearchQuery = '';
 let paymentsMonthFilter = 'all';
+let paymentsYearFilter = String(getTodayPersianYear());
 
 function getPaidCharges() {
   const charges = loadCharges();
@@ -3609,8 +3998,14 @@ function getPaidCharges() {
 function getFilteredPayments() {
   let list = getPaidCharges();
 
-  if (paymentsMonthFilter !== 'all') {
-    list = list.filter(c => c.month === paymentsMonthFilter);
+  // فیلتر بر اساس تاریخ واقعی پرداخت (ماه + سال)، نه فقط نام ماه
+  if (paymentsMonthFilter !== 'all' || paymentsYearFilter !== 'all') {
+    list = list.filter(c => {
+      const p = getChargeCashPeriod(c);
+      if (paymentsYearFilter !== 'all' && String(p.year) !== String(paymentsYearFilter)) return false;
+      if (paymentsMonthFilter !== 'all' && p.month !== paymentsMonthFilter) return false;
+      return true;
+    });
   }
 
   if (paymentsSearchQuery.trim() !== '') {
@@ -3639,8 +4034,9 @@ function getFilteredPayments() {
 
       switch (paymentsSortColumn) {
         case 'date':
-          valA = a.paidDate || '';
-          valB = b.paidDate || '';
+          // مرتب‌سازی عددی تاریخ شمسی (قبلاً متنی بود و ۱۴۰۵/۱۰/۲ قبل از ۱۴۰۵/۹/۵ می‌آمد)
+          valA = persianDateSortKey(a.paidDate, a.paidAt);
+          valB = persianDateSortKey(b.paidDate, b.paidAt);
           break;
         case 'block':
           valA = String(a.block || '').trim();
@@ -3688,8 +4084,9 @@ function renderPaymentsStats() {
   const allPaid = getPaidCharges();
 
   const total = allPaid.length;
+  // تعداد پرداخت‌های ماه جاری تقویم (قبلاً به ماه انتخاب‌شده در صفحه شارژ وابسته بود)
   const thisMonth = allPaid.filter(c =>
-    c.month === currentChargeMonth && c.year === currentChargeYear
+    isChargeCollectedIn(c, getTodayPersianMonth(), String(getTodayPersianYear()))
   ).length;
   const sum = allPaid.reduce((s, c) => s + (Number(c.total) || 0), 0);
   const avg = total > 0 ? Math.round(sum / total) : 0;
@@ -4319,13 +4716,14 @@ function renderPaymentsPage() {
   }
 
   tbody.innerHTML = payments.map(c => {
-    const unit = UNITS.find(u => u.id === c.unitId);
-    const blockName = unit?.block || '—';
-    const unitNumber = unit ? toPersianNum(unit.number) : '—';
-    const ownerName = unit?.owner?.name || '<span style="color:#94a3b8;">ثبت‌نام نکرده</span>';
-    const payDate = c.paidDate || '—';
-    const payMethod = c.payMethod || '—';
-    const description = c.payDescription || '—';
+    const unit = UNITS.find(u => Number(u.id) === Number(c.unitId));
+    const blockName = unit?.block || c.block || '—';
+    const unitNumber = unit ? toPersianNum(unit.number) : (c.unitNumber ? toPersianNum(c.unitNumber) : '—');
+    const payer = payerOf(unit);
+    const ownerName = payer.name ? escapeHtml(payer.name) : '<span style="color:#94a3b8;">ثبت‌نام نکرده</span>';
+    const payDate = escapeHtml(c.paidDate || '—');
+    const payMethod = escapeHtml(c.payMethod || '—');
+    const description = escapeHtml(c.payDescription || '—') + ` <span style="color:#94a3b8;">(شارژ ${c.month} ${toPersianNum(c.year)})</span>`;
 
     return `
       <tr>
@@ -4345,6 +4743,17 @@ function renderPaymentsPage() {
 }
 
 function bindPaymentsPage() {
+  const yearFilter = document.getElementById('paymentsYearFilter');
+  if (yearFilter) {
+    const cy = getTodayPersianYear();
+    yearFilter.innerHTML = '<option value="all">همه سال‌ها</option>' +
+      [cy - 2, cy - 1, cy, cy + 1].map(y => `<option value="${y}" ${y === cy ? 'selected' : ''}>${toPersianNum(y)}</option>`).join('');
+    yearFilter.addEventListener('change', (e) => {
+      paymentsYearFilter = e.target.value;
+      renderPaymentsPage();
+    });
+  }
+
   const monthFilter = document.getElementById('paymentsMonthFilter');
   if (monthFilter) {
     monthFilter.addEventListener('change', (e) => {
@@ -4420,10 +4829,7 @@ function cancelPayment(chargeId) {
   const charge = charges.find(c => c.id === chargeId);
   if (!charge) return;
 
-  charge.paid = false;
-  charge.paidDate = null;
-  charge.payMethod = null;
-  charge.payDescription = null;
+  clearChargePayment(charge);
 
   saveCharges(charges);
   updateUnitsDebtFromCharges();
@@ -4538,10 +4944,15 @@ function openNewPaymentModal() {
   document.getElementById('newPayDescription').value = '';
   updateNewPaySelectedInfo();
 
-  const today = new Date().toLocaleDateString('fa-IR');
+  const today = getTodayPersianDateFromIso(new Date().toISOString());
   document.getElementById('newPayDate').value = today;
 
   modal.classList.add('open');
+
+  // ✅ ساختمان تک‌بلوکی: لیست واحدها بلافاصله نمایش داده شود (قبلاً خالی می‌ماند)
+  if (data?.building?.type !== 'complex') {
+    updateNewPayUnits();
+  }
 }
 
 function closeNewPaymentModal() {
@@ -4577,7 +4988,7 @@ function updateNewPayUnits() {
     const totalUnpaid = unpaidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
 
     const ownerName = u.owner?.name || 'ثبت‌نام نکرده';
-    const unitLabel = `${u.block}-${toPersianNum(u.number)}`;
+    const unitLabel = unitLabelOf(u);
 
     if (unpaidCharges.length === 0) {
       return `
@@ -4706,8 +5117,8 @@ function confirmNewPayment() {
     return;
   }
 
-  if (!payDate) {
-    toastWarning('لطفاً تاریخ پرداخت را وارد کنید.');
+  if (!payDate || !parsePersianDateParts(payDate)) {
+    toastWarning('تاریخ پرداخت را به شکل ۱۴۰۵/۰۸/۱۳ وارد کنید.');
     return;
   }
 
@@ -4723,6 +5134,7 @@ function confirmNewPayment() {
     const charge = charges.find(c => c.id === item.chargeId);
     if (charge && !charge.paid) {
       charge.paid = true;
+      charge.pendingApproval = false;
       charge.paidDate = payDate;
       charge.payMethod = payMethod;
       charge.payDescription = payDescription;
@@ -5406,7 +5818,7 @@ function renderNoticeUnitsList() {
   container.innerHTML = units.map(u => {
     const isSelected = noticeSelectedUnits.includes(u.id);
     const ownerName = u.owner?.name || 'ثبت‌نام نکرده';
-    const unitLabel = `${u.block}-${toPersianNum(u.number)}`;
+    const unitLabel = unitLabelOf(u);
 
     return `
       <label class="pay-unit-item ${isSelected ? 'selected' : ''}" data-notice-unit="${u.id}">
@@ -5925,7 +6337,7 @@ function renderMessageUnits() {
 
   select.innerHTML = units.map(u => {
     const ownerName = u.owner?.name || 'ثبت‌نام نکرده';
-    const unitLabel = `${u.block}-${toPersianNum(u.number)}`;
+    const unitLabel = unitLabelOf(u);
     return `<option value="${u.id}">${unitLabel} — ${ownerName}</option>`;
   }).join('');
 }
@@ -6799,95 +7211,137 @@ function bindVotingPage() {
 let reportPeriod = 'thisMonth';
 
 function getReportDateRange() {
-  const currentMonth = currentChargeMonth || getTodayPersianMonth();
-  const currentYear = String(currentChargeYear || getTodayPersianYear());
+  // ✅ اصلاح: «این ماه» یعنی ماه جاری تقویم، نه ماهی که در صفحه شارژ انتخاب شده
+  const today = getTodayPersian();
+  const currentMonth = PERSIAN_MONTHS[today.month - 1];
+  const currentYear = String(today.year);
+  const monthRange = (monthName, yearStr) => {
+    const m = PERSIAN_MONTHS.indexOf(monthName) + 1;
+    const y = parseInt(toEnDigits(yearStr), 10);
+    return { fromKey: y * 10000 + m * 100 + 1, toKey: y * 10000 + m * 100 + 31 };
+  };
+
+  let label = 'همه دوره‌ها';
+  let fromKey = 0;
+  let toKey = 99999999;
 
   if (reportPeriod === 'thisMonth') {
-    return {
-      label: `${currentMonth} ${toPersianNum(currentYear)}`,
-      filterFn: (item) => item.month === currentMonth && String(item.year) === currentYear,
-    };
-  }
-
-  if (reportPeriod === 'lastMonth') {
-    const idx = PERSIAN_MONTHS.indexOf(currentMonth);
-    const lastIdx = idx > 0 ? idx - 1 : 11;
-    const lastMonth = PERSIAN_MONTHS[lastIdx];
-    const lastYear = idx > 0 ? currentYear : String(parseInt(currentYear, 10) - 1);
-
-    return {
-      label: `${lastMonth} ${toPersianNum(lastYear)}`,
-      filterFn: (item) => item.month === lastMonth && String(item.year) === String(lastYear),
-    };
-  }
-
-  if (reportPeriod === 'specificMonth') {
+    label = `${currentMonth} ${toPersianNum(currentYear)}`;
+    ({ fromKey, toKey } = monthRange(currentMonth, currentYear));
+  } else if (reportPeriod === 'lastMonth') {
+    const prev = getLastNPersianMonths(2)[0];
+    label = `${prev.month} ${toPersianNum(prev.year)}`;
+    ({ fromKey, toKey } = monthRange(prev.month, prev.year));
+  } else if (reportPeriod === 'specificMonth') {
     const month = document.getElementById('reportMonthSelect')?.value || currentMonth;
     const year = String(document.getElementById('reportMonthYearSelect')?.value || currentYear);
-
-    return {
-      label: `${month} ${toPersianNum(year)}`,
-      filterFn: (item) => item.month === month && String(item.year) === year,
-    };
-  }
-
-  if (reportPeriod === 'thisYear') {
-    return {
-      label: `سال ${toPersianNum(currentYear)}`,
-      filterFn: (item) => String(item.year) === currentYear,
-    };
-  }
-
-  if (reportPeriod === 'custom') {
+    label = `${month} ${toPersianNum(year)}`;
+    ({ fromKey, toKey } = monthRange(month, year));
+  } else if (reportPeriod === 'thisYear') {
+    const y = parseInt(currentYear, 10);
+    label = `سال ${toPersianNum(currentYear)}`;
+    fromKey = y * 10000 + 101;
+    toKey = y * 10000 + 1231;
+  } else if (reportPeriod === 'custom') {
     const fromDate = document.getElementById('reportFromDate')?.value.trim() || '';
     const toDate = document.getElementById('reportToDate')?.value.trim() || '';
-
-    if (!fromDate && !toDate) {
-      return { label: 'دستی (بازه نامشخص)', filterFn: () => true };
+    const f = parsePersianDateParts(fromDate);
+    const t = parsePersianDateParts(toDate);
+    if (!f && !t) {
+      label = 'دستی (بازه نامشخص)';
+    } else {
+      label = `${fromDate || '—'} تا ${toDate || '—'}`;
+      if (f) fromKey = f.year * 10000 + f.month * 100 + f.day;
+      if (t) toKey = t.year * 10000 + t.month * 100 + t.day;
     }
-
-    const fromG = fromDate ? parseReportDate(fromDate) : null;
-    const toG = toDate ? parseReportDate(toDate) : null;
-
-    return {
-      label: `${fromDate || '—'} تا ${toDate || '—'}`,
-      filterFn: (item) => {
-        if (!item.createdAt) return false;
-        const itemDate = new Date(item.createdAt);
-
-        if (fromG && itemDate < fromG) return false;
-        if (toG && itemDate > toG) return false;
-        return true;
-      },
-    };
   }
 
-  return { label: 'همه دوره‌ها', filterFn: () => true };
+  const inRange = (key) => key >= fromKey && key <= toKey;
+  return {
+    label,
+    fromKey,
+    toKey,
+    inRange,
+    // دوره صدور شارژ (برای آمار تعهدی: چند شارژ صادر شد / چندتا وصول شد)
+    chargeInPeriod: (c) => {
+      const m = PERSIAN_MONTHS.indexOf(c.month) + 1;
+      const y = parseInt(toEnDigits(c.year), 10);
+      if (!m || !y) return false;
+      // شارژ ماهانه کل ماه را پوشش می‌دهد؛ با بازه همپوشانی داشته باشد
+      const start = y * 10000 + m * 100 + 1;
+      const end = y * 10000 + m * 100 + 31;
+      return start <= toKey && end >= fromKey;
+    },
+    // وصول نقدی (برای درآمد و مانده صندوق)
+    collectedInPeriod: (c) => c.paid === true && inRange(getChargeCashPeriod(c).key || persianDateSortKey(null, c.paidAt) || 0),
+    // هزینه/درآمد جانبی بر اساس ماه/سال ثبت‌شده + روز از تاریخ
+    entryInPeriod: (item) => {
+      const m = PERSIAN_MONTHS.indexOf(item.month) + 1;
+      const y = parseInt(toEnDigits(item.year), 10);
+      let key;
+      if (m && y) {
+        const p = parsePersianDateParts(item.date);
+        const d = (p && p.year === y && p.month === m) ? p.day : 1;
+        key = y * 10000 + m * 100 + d;
+      } else {
+        key = getEntryDateKey(item);
+      }
+      return inRange(key);
+    },
+    // سازگاری با کد قدیمی
+    filterFn: () => true,
+  };
+}
+
+/** همه اعداد گزارش در یک‌جا تا صفحه، اکسل و PDF همیشه یکسان باشند */
+function getReportDataset(range) {
+  const allCharges = loadCharges().filter(range.chargeInPeriod);
+  const paidCharges = allCharges.filter(c => c.paid);
+  const unpaidCharges = allCharges.filter(c => !c.paid);
+  const collected = loadCharges().filter(range.collectedInPeriod);
+
+  const chargesSum = allCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
+  const chargesPaidOfPeriod = paidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
+  const chargesDebt = unpaidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
+  const chargesIncome = collected.reduce((s, c) => s + (Number(c.total) || 0), 0);
+
+  const allSideIncomes = loadSideIncomes().filter(range.entryInPeriod);
+  const sideIncomesSum = allSideIncomes.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+  const allExpenses = loadExpenses().filter(range.entryInPeriod);
+  const expensesSum = allExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const expensesAvg = allExpenses.length > 0 ? Math.round(expensesSum / allExpenses.length) : 0;
+  const expensesMax = allExpenses.length > 0 ? Math.max(...allExpenses.map(e => Number(e.amount) || 0)) : 0;
+
+  const totalIncome = chargesIncome + sideIncomesSum;
+  const balance = totalIncome - expensesSum;
+  const totalDebt = UNITS.reduce((s, u) => s + (Number(u.debt) || 0), 0);
+  const fund = getFundBalance();
+
+  return {
+    allCharges, paidCharges, unpaidCharges, collected,
+    chargesSum, chargesPaidOfPeriod, chargesDebt, chargesIncome,
+    allSideIncomes, sideIncomesSum,
+    allExpenses, expensesSum, expensesAvg, expensesMax,
+    totalIncome, balance, totalDebt, fund,
+  };
+}
+
+/** موجودی واقعی صندوق = موجودی اول دوره + کل وصولی‌ها + کل درآمد جانبی − کل هزینه‌ها */
+function getFundBalance() {
+  const settings = loadSettings();
+  const opening = Number(settings.openingBalance) || 0;
+  const collected = loadCharges().filter(c => c.paid).reduce((s, c) => s + (Number(c.total) || 0), 0);
+  const side = loadSideIncomes().reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const exp = loadExpenses().reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  return opening + collected + side - exp;
 }
 
 function parseReportDate(dateStr) {
-  try {
-    const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
-    const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
-
-    let cleaned = dateStr;
-    for (let i = 0; i < 10; i++) {
-      cleaned = cleaned.replace(new RegExp(persianDigits[i], 'g'), i);
-      cleaned = cleaned.replace(new RegExp(arabicDigits[i], 'g'), i);
-    }
-
-    const parts = cleaned.split('/');
-    if (parts.length !== 3) return null;
-
-    const year = parseInt(parts[0]);
-    const month = parseInt(parts[1]);
-    const day = parseInt(parts[2]);
-
-    const gregorian = persianToGregorian(year, month, day);
-    return new Date(gregorian.year, gregorian.month - 1, gregorian.day);
-  } catch (e) {
-    return null;
-  }
+  const p = parsePersianDateParts(dateStr);
+  if (!p) return null;
+  const g = persianToGregorian(p.year, p.month, p.day);
+  return new Date(g.year, g.month - 1, g.day);
 }
 
 function renderReportsPage() {
@@ -6899,56 +7353,37 @@ function renderReportsPage() {
   const badge = document.getElementById('reportDonutBadge');
   if (badge) badge.textContent = range.label;
 
-  const allCharges = loadCharges().filter(range.filterFn);
-  const paidCharges = allCharges.filter(c => c.paid);
-  const unpaidCharges = allCharges.filter(c => !c.paid);
+  const d = getReportDataset(range);
 
-  const chargesSum = allCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
-  const chargesIncome = paidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
-  const chargesDebt = unpaidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
-
-  // ✅ درآمد جانبی
-  const allSideIncomes = loadSideIncomes().filter(range.filterFn);
-  const sideIncomesSum = allSideIncomes.reduce((s, i) => s + (Number(i.amount) || 0), 0);
-
-  const allExpenses = loadExpenses().filter(range.filterFn);
-  const expensesSum = allExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  const expensesAvg = allExpenses.length > 0 ? Math.round(expensesSum / allExpenses.length) : 0;
-  const expensesMax = allExpenses.length > 0
-    ? Math.max(...allExpenses.map(e => Number(e.amount) || 0))
-    : 0;
-
-  // ✅ کل درآمد = شارژ + جانبی
-  const totalIncome = chargesIncome + sideIncomesSum;
-  const balance = totalIncome - expensesSum;
-  const totalDebt = UNITS.reduce((s, u) => s + (Number(u.debt) || 0), 0);
   const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  setTxt('reportIncome', formatToman(totalIncome));
-  setTxt('reportExpense', formatToman(expensesSum));
-  setTxt('reportBalance', formatToman(balance));
-  setTxt('reportDebt', formatToman(totalDebt));
+  setTxt('reportIncome', formatToman(d.totalIncome));
+  setTxt('reportExpense', formatToman(d.expensesSum));
+  setTxt('reportBalance', (d.balance < 0 ? '−' : '') + formatToman(Math.abs(d.balance)));
+  setTxt('reportDebt', formatToman(d.totalDebt));
+  setTxt('reportFund', (d.fund < 0 ? '−' : '') + formatToman(Math.abs(d.fund)));
 
-  setTxt('reportChargesCount', formatNumber(allCharges.length));
-  setTxt('reportChargesPaid', formatNumber(paidCharges.length));
-  setTxt('reportChargesUnpaid', formatNumber(unpaidCharges.length));
-  setTxt('reportChargesSum', formatToman(chargesSum));
-  setTxt('reportChargesIncome', formatToman(chargesIncome));
-  setTxt('reportChargesDebt', formatToman(chargesDebt));
+  setTxt('reportChargesCount', formatNumber(d.allCharges.length));
+  setTxt('reportChargesPaid', formatNumber(d.paidCharges.length));
+  setTxt('reportChargesUnpaid', formatNumber(d.unpaidCharges.length));
+  setTxt('reportChargesSum', formatToman(d.chargesSum));
+  setTxt('reportChargesIncome', formatToman(d.chargesPaidOfPeriod));
+  setTxt('reportChargesDebt', formatToman(d.chargesDebt));
 
-  setTxt('reportExpensesCount', formatNumber(allExpenses.length));
-  setTxt('reportExpensesSum', formatToman(expensesSum));
-  setTxt('reportExpensesAvg', formatToman(expensesAvg));
-  setTxt('reportExpensesMax', formatToman(expensesMax));
+  setTxt('reportExpensesCount', formatNumber(d.allExpenses.length));
+  setTxt('reportExpensesSum', formatToman(d.expensesSum));
+  setTxt('reportExpensesAvg', formatToman(d.expensesAvg));
+  setTxt('reportExpensesMax', formatToman(d.expensesMax));
 
-  const paidPercent = allCharges.length > 0
-    ? Math.round((paidCharges.length / allCharges.length) * 100)
+  // درصد وصول بر اساس «مبلغ»، نه تعداد (یک واحد بزرگ بدهکار با یک واحد کوچک برابر نیست)
+  const paidPercent = d.chargesSum > 0
+    ? Math.round((d.chargesPaidOfPeriod / d.chargesSum) * 100)
     : 0;
 
   setTxt('reportDonutPercent', formatNumber(paidPercent) + '٪');
 
-  renderReportDonutChart(paidCharges.length, unpaidCharges.length);
+  renderReportDonutChart(d.chargesPaidOfPeriod, d.chargesDebt);
   renderReportLineChart();
-  renderReportCategories(allExpenses, expensesSum);
+  renderReportCategories(d.allExpenses, d.expensesSum);
   renderReportDebtors();
 }
 
@@ -6973,7 +7408,7 @@ function renderReportDonutChart(paid, unpaid) {
     ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + paidAngle);
     ctx.strokeStyle = '#22c55e';
     ctx.lineWidth = lineWidth;
-    ctx.lineCap = 'round';
+    ctx.lineCap = 'butt';
     ctx.stroke();
   }
 
@@ -6982,7 +7417,7 @@ function renderReportDonutChart(paid, unpaid) {
     ctx.arc(cx, cy, radius, -Math.PI / 2 + paidAngle, -Math.PI / 2 + Math.PI * 2);
     ctx.strokeStyle = '#ef4444';
     ctx.lineWidth = lineWidth;
-    ctx.lineCap = 'round';
+    ctx.lineCap = 'butt';
     ctx.stroke();
   }
 }
@@ -7005,18 +7440,13 @@ function renderReportLineChart() {
 
   const hasData = values.some(v => v > 0);
   const maxVal = Math.max(...values, 1) * 1.15;
-  const padding = { top: 20, right: 20, bottom: 40, left: 60 };
+  const padding = { top: 20, right: 20, bottom: 40, left: 64 };
   const chartW = W - padding.left - padding.right;
   const chartH = H - padding.top - padding.bottom;
 
-  ctx.strokeStyle = '#f1f5f9';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = padding.top + (chartH / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, y);
-    ctx.lineTo(padding.left + chartW, y);
-    ctx.stroke();
+  drawYAxis(ctx, padding, chartW, chartH, hasData ? maxVal : 0);
+  if (!hasData) {
+    drawEmptyChartText(ctx, W, H, 'هنوز درآمدی در ۶ ماه اخیر ثبت نشده');
   }
 
   const points = values.map((v, i) => ({
@@ -7153,14 +7583,8 @@ function renderReportDebtors() {
 
 function exportReportToExcel() {
   const range = getReportDateRange();
-  const allCharges = loadCharges().filter(range.filterFn);
-  const allExpenses = loadExpenses().filter(range.filterFn);
-
-  const paidCharges = allCharges.filter(c => c.paid);
-  const unpaidCharges = allCharges.filter(c => !c.paid);
-  const chargesIncome = paidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
-  const expensesSum = allExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  const balance = chargesIncome - expensesSum;
+  const d = getReportDataset(range);
+  const { allCharges, allExpenses, allSideIncomes, chargesIncome, sideIncomesSum, expensesSum, balance, fund } = d;
 
   let html = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -7181,9 +7605,11 @@ function exportReportToExcel() {
 
       <h3>خلاصه کلی</h3>
       <table class="summary">
-        <tr><td>کل شارژ دریافتی</td><td>${chargesIncome.toLocaleString('en-US')} تومان</td></tr>
+        <tr><td>شارژ وصول‌شده در این دوره</td><td>${chargesIncome.toLocaleString('en-US')} تومان</td></tr>
+        <tr><td>درآمد جانبی</td><td>${sideIncomesSum.toLocaleString('en-US')} تومان</td></tr>
         <tr><td>کل هزینه‌ها</td><td>${expensesSum.toLocaleString('en-US')} تومان</td></tr>
-        <tr><td>مانده صندوق</td><td>${balance.toLocaleString('en-US')} تومان</td></tr>
+        <tr><td>تراز دوره (درآمد − هزینه)</td><td>${balance.toLocaleString('en-US')} تومان</td></tr>
+        <tr><td>موجودی فعلی صندوق</td><td>${fund.toLocaleString('en-US')} تومان</td></tr>
       </table>
 
       <h3>شارژها (${allCharges.length} مورد)</h3>
@@ -7241,6 +7667,28 @@ function exportReportToExcel() {
   html += `
         </tbody>
       </table>
+
+      <h3>درآمدهای جانبی (${allSideIncomes.length} مورد)</h3>
+      <table>
+        <thead>
+          <tr><th>تاریخ</th><th>عنوان</th><th>دسته</th><th>مبلغ</th></tr>
+        </thead>
+        <tbody>
+  `;
+  allSideIncomes.forEach(i => {
+    html += `
+      <tr>
+        <td>${escapeHtml(i.date || (i.month + ' ' + i.year))}</td>
+        <td>${escapeHtml(i.title || '—')}</td>
+        <td>${escapeHtml(i.category || '—')}</td>
+        <td>${(Number(i.amount) || 0).toLocaleString('en-US')}</td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
     </body>
     </html>
   `;
@@ -7258,14 +7706,8 @@ function exportReportToExcel() {
 
 function printReportPdf() {
   const range = getReportDateRange();
-  const allCharges = loadCharges().filter(range.filterFn);
-  const allExpenses = loadExpenses().filter(range.filterFn);
-
-  const paidCharges = allCharges.filter(c => c.paid);
-  const unpaidCharges = allCharges.filter(c => !c.paid);
-  const chargesIncome = paidCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
-  const expensesSum = allExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  const balance = chargesIncome - expensesSum;
+  const d = getReportDataset(range);
+  const { allCharges, allExpenses, paidCharges, unpaidCharges, chargesIncome, sideIncomesSum, expensesSum, balance, fund } = d;
 
   const buildingData = loadData();
   const buildingName = buildingData?.building?.name || 'ساختمان';
@@ -7338,16 +7780,20 @@ function printReportPdf() {
 
       <div class="stats">
         <div class="stat-box">
-          <span>کل شارژ دریافتی</span>
-          <strong>${formatToman(chargesIncome)}</strong>
+          <span>کل درآمد (شارژ + جانبی)</span>
+          <strong>${formatToman(chargesIncome + sideIncomesSum)}</strong>
         </div>
         <div class="stat-box">
           <span>کل هزینه‌ها</span>
           <strong>${formatToman(expensesSum)}</strong>
         </div>
         <div class="stat-box">
-          <span>مانده صندوق</span>
-          <strong>${formatToman(balance)}</strong>
+          <span>تراز دوره</span>
+          <strong>${balance < 0 ? '−' : ''}${formatToman(Math.abs(balance))}</strong>
+        </div>
+        <div class="stat-box">
+          <span>موجودی صندوق</span>
+          <strong>${fund < 0 ? '−' : ''}${formatToman(Math.abs(fund))}</strong>
         </div>
       </div>
 
@@ -7356,7 +7802,8 @@ function printReportPdf() {
         <tr><td>تعداد کل شارژها</td><td>${formatNumber(allCharges.length)}</td></tr>
         <tr><td>پرداخت شده</td><td>${formatNumber(paidCharges.length)}</td></tr>
         <tr><td>پرداخت نشده</td><td>${formatNumber(unpaidCharges.length)}</td></tr>
-        <tr><td>مجموع دریافتی</td><td>${formatToman(chargesIncome)}</td></tr>
+        <tr><td>شارژ وصول‌شده در این دوره</td><td>${formatToman(chargesIncome)}</td></tr>
+        <tr><td>درآمد جانبی</td><td>${formatToman(sideIncomesSum)}</td></tr>
       </table>
 
       <h3>🧾 خلاصه هزینه‌ها</h3>
@@ -7572,13 +8019,20 @@ function fillFinancialForm() {
     settings.monthlyCharge != null && settings.monthlyCharge !== '' ? settings.monthlyCharge : '';
   document.getElementById('setPaymentDeadline').value =
     settings.paymentDeadline != null && settings.paymentDeadline !== '' ? settings.paymentDeadline : '';
+  const ob = document.getElementById('setOpeningBalance');
+  if (ob) ob.value = settings.openingBalance != null && settings.openingBalance !== '' ? settings.openingBalance : '';
 }
 
 function saveFinancialSettings() {
   const settings = loadSettings();
 
-  settings.monthlyCharge = parseInt(document.getElementById('setMonthlyCharge').value) || 500000;
-  settings.paymentDeadline = parseInt(document.getElementById('setPaymentDeadline').value) || 10;
+  // ✅ خالی = خالی (قبلاً بی‌صدا ۵۰۰٬۰۰۰ و ۱۰ ذخیره می‌شد)
+  const mc = parseInt(toEnDigits(document.getElementById('setMonthlyCharge').value), 10);
+  const pd = parseInt(toEnDigits(document.getElementById('setPaymentDeadline').value), 10);
+  const ob = parseInt(toEnDigits(document.getElementById('setOpeningBalance')?.value || ''), 10);
+  settings.monthlyCharge = mc > 0 ? mc : null;
+  settings.paymentDeadline = pd > 0 && pd <= 31 ? pd : null;
+  settings.openingBalance = isNaN(ob) ? 0 : ob;
 
   saveSettings(settings);
   toastSuccess('تنظیمات مالی ذخیره شد.');
@@ -7622,26 +8076,46 @@ function setPrimaryColor(color) {
   });
 }
 
-function downloadBackup() {
-  const backup = {
-    building: localStorage.getItem('ham_sakhteman_v3'),
-    units: localStorage.getItem('ham_sakhteman_units'),
-    charges: localStorage.getItem('ham_sakhteman_charges'),
-    expenses: localStorage.getItem('ham_sakhteman_expenses'),
-    notices: localStorage.getItem('ham_sakhteman_notices'),
-    messages: localStorage.getItem('ham_sakhteman_messages'),
-    votings: localStorage.getItem('ham_sakhteman_votings'),
-    settings: localStorage.getItem('ham_sakhteman_settings'),
-    sideIncomes: localStorage.getItem('ham_sakhteman_side_incomes'),
-    plan: localStorage.getItem('ham_sakhteman_plan'),
-    exportDate: new Date().toISOString(),
+/** کلیدهای داده این حساب (scoped با شماره مدیر) */
+function getAccountDataKeys() {
+  const bases = {
+    building: 'ham_sakhteman_v3',
+    units: 'ham_sakhteman_units',
+    charges: 'ham_sakhteman_charges',
+    expenses: 'ham_sakhteman_expenses',
+    notices: 'ham_sakhteman_notices',
+    messages: 'ham_sakhteman_messages',
+    votings: 'ham_sakhteman_votings',
+    settings: 'ham_sakhteman_settings',
+    sideIncomes: 'ham_sakhteman_side_incomes',
+    notifications: 'ham_sakhteman_notifications',
+    tickets: 'ham_sakhteman_tickets',
   };
+  const out = {};
+  Object.entries(bases).forEach(([name, base]) => { out[name] = getAccountStorageKey(base); });
+  return out;
+}
+
+function downloadBackup() {
+  // ✅ اصلاح: داده‌ها با کلید per-account ذخیره می‌شوند؛ نسخه قبلی کلیدهای بدون scope را
+  // می‌خواند و فایل پشتیبان عملاً خالی بود.
+  const keys = getAccountDataKeys();
+  const data = loadData();
+  const code = (data?.building?.code || '').toUpperCase();
+  const backup = { version: 2, exportDate: new Date().toISOString(), buildingCode: code };
+  Object.entries(keys).forEach(([name, key]) => { backup[name] = localStorage.getItem(key); });
+  backup.plan = localStorage.getItem('ham_sakhteman_plan');
+  // ثبت‌نام ساکنین همین ساختمان
+  try {
+    const regs = JSON.parse(localStorage.getItem('ham_sakhteman_registered_residents') || '[]');
+    backup.registeredResidents = JSON.stringify(regs.filter(r => !code || String(r.buildingCode || '').toUpperCase() === code));
+  } catch (e) { backup.registeredResidents = '[]'; }
 
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `backup-${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.json`;
+  a.download = `backup-${toEnDigits(getTodayPersianDate()).replace(/\//g, '-')}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -7657,22 +8131,30 @@ function uploadBackup(file) {
   reader.onload = (e) => {
     try {
       const backup = JSON.parse(e.target.result);
+      const keys = getAccountDataKeys();
+      const hasAny = Object.keys(keys).some(k => backup[k]);
+      if (!hasAny) { toastError('فایل پشتیبان خالی یا نامعتبر است.'); return; }
 
-      if (!confirm('⚠️ آیا مطمئن هستید؟ تمام داده‌های فعلی جایگزین می‌شوند.')) return;
+      if (!confirm('⚠️ آیا مطمئن هستید؟ تمام داده‌های فعلی این حساب جایگزین می‌شوند.')) return;
 
-      if (backup.building) localStorage.setItem('ham_sakhteman_v3', backup.building);
-      if (backup.units) localStorage.setItem('ham_sakhteman_units', backup.units);
-      if (backup.charges) localStorage.setItem('ham_sakhteman_charges', backup.charges);
-      if (backup.expenses) localStorage.setItem('ham_sakhteman_expenses', backup.expenses);
-      if (backup.notices) localStorage.setItem('ham_sakhteman_notices', backup.notices);
-      if (backup.messages) localStorage.setItem('ham_sakhteman_messages', backup.messages);
-      if (backup.votings) localStorage.setItem('ham_sakhteman_votings', backup.votings);
-      if (backup.settings) localStorage.setItem('ham_sakhteman_settings', backup.settings);
-      if (backup.sideIncomes) localStorage.setItem('ham_sakhteman_side_incomes', backup.sideIncomes);
+      // هم فرمت جدید و هم فرمت قدیمی (همان نام‌ها) پشتیبانی می‌شود
+      Object.entries(keys).forEach(([name, key]) => {
+        if (backup[name]) localStorage.setItem(key, backup[name]);
+      });
       if (backup.plan) localStorage.setItem('ham_sakhteman_plan', backup.plan);
+      if (backup.registeredResidents) {
+        try {
+          const incoming = JSON.parse(backup.registeredResidents) || [];
+          const current = JSON.parse(localStorage.getItem('ham_sakhteman_registered_residents') || '[]');
+          const sig = r => `${String(r.buildingCode).toUpperCase()}|${r.block}|${r.unitNumber}|${r.phone}`;
+          const seen = new Set(current.map(sig));
+          incoming.forEach(r => { if (!seen.has(sig(r))) current.push(r); });
+          localStorage.setItem('ham_sakhteman_registered_residents', JSON.stringify(current));
+        } catch (err) {}
+      }
 
       toastSuccess('پشتیبان بازیابی شد. صفحه رفرش می‌شود.');
-      location.reload();
+      setTimeout(() => location.reload(), 600);
     } catch (err) {
       toastError('فایل پشتیبان نامعتبر است.');
     }
@@ -7681,10 +8163,16 @@ function uploadBackup(file) {
 }
 
 function resetAllData() {
-  if (!confirm('⚠️ هشدار: تمام داده‌ها پاک می‌شوند!\n\nآیا مطمئن هستید؟')) return;
+  if (!confirm('⚠️ هشدار: تمام داده‌های این ساختمان پاک می‌شوند!\n\nآیا مطمئن هستید؟')) return;
   if (!confirm('⚠️ آیا واقعاً مطمئن هستید؟ این کار قابل بازگشت نیست.')) return;
 
-  localStorage.clear();
+  // ✅ اصلاح: فقط داده‌های همین حساب پاک می‌شود (قبلاً localStorage.clear() همه حساب‌ها،
+  // ثبت‌نام ساکنین و نشست ورود را هم پاک می‌کرد)
+  const keys = getAccountDataKeys();
+  Object.entries(keys).forEach(([name, key]) => {
+    if (name === 'building') return; // اطلاعات ساختمان و کد آن حفظ می‌شود
+    localStorage.removeItem(key);
+  });
   location.reload();
 }
 
@@ -8719,44 +9207,34 @@ let profitBlock = 'all';
 let profitPeriod = 'year';
 
 function calcMonthProfit(monthName, year) {
+  const y = String(year);
   const charges = loadCharges();
   const expenses = loadExpenses();
   const sideIncomes = loadSideIncomes();
 
-  // ===== شارژها (درآمد) =====
-  let monthCharges = charges.filter(c =>
-    c.month === monthName &&
-    c.year === String(year) &&
-    c.paid === true
-  );
+  // ===== شارژها (درآمد) — مبنای نقدی: ماهی که پول واقعاً وصول شده =====
+  let monthCharges = charges.filter(c => isChargeCollectedIn(c, monthName, y));
 
   // ===== هزینه‌ها =====
-  let monthExpenses = expenses.filter(e =>
-    e.month === monthName &&
-    e.year === String(year)
-  );
+  let monthExpenses = expenses.filter(e => e.month === monthName && String(e.year) === y);
 
   // ===== درآمد جانبی =====
-  let monthSideIncomes = sideIncomes.filter(i =>
-    i.month === monthName &&
-    i.year === String(year)
-  );
+  let monthSideIncomes = sideIncomes.filter(i => i.month === monthName && String(i.year) === y);
 
   // ===== فیلتر بلوک =====
+  // ✅ اصلاح: هزینه/درآمد مشترک (همه بلوک‌ها) دیگر کامل به هر بلوک نسبت داده نمی‌شود؛
+  // سهم هر بلوک به نسبت تعداد واحدهایش محاسبه می‌شود.
   if (profitBlock !== 'all') {
-    monthCharges = monthCharges.filter(c =>
-      String(c.block || '').trim() === String(profitBlock).trim()
-    );
-    monthExpenses = monthExpenses.filter(e =>
-      (e.block && e.block !== 'all')
-        ? String(e.block).trim() === String(profitBlock).trim()
-        : true
-    );
-    monthSideIncomes = monthSideIncomes.filter(i =>
-      (i.block && i.block !== 'all')
-        ? String(i.block).trim() === String(profitBlock).trim()
-        : true
-    );
+    const share = getBlockShare(profitBlock);
+    const isBlock = (b) => String(b || '').trim() === String(profitBlock).trim();
+    monthCharges = monthCharges.filter(c => isBlock(c.block));
+    const allocate = (list) => list
+      .filter(i => !i.block || i.block === 'all' || isBlock(i.block))
+      .map(i => (!i.block || i.block === 'all')
+        ? { ...i, amount: Math.round((Number(i.amount) || 0) * share), sharedAllocated: true }
+        : i);
+    monthExpenses = allocate(monthExpenses);
+    monthSideIncomes = allocate(monthSideIncomes);
   }
 
   const chargesIncome = monthCharges.reduce((s, c) => s + (Number(c.total) || 0), 0);
@@ -8768,6 +9246,8 @@ function calcMonthProfit(monthName, year) {
 
   return {
     month: monthName,
+    year: y,
+    label: monthName,
     income,                 // کل درآمد (شارژ + جانبی)
     chargesIncome,          // فقط شارژ
     sideIncomeSum,          // فقط جانبی
@@ -8776,6 +9256,7 @@ function calcMonthProfit(monthName, year) {
     chargesCount: monthCharges.length,
     sideIncomesCount: monthSideIncomes.length,
     expensesCount: monthExpenses.length,
+    charges: monthCharges,
     expenses: monthExpenses,
     sideIncomes: monthSideIncomes,
   };
@@ -8797,36 +9278,31 @@ function calcTotalProfit() {
   return { months: allMonths, totalIncome, totalExpense, netProfit, totalDebt };
 }
 
+/**
+ * ماه‌های دوره انتخابی به‌صورت {month, year}
+ * ✅ اصلاح: «۳/۶ ماه اخیر» از مرز سال عبور می‌کند (قبلاً در فروردین فقط یک ماه نشان می‌داد)
+ */
 function getPeriodMonths() {
-  const currentMonthIdx = PERSIAN_MONTHS.indexOf(getTodayPersianMonth());
+  if (profitPeriod === 'thisMonth') return getLastNPersianMonths(1);
+  if (profitPeriod === '3months') return getLastNPersianMonths(3);
+  if (profitPeriod === '6months') return getLastNPersianMonths(6);
+  return PERSIAN_MONTHS.map(m => ({ month: m, year: String(profitYear), label: m }));
+}
 
-  if (profitPeriod === 'thisMonth') {
-    return [getTodayPersianMonth()];
-  }
-  if (profitPeriod === '3months') {
-    const result = [];
-    for (let i = 2; i >= 0; i--) {
-      const idx = currentMonthIdx - i;
-      if (idx >= 0) result.push(PERSIAN_MONTHS[idx]);
-    }
-    return result;
-  }
-  if (profitPeriod === '6months') {
-    const result = [];
-    for (let i = 5; i >= 0; i--) {
-      const idx = currentMonthIdx - i;
-      if (idx >= 0) result.push(PERSIAN_MONTHS[idx]);
-    }
-    return result;
-  }
-  return PERSIAN_MONTHS;
+function getPeriodMonthsData() {
+  const list = getPeriodMonths();
+  const crossYear = new Set(list.map(p => p.year)).size > 1;
+  return list.map(p => {
+    const d = calcMonthProfit(p.month, p.year);
+    if (crossYear) d.label = `${p.month} ${toPersianNum(String(p.year).slice(-2))}`;
+    return d;
+  });
 }
 
 function renderProfitStats() {
   const data = calcTotalProfit();
 
-  const periodMonths = getPeriodMonths();
-  const filteredMonths = data.months.filter(m => periodMonths.includes(m.month));
+  const filteredMonths = getPeriodMonthsData();
 
   const totalIncome = filteredMonths.reduce((s, m) => s + m.income, 0);
   const totalExpense = filteredMonths.reduce((s, m) => s + m.expense, 0);
@@ -8920,8 +9396,7 @@ function renderProfitTable() {
   const countLabel = document.getElementById('profitTableCount');
   if (!tbody) return;
 
-  const periodMonths = getPeriodMonths();
-  const monthsData = periodMonths.map(m => calcMonthProfit(m, profitYear));
+  const monthsData = getPeriodMonthsData();
 
   const hasData = monthsData.some(m => m.income > 0 || m.expense > 0);
   const filtered = hasData
@@ -8968,7 +9443,7 @@ function renderProfitTable() {
 
     return `
       <tr>
-        <td><strong>${m.month}</strong></td>
+        <td><strong>${m.label || m.month}</strong></td>
         <td>${formatToman(m.income)}</td>
         <td>${formatToman(m.expense)}</td>
         <td class="${profitClass}">${profitText}</td>
@@ -8983,37 +9458,23 @@ function renderProfitBarChart() {
   const canvas = document.getElementById('profitBarChart');
   if (!canvas) return;
 
-  const ctx = canvas.getContext('2d');
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const W = rect.width, H = rect.height;
-  const dpr = window.devicePixelRatio || 1;
+  // ✅ اصلاح: اندازه canvas با fallback (قبلاً وقتی صفحه مخفی بود عرض صفر می‌شد و نمودار خالی می‌ماند)
+  const { ctx, W, H } = prepareCanvas(canvas, 600, 280);
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-  ctx.scale(dpr, dpr);
-
-  const periodMonths = getPeriodMonths();
-  const monthsData = periodMonths.map(m => calcMonthProfit(m, profitYear));
+  const monthsData = getPeriodMonthsData();
 
   const padding = { top: 30, right: 20, bottom: 50, left: 70 };
   const chartW = W - padding.left - padding.right;
   const chartH = H - padding.top - padding.bottom;
 
+  const hasData = monthsData.some(m => m.income > 0 || m.expense > 0);
   const maxVal = Math.max(
     ...monthsData.map(m => Math.max(m.income, m.expense)),
     1
   ) * 1.2;
 
-  ctx.strokeStyle = '#f1f5f9';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = padding.top + (chartH / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, y);
-    ctx.lineTo(padding.left + chartW, y);
-    ctx.stroke();
-  }
+  drawYAxis(ctx, padding, chartW, chartH, hasData ? maxVal : 0);
+  if (!hasData) drawEmptyChartText(ctx, W, H, 'برای این دوره درآمد یا هزینه‌ای ثبت نشده');
 
   const groupWidth = chartW / monthsData.length;
   const barWidth = Math.min(groupWidth * 0.35, 28);
@@ -9064,7 +9525,7 @@ function renderProfitBarChart() {
     ctx.font = '11.5px Vazirmatn, Tahoma';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(m.month, centerX, padding.top + chartH + 12);
+    ctx.fillText(m.label || m.month, centerX, padding.top + chartH + 12);
   });
 }
 
@@ -9072,8 +9533,7 @@ function renderProfitDonutChart() {
   const canvas = document.getElementById('profitDonutChart');
   if (!canvas) return;
 
-  const periodMonths = getPeriodMonths();
-  const monthData = periodMonths.map(m => calcMonthProfit(m, profitYear));
+  const monthData = getPeriodMonthsData();
 
   let allExpenses = [];
   monthData.forEach(m => {
@@ -9164,8 +9624,7 @@ function renderProfitIncomeBreakdown() {
   const container = document.getElementById('profitIncomeBreakdown');
   if (!container) return;
 
-  const periodMonths = getPeriodMonths();
-  const monthsData = periodMonths.map(m => calcMonthProfit(m, profitYear));
+  const monthsData = getPeriodMonthsData();
 
   const totalCharges = monthsData.reduce((s, m) => s + (m.chargesIncome || 0), 0);
   const totalSideIncomes = monthsData.reduce((s, m) => s + (m.sideIncomeSum || 0), 0);
@@ -9174,14 +9633,7 @@ function renderProfitIncomeBreakdown() {
   const totalSideIncomesCount = monthsData.reduce((s, m) => s + m.sideIncomesCount, 0);
 
   // محاسبه اجزای شارژ
-  const charges = loadCharges().filter(c => {
-    const inPeriod = periodMonths.includes(c.month) && c.year === String(profitYear) && c.paid;
-    if (!inPeriod) return false;
-    if (profitBlock !== 'all') {
-      return String(c.block || '').trim() === String(profitBlock).trim();
-    }
-    return true;
-  });
+  const charges = monthsData.reduce((arr, m) => arr.concat(m.charges || []), []);
 
   const extraIncome = charges.reduce((s, c) => s + (Number(c.extra) || 0), 0);
   const baseIncome = totalCharges - extraIncome;
@@ -9211,8 +9663,7 @@ function renderProfitExpenseBreakdown() {
   const container = document.getElementById('profitExpenseBreakdown');
   if (!container) return;
 
-  const periodMonths = getPeriodMonths();
-  const monthData = periodMonths.map(m => calcMonthProfit(m, profitYear));
+  const monthData = getPeriodMonthsData();
 
   let allExpenses = [];
   monthData.forEach(m => {
@@ -9332,8 +9783,7 @@ function bindProfitPage() {
 }
 
 function exportProfitToExcel() {
-  const periodMonths = getPeriodMonths();
-  const monthsData = periodMonths.map(m => calcMonthProfit(m, profitYear));
+  const monthsData = getPeriodMonthsData();
 
   const totalIncome = monthsData.reduce((s, m) => s + m.income, 0);
   const totalExpense = monthsData.reduce((s, m) => s + m.expense, 0);
@@ -9387,7 +9837,7 @@ function exportProfitToExcel() {
     const rowMargin = m.income > 0 ? Math.round((m.profit / m.income) * 100) : 0;
     html += `
       <tr>
-        <td>${m.month}</td>
+        <td>${m.label || m.month}</td>
         <td>${m.income.toLocaleString('en-US')}</td>
         <td>${m.expense.toLocaleString('en-US')}</td>
         <td class="${m.profit >= 0 ? 'positive' : 'negative'}">${m.profit.toLocaleString('en-US')}</td>
@@ -9415,8 +9865,7 @@ function exportProfitToExcel() {
 }
 
 function printProfitPdf() {
-  const periodMonths = getPeriodMonths();
-  const monthsData = periodMonths.map(m => calcMonthProfit(m, profitYear));
+  const monthsData = getPeriodMonthsData();
 
   const totalIncome = monthsData.reduce((s, m) => s + m.income, 0);
   const chargesTotal = monthsData.reduce((s, m) => s + (m.chargesIncome || 0), 0);
@@ -9437,7 +9886,7 @@ function printProfitPdf() {
     const profitClass = m.profit >= 0 ? 'color:#15803d;' : 'color:#b91c1c;';
     rows += `
       <tr>
-        <td>${m.month}</td>
+        <td>${m.label || m.month}</td>
         <td>${formatToman(m.income)}</td>
         <td>${formatToman(m.expense)}</td>
         <td style="${profitClass} font-weight:700;">${m.profit >= 0 ? '+' : '−'}${formatToman(Math.abs(m.profit))}</td>

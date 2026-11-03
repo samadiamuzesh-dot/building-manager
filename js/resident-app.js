@@ -26,6 +26,60 @@ function isValidIranMobileR(phone) {
   return /^09\d{9}$/.test(cleaned);
 }
 
+function escapeHtmlR(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function normalizePhoneR(phone) {
+  return String(phone || '')
+    .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    .replace(/[^\d]/g, '');
+}
+
+/** هش رمز ساکن (قبلاً رمز به‌صورت متن ساده ذخیره می‌شد) */
+function hashResidentPassword(str) {
+  let hash = 0;
+  const salted = 'ap+res:' + String(str);
+  for (let i = 0; i < salted.length; i++) {
+    hash = ((hash << 5) - hash) + salted.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'rh_' + Math.abs(hash).toString(36);
+}
+
+/** واحد کاربر جاری (یکسان برای همه صفحات) */
+function getMyUnit() {
+  const session = getResidentSession();
+  if (!session) return null;
+  const units = loadUnits();
+  return units.find(u => {
+    if (session.block === '—' || !session.block) {
+      return (u.block === '—' || !u.block) && Number(u.number) === Number(session.unitNumber);
+    }
+    return String(u.block).trim() === String(session.block).trim()
+        && Number(u.number) === Number(session.unitNumber);
+  }) || null;
+}
+
+/** اطلاعیه‌هایی که واقعاً برای این واحد ارسال شده (همه / بلوک / واحدهای انتخابی) */
+function getMyNotices() {
+  const session = getResidentSession();
+  const myUnit = getMyUnit();
+  return loadNotices().filter(n => {
+    const t = n.targetType || 'all';
+    if (t === 'all') return true;
+    if (t === 'block') return session && String(n.targetBlock || '').trim() === String(session.block || '').trim();
+    if (t === 'units') {
+      const ids = (n.targetUnits || []).map(Number);
+      return !!myUnit && ids.includes(Number(myUnit.id));
+    }
+    return true;
+  });
+}
+
 /* ============ Toast ============ */
 function showResidentToast(message, type = 'success', title = null) {
   let container = document.getElementById('residentToastContainer');
@@ -122,7 +176,8 @@ function loadData() {
   if (raw) {
     try { return JSON.parse(raw); } catch (e) {}
   }
-  // سپس کلید قدیمی
+  // سپس کلید قدیمی (فقط وقتی ساختمان هنوز مشخص نشده)
+  if (_residentResolvedPhone) return null;
   raw = localStorage.getItem('ham_sakhteman_v3');
   if (raw) {
     try { return JSON.parse(raw); } catch (e) {}
@@ -161,6 +216,7 @@ function loadCharges() {
       if (Array.isArray(arr)) return arr;
     } catch (e) {}
   }
+  if (_residentResolvedPhone) return [];
   raw = localStorage.getItem('ham_sakhteman_charges');
   if (raw) {
     try {
@@ -180,6 +236,7 @@ function loadNotices() {
       if (Array.isArray(arr)) return arr;
     } catch (e) {}
   }
+  if (_residentResolvedPhone) return [];
   raw = localStorage.getItem('ham_sakhteman_notices');
   if (raw) {
     try {
@@ -199,6 +256,7 @@ function loadMessages() {
       if (Array.isArray(arr)) return arr;
     } catch (e) {}
   }
+  if (_residentResolvedPhone) return [];
   raw = localStorage.getItem('ham_sakhteman_messages');
   if (raw) {
     try {
@@ -218,6 +276,7 @@ function loadVotings() {
       if (Array.isArray(arr)) return arr;
     } catch (e) {}
   }
+  if (_residentResolvedPhone) return [];
   raw = localStorage.getItem('ham_sakhteman_votings');
   if (raw) {
     try {
@@ -408,15 +467,18 @@ function verifyUnit() {
   }
 
   // چک کن این واحد قبلاً ثبت‌نام نکرده باشه
+  // ✅ اصلاح: مالک و مستاجر هر دو می‌توانند برای یک واحد ثبت‌نام کنند؛
+  // تکراری بودن نقش در مرحله بعد (بعد از انتخاب نقش) بررسی می‌شود.
   const registered = loadRegisteredResidents();
-  const alreadyRegistered = registered.find(r =>
-    r.buildingCode === tempBuildingCode &&
+  const sameUnit = registered.filter(r =>
+    String(r.buildingCode).toUpperCase() === String(tempBuildingCode).toUpperCase() &&
     String(r.block).trim() === String(blockName).trim() &&
-    r.unitNumber === unitNumber
+    Number(r.unitNumber) === unitNumber &&
+    r.status !== 'rejected'
   );
 
-  if (alreadyRegistered) {
-    errorEl.textContent = 'این واحد قبلاً ثبت‌نام کرده است. با مدیر تماس بگیرید.';
+  if (sameUnit.length >= 2) {
+    errorEl.textContent = 'مالک و مستاجر این واحد قبلاً ثبت‌نام کرده‌اند. اگر قبلاً ثبت‌نام کرده‌اید از «ورود» استفاده کنید.';
     errorEl.classList.add('show');
     return;
   }
@@ -435,8 +497,9 @@ function goToStep3() {
 
 
 /** ذخیره/به‌روزرسانی واحد در پنل مدیر وقتی ساکن ثبت‌نام می‌کند */
-function syncUnitToManagerPanel(resident) {
+function syncUnitToManagerPanel(resident, opts) {
   if (!resident) return;
+  const silent = !!(opts && opts.silent);
 
   // اطمینان از داشتن شماره مدیر برای کلید scoped
   if (!_residentResolvedPhone && resident.buildingCode) {
@@ -532,8 +595,8 @@ function syncUnitToManagerPanel(resident) {
     console.error('syncUnitToManagerPanel failed', e);
   }
 
-  // اعلان برای مدیر
-  try {
+  // اعلان برای مدیر (فقط در ثبت‌نام جدید، نه هر بار ذخیره پروفایل)
+  if (!silent) try {
     const notifKey = _residentResolvedPhone
       ? ('ham_sakhteman_notifications_' + _residentResolvedPhone)
       : 'ham_sakhteman_notifications';
@@ -627,6 +690,20 @@ function registerResident() {
 
   // ذخیره ثبت‌نام
   const registered = loadRegisteredResidents();
+  const isTenantRole = (x) => ['tenant', 'مستاجر', 'ساکن'].includes(String(x || '').toLowerCase());
+  const dupRole = registered.find(r =>
+    String(r.buildingCode).toUpperCase() === String(tempBuildingCode).toUpperCase() &&
+    String(r.block).trim() === String(tempBlock).trim() &&
+    Number(r.unitNumber) === Number(tempUnitNumber) &&
+    r.status !== 'rejected' &&
+    isTenantRole(r.role) === isTenantRole(role)
+  );
+  if (dupRole) {
+    phoneInput.classList.add('input-error');
+    phoneError.textContent = `برای این واحد قبلاً «${isTenantRole(role) ? 'مستاجر' : 'مالک'}» ثبت‌نام کرده است. اگر خودتان هستید از «ورود» استفاده کنید.`;
+    phoneError.classList.add('show');
+    return;
+  }
 
   const newId = registered.length > 0 ? Math.max(...registered.map(r => r.id || 0)) + 1 : 1;
 
@@ -636,10 +713,10 @@ function registerResident() {
     block: tempBlock,
     unitNumber: tempUnitNumber,
     name: name,
-    phone: phone,
+    phone: normalizePhoneR(phone),
     role: role,
     peopleCount: peopleCount,
-    password: password,
+    passwordHash: hashResidentPassword(password),
     registeredAt: new Date().toISOString(),
     status: 'pending', // در انتظار تأیید مدیر
   };
@@ -657,7 +734,7 @@ function registerResident() {
     block: tempBlock,
     unitNumber: tempUnitNumber,
     name: name,
-    phone: phone,
+    phone: normalizePhoneR(phone),
     role: role,
     managerPhone: _residentResolvedPhone || null,
   });
@@ -700,13 +777,14 @@ function renderResidentDashboard() {
   if (!session) return;
 
   const charges = loadCharges();
-  const notices = loadNotices();
+  const notices = getMyNotices();
   const messages = loadMessages();
 
-  const unitCharges = charges.filter(c =>
-    String(c.block).trim() === String(session.block).trim() &&
-    Number(getUnitNumberById(c.unitId)) === Number(session.unitNumber)
-  );
+  // ✅ اصلاح: مثل صفحه شارژها، بر اساس شناسه واحد (قبلاً بلوک + شماره و گاهی ناهمخوان)
+  const myUnitId = getUnitIdBySession();
+  const unitCharges = myUnitId == null ? [] : charges
+    .filter(c => Number(c.unitId) === Number(myUnitId))
+    .sort((a, b) => (a.issuedAt || '').localeCompare(b.issuedAt || ''));
 
   const unpaid = unitCharges.filter(c => !c.paid);
   const paid = unitCharges.filter(c => c.paid);
@@ -721,8 +799,10 @@ function renderResidentDashboard() {
   document.getElementById('residentStatMessages').textContent = formatNumberR(myMessages.length);
   document.getElementById('residentStatNotices').textContent = formatNumberR(notices.length);
 
+  const reg = loadRegisteredResidents().find(r => Number(r.id) === Number(session.residentId));
+  const pendingNote = reg && reg.status === 'pending' ? ' (ثبت‌نام شما در انتظار تأیید مدیر است)' : '';
   document.getElementById('residentWelcomeText').textContent =
-    `به اپلیکیشن آپارتمان پلاس خوش آمدید، ${session.name}. می‌تونی شارژها، اطلاعیه‌ها، پیام‌ها و رأی‌گیری‌ها رو از اینجا ببینی.`;
+    `به اپلیکیشن آپارتمان پلاس خوش آمدید، ${session.name}. می‌تونی شارژها، اطلاعیه‌ها، پیام‌ها و رأی‌گیری‌ها رو از اینجا ببینی.${pendingNote}`;
 
   // آخرین شارژ
   const lastChargeBox = document.getElementById('residentLastCharge');
@@ -732,7 +812,9 @@ function renderResidentDashboard() {
     const last = unitCharges[unitCharges.length - 1];
     const status = last.paid
       ? '<span style="color:#16a34a; font-weight:800;">✅ پرداخت شده</span>'
-      : '<span style="color:#dc2626; font-weight:800;">⚠️ پرداخت نشده</span>';
+      : last.pendingApproval
+        ? '<span style="color:#f59e0b; font-weight:800;">⏳ در انتظار تأیید مدیر</span>'
+        : '<span style="color:#dc2626; font-weight:800;">⚠️ پرداخت نشده</span>';
 
     lastChargeBox.innerHTML = `
       <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
@@ -843,7 +925,7 @@ function renderResidentCharges() {
           <span style="color:#64748b;">روش پرداخت</span>
           <strong>${c.payMethod || '—'}</strong>
         </div>
-        ${c.trackingCode ? `<div style="display:flex; justify-content:space-between; padding:8px 0;"><span style="color:#64748b;">شماره پیگیری</span><strong dir="ltr">${c.trackingCode}</strong></div>` : ''}
+        ${c.trackingCode ? `<div style="display:flex; justify-content:space-between; padding:8px 0;"><span style="color:#64748b;">شماره پیگیری</span><strong dir="ltr">${escapeHtmlR(c.trackingCode)}</strong></div>` : ''}
       `;
     } else if (c.pendingApproval) {
       // در انتظار تأیید مدیر
@@ -855,7 +937,7 @@ function renderResidentCharges() {
         </div>
         <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
           <span style="color:#64748b;">شماره پیگیری</span>
-          <strong dir="ltr">${c.trackingCode || '—'}</strong>
+          <strong dir="ltr">${escapeHtmlR(c.trackingCode || '—')}</strong>
         </div>
         <div style="display:flex; justify-content:space-between; padding:8px 0;">
           <span style="color:#64748b;">تاریخ اعلام</span>
@@ -865,6 +947,20 @@ function renderResidentCharges() {
     } else {
       // پرداخت نشده
       status = '<span style="color:#dc2626; font-weight:800;">⚠️ پرداخت نشده</span>';
+      if (c.rejectedAt) {
+        extraInfo = `
+        <div style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:12.5px;">
+          ✖ اعلام پرداخت قبلی شما رد شد: ${escapeHtmlR(c.rejectReason || '—')}
+          ${c.lastRejectedTracking ? `<div dir="ltr" style="text-align:right;color:#991b1b;">${escapeHtmlR(c.lastRejectedTracking)}</div>` : ''}
+        </div>`;
+      }
+      if (c.dueDate) {
+        extraInfo += `
+        <div style="display:flex; justify-content:space-between; padding:8px 0;">
+          <span style="color:#64748b;">مهلت پرداخت</span>
+          <strong>${escapeHtmlR(c.dueDate)}</strong>
+        </div>`;
+      }
       payButton = `<button class="resident-pay-btn" data-pay-charge-id="${c.id}">💳 پرداخت</button>`;
     }
 
@@ -900,7 +996,8 @@ function renderResidentNotices() {
   const container = document.getElementById('residentNoticesList');
   if (!container) return;
 
-  const notices = loadNotices();
+  // ✅ اصلاح: فقط اطلاعیه‌های «همه»، بلوک خودم یا واحد خودم (قبلاً همه اطلاعیه‌های خصوصی هم نمایش داده می‌شد)
+  const notices = getMyNotices();
 
   if (notices.length === 0) {
     container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:40px;">هنوز اطلاعیه‌ای ثبت نشده</p>';
@@ -910,10 +1007,11 @@ function renderResidentNotices() {
   container.innerHTML = [...notices].reverse().map(n => `
     <div class="resident-card">
       <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
-        <h3 style="font-size:15px; font-weight:800;">${n.title}</h3>
-        <span style="font-size:11.5px; color:#94a3b8;">${n.date || ''}</span>
+        <h3 style="font-size:15px; font-weight:800;">${escapeHtmlR(n.title)}</h3>
+        <span style="font-size:11.5px; color:#94a3b8;">${escapeHtmlR(n.date || '')}</span>
       </div>
-      <p style="font-size:13.5px; color:#64748b; line-height:1.8;">${n.body}</p>
+      ${n.image && /^data:image\//.test(n.image) ? `<img src="${n.image}" alt="" style="max-width:100%;border-radius:10px;margin-bottom:8px;" />` : ''}
+      <p style="font-size:13.5px; color:#64748b; line-height:1.8; white-space:pre-line;">${escapeHtmlR(n.body)}</p>
     </div>
   `).join('');
 }
@@ -1373,20 +1471,6 @@ if (status === 'active') {
 } else {
   statusBadge = '<span class="resident-badge resident-badge-gray">⚫ پایان‌یافته</span>';
 }
-   // ===== اگر هنوز شروع نشده =====
-else if (status === 'upcoming') {
-  html += `
-    <div style="background:#fef3c7; border-radius:10px; padding:12px; text-align:center; margin-bottom:12px;">
-      <div style="font-size:13px; color:#92400e; font-weight:700;">
-        ⏳ این رأی‌گیری هنوز شروع نشده است
-      </div>
-      <div style="font-size:12px; color:#b45309; margin-top:4px;">
-        از ${voting.startDate || '—'} ساعت ${voting.startTime || '—'}
-      </div>
-    </div>
-  `;
-}
-
   let html = `
     <div class="resident-card" style="margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:10px; gap:8px;">
@@ -1458,6 +1542,19 @@ else if (status === 'upcoming') {
       <button class="resident-pay-btn" data-vote-submit="${voting.id}" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">
         ✅ ثبت رأی
       </button>
+    `;
+  }
+  // ===== اگر هنوز شروع نشده =====
+  else if (status === 'upcoming') {
+    html += `
+      <div style="background:#fef3c7; border-radius:10px; padding:12px; text-align:center; margin-bottom:12px;">
+        <div style="font-size:13px; color:#92400e; font-weight:700;">
+          ⏳ این رأی‌گیری هنوز شروع نشده است
+        </div>
+        <div style="font-size:12px; color:#b45309; margin-top:4px;">
+          از ${escapeHtmlR(voting.startDate || '—')} ساعت ${escapeHtmlR(voting.startTime || '—')}
+        </div>
+      </div>
     `;
   }
   // ===== اگر پایان‌یافته و رأی نداده =====
@@ -1841,8 +1938,9 @@ function saveResidentProfile() {
   }
 
   // به‌روزرسانی نشست
+  const oldPhone = session.phone;
   session.name = name;
-  session.phone = phone;
+  session.phone = normalizePhoneR(phone);
   setResidentSession(session);
 
   // به‌روزرسانی لیست ثبت‌نام‌شده‌ها
@@ -1850,7 +1948,7 @@ function saveResidentProfile() {
   const r = registered.find(x => x.id === session.residentId);
   if (r) {
     r.name = name;
-    r.phone = phone;
+    r.phone = normalizePhoneR(phone);
     r.peopleCount = people;
     saveRegisteredResidents(registered);
   }
@@ -1866,7 +1964,7 @@ function saveResidentProfile() {
     peopleCount: people,
     status: r?.status || 'pending',
   };
-  syncUnitToManagerPanel(residentPayload);
+  syncUnitToManagerPanel(residentPayload, { silent: true });
 
   // به‌روزرسانی تعداد نفرات روی واحد
   try {
@@ -1880,7 +1978,6 @@ function saveResidentProfile() {
     if (unit) {
       unit.peopleCount = people;
       localStorage.setItem(unitsKey, JSON.stringify(units));
-      localStorage.setItem('ham_sakhteman_units', JSON.stringify(units));
     }
   } catch (e) {}
 
@@ -1897,11 +1994,93 @@ function logoutResident() {
   setTimeout(() => location.reload(), 800);
 }
 
+
+/* ============ ورود ساکن ثبت‌نام‌شده ============ */
+// ✅ قبلاً ساکنی که خارج می‌شد هیچ راهی برای ورود دوباره نداشت (ثبت‌نام دوباره هم مسدود بود)
+function showResidentLoginStep(show) {
+  const s1 = document.getElementById('residentStep1');
+  const sl = document.getElementById('residentLoginStep');
+  if (s1) s1.style.display = show ? 'none' : 'block';
+  if (sl) sl.style.display = show ? 'block' : 'none';
+  ['residentStep2', 'residentStep3'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+}
+
+function loginResident() {
+  const code = (document.getElementById('residentLoginCode')?.value || '').trim().toUpperCase();
+  const phone = normalizePhoneR(document.getElementById('residentLoginPhone')?.value || '');
+  const pass = document.getElementById('residentLoginPassword')?.value || '';
+  const err = document.getElementById('residentLoginError');
+  const fail = (msg) => { if (err) { err.textContent = msg; err.classList.add('show'); } };
+  if (err) err.classList.remove('show');
+
+  if (!code || !phone || !pass) return fail('کد ساختمان، موبایل و رمز را وارد کنید.');
+
+  const managerPhone = _findManagerPhoneByBuildingCode(code);
+  if (!managerPhone) return fail('ساختمانی با این کد پیدا نشد.');
+
+  const list = loadRegisteredResidents();
+  const r = list.find(x =>
+    String(x.buildingCode || '').toUpperCase() === code &&
+    normalizePhoneR(x.phone) === phone &&
+    x.status !== 'rejected'
+  );
+  if (!r) return fail('ساکنی با این شماره در این ساختمان ثبت‌نام نکرده است.');
+
+  const ok = r.passwordHash
+    ? r.passwordHash === hashResidentPassword(pass)
+    : r.password === pass; // سازگاری با ثبت‌نام‌های قدیمی (رمز متنی)
+  if (!ok) return fail('رمز عبور اشتباه است.');
+
+  // مهاجرت رمز قدیمی به هش
+  if (!r.passwordHash) {
+    r.passwordHash = hashResidentPassword(pass);
+    delete r.password;
+    saveRegisteredResidents(list);
+  }
+
+  _residentResolvedPhone = managerPhone;
+  setResidentSession({
+    residentId: r.id,
+    buildingCode: code,
+    block: r.block,
+    unitNumber: r.unitNumber,
+    name: r.name,
+    phone: normalizePhoneR(r.phone),
+    role: r.role,
+    managerPhone: managerPhone,
+  });
+  showResidentToast('خوش آمدید 👋', 'success');
+  setTimeout(() => openResidentPanel(), 400);
+}
+
+/** هش‌کردن رمزهای متنی قدیمی که هنوز در localStorage مانده‌اند */
+function migrateResidentPasswords() {
+  const list = loadRegisteredResidents();
+  let changed = false;
+  list.forEach(r => {
+    if (r && r.password && !r.passwordHash) {
+      r.passwordHash = hashResidentPassword(r.password);
+      delete r.password;
+      changed = true;
+    }
+  });
+  if (changed) saveRegisteredResidents(list);
+}
+
 /* ============ راه‌اندازی ============ */
 function initResidentApp() {
+  migrateResidentPasswords();
+
   // اگه نشست هست، پنل رو باز کن و scope داده‌ها را از نشست بازیابی کن
   const session = getResidentSession();
-  if (session) {
+  // ثبت‌نامی که مدیر رد کرده → خروج
+  const myReg = session ? loadRegisteredResidents().find(r => Number(r.id) === Number(session.residentId)) : null;
+  if (session && myReg && myReg.status === 'rejected') {
+    clearResidentSession();
+    showResidentToast('ثبت‌نام شما توسط مدیر رد شد. با مدیر ساختمان تماس بگیرید.', 'error');
+    document.getElementById('residentLoginPage').style.display = 'flex';
+    document.getElementById('residentPanel').style.display = 'none';
+  } else if (session) {
     if (session.managerPhone) {
       _residentResolvedPhone = session.managerPhone;
     } else if (session.buildingCode) {
@@ -1938,6 +2117,26 @@ function initResidentApp() {
   });
 
    document.getElementById('residentRegisterBtn')?.addEventListener('click', registerResident);
+
+  // ورود ساکن قبلی
+  document.getElementById('residentShowLogin')?.addEventListener('click', (e) => { e.preventDefault(); showResidentLoginStep(true); });
+  document.getElementById('residentBackToRegister')?.addEventListener('click', (e) => { e.preventDefault(); showResidentLoginStep(false); });
+  document.getElementById('residentLoginBtn')?.addEventListener('click', loginResident);
+  document.getElementById('residentLoginPassword')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') loginResident(); });
+
+  // همگام‌سازی زنده با پنل مدیر (تب دیگر همین مرورگر)
+  let _syncTimer = null;
+  window.addEventListener('storage', (e) => {
+    if (!e.key || !e.key.startsWith('ham_sakhteman_') || !getResidentSession()) return;
+    clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(() => {
+      const active = document.querySelector('.resident-page.active');
+      const key = active ? active.id.replace('resident-', '') : 'dashboard';
+      if (key === 'messages' || key === 'profile') return; // چت خودش polling دارد؛ فرم پروفایل را خراب نکن
+      if (document.getElementById('residentPayModal')?.classList.contains('open')) return;
+      switchResidentPage(key);
+    }, 300);
+  });
 
   // چت و پرداخت
 // چت و پرداخت
@@ -2025,6 +2224,22 @@ function openResidentPayModal(chargeId) {
   document.getElementById('residentPayDueDate').textContent = 
     charge.dueDate || '—';
 
+  // ✅ اتصال به تنظیمات مدیر: شماره کارت / شبا برای کارت به کارت
+  const bankBox = document.getElementById('residentPayBankInfo');
+  if (bankBox) {
+    let st = {};
+    try { st = JSON.parse(localStorage.getItem(_getScopedKey('ham_sakhteman_settings')) || '{}') || {}; } catch (e) { st = {}; }
+    if (st.managerCard || st.managerSheba) {
+      bankBox.style.display = 'block';
+      bankBox.innerHTML =
+        (st.managerCard ? `<div class="resident-pay-row"><span>شماره کارت مدیر</span><strong dir="ltr">${escapeHtmlR(st.managerCard)}</strong></div>` : '') +
+        (st.managerSheba ? `<div class="resident-pay-row"><span>شبا</span><strong dir="ltr" style="font-size:12px;">${escapeHtmlR(st.managerSheba)}</strong></div>` : '');
+    } else {
+      bankBox.style.display = 'none';
+      bankBox.innerHTML = '';
+    }
+  }
+
   document.getElementById('residentPayMethod').value = 'آنلاین';
 // آپدیت متن دکمه بر اساس روش
 const methodSelect = document.getElementById('residentPayMethod');
@@ -2039,7 +2254,7 @@ if (methodSelect) {
       if (confirmBtn) confirmBtn.innerHTML = '✅ پرداخت آنلاین';
       if (trackingWrap) trackingWrap.style.display = 'none';
       if (notice) {
-        notice.innerHTML = '⚠️ <strong>توجه:</strong> درگاه آزمایشی است. با پرداخت، شارژ به‌صورت خودکار در پنل مدیر تسویه و ثبت می‌شود.';
+        notice.innerHTML = '⚠️ <strong>توجه:</strong> درگاه آزمایشی است و پولی جابه‌جا نمی‌شود؛ پرداخت تا تأیید مدیر «در انتظار تأیید» می‌ماند.';
         notice.style.background = '#fef3c7';
         notice.style.color = '#92400e';
       }
@@ -2083,26 +2298,33 @@ function confirmResidentPay() {
   const trackingEl = document.getElementById('residentPayTracking');
   const tracking = (trackingEl?.value || '').trim();
 
-  // ===== اگر آنلاین: خودکار تسویه — بدون نیاز به تأیید مدیر =====
+  if (charge.paid || charge.pendingApproval) {
+    showResidentToast('این شارژ قبلاً پرداخت یا اعلام شده است.', 'warning');
+    closeResidentPayModal();
+    return;
+  }
+
+  // ===== آنلاین =====
+  // ✅ اصلاح حسابداری: درگاه فعلی آزمایشی است و هیچ پولی جابه‌جا نمی‌کند.
+  // قبلاً شارژ بلافاصله «پرداخت‌شده» ثبت می‌شد و هر ساکنی می‌توانست بدون پرداخت بدهی‌اش را صفر کند.
+  // تا اتصال درگاه واقعی (با verify سمت سرور)، پرداخت آنلاین هم منتظر تأیید مدیر می‌ماند.
   if (method === 'آنلاین') {
     const now = new Date();
-    const persianDate = now.toLocaleDateString('fa-IR');
-
-    charge.paid = true;
-    charge.paidDate = persianDate;
-    charge.payMethod = method;
-    charge.payDescription = 'پرداخت آنلاین توسط ساکن';
-    charge.paidAt = now.toISOString();
-    charge.pendingApproval = false;
+    charge.payMethod = 'آنلاین';
+    charge.payDescription = 'پرداخت آنلاین (درگاه آزمایشی) — نیاز به تأیید مدیر';
     charge.trackingCode = tracking || ('ONL-' + Date.now());
+    charge.pendingApproval = true;
+    charge.pendingAt = now.toISOString();
+    charge.paid = false;
     charge.paidByResident = true;
+    charge.rejectedAt = null;
+    charge.rejectReason = null;
 
     saveCharges(charges);
-    updateResidentUnitDebt();
-    notifyManagerAboutPayment(charge, true);
+    notifyManagerAboutPayment(charge, false);
 
     closeResidentPayModal();
-    showResidentToast('✅ پرداخت آنلاین با موفقیت انجام شد و در پنل مدیر ثبت شد!', 'success');
+    showResidentToast('📩 پرداخت ثبت شد و پس از تأیید مدیر تسویه می‌شود.', 'info');
 
     setTimeout(() => {
       renderResidentCharges();
@@ -2125,6 +2347,8 @@ function confirmResidentPay() {
   charge.pendingAt = new Date().toISOString();
   charge.paid = false;
   charge.paidByResident = true;
+  charge.rejectedAt = null;
+  charge.rejectReason = null;
 
   saveCharges(charges);
   notifyManagerAboutPayment(charge, false);
@@ -2194,6 +2418,7 @@ function updateResidentUnitDebt() {
 
   // آپدیت واحد
   myUnit.debt = totalDebt;
+  myUnit.debtExplicit = true;
   saveUnits(units);
 }
 
