@@ -229,6 +229,33 @@ function handleLoginSubmit() {
 
   const result = checkUserAuth(phone, password);
 
+  // ☁️ دستگاه جدید: حساب روی این مرورگر نیست → از سرور ابری بیاور
+  const isRemoteCase = !result.ok && window.AptSync &&
+    (!localStorage.getItem(USER_PHONE_KEY) || normalizePhone(localStorage.getItem(USER_PHONE_KEY)) !== normalizePhone(phone) || result.error.includes('رمز'));
+  if (isRemoteCase) {
+    const btn = document.getElementById('btnLoginSubmit');
+    if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = '⏳ در حال دریافت اطلاعات…'; }
+    window.AptSync.managerRemoteLogin(phone, simpleHashAuth(password))
+      .then(() => {
+        saveUserAuth(phone, password);
+        showToastAuth('اطلاعات ساختمان از سرور دریافت شد. خوش آمدید!', 'success');
+        setTimeout(() => window.location.replace('index.html'), 800);
+      })
+      .catch((e) => {
+        if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || '🚀 ورود به پنل'; }
+        let msg = result.error;
+        if (e && e.status === 401) msg = 'رمز عبور اشتباه است.';
+        else if (e && e.status === 404) msg = result.error.includes('رمز') ? result.error : 'حسابی با این شماره پیدا نشد. لطفاً ثبت‌نام کنید.';
+        else if (e && e.status === 429) msg = 'تلاش‌های زیاد؛ ۱۵ دقیقه دیگر دوباره امتحان کنید.';
+        else if (!e || !e.status) msg = 'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید.';
+        const isPass = msg.includes('رمز');
+        (isPass ? passwordInput : phoneInput).classList.add('input-error');
+        const el = isPass ? passwordError : phoneError;
+        el.textContent = msg; el.classList.add('show');
+      });
+    return;
+  }
+
   if (!result.ok) {
     if (result.error.includes('رمز')) {
       passwordInput.classList.add('input-error');

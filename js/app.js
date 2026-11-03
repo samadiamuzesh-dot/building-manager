@@ -11,7 +11,7 @@
    - پاک‌سازی کامل داده‌ها هنگام ثبت‌نام جدید
    - اعلان‌ها per-account شدند
    ============================================================ */
-console.log('APP.JS VERSION: v26 — accounting/report/sync fixes');
+console.log('APP.JS VERSION: v27 — cloud sync (Vercel)');
 console.log('APP.JS VERSION: v25 — ApartmentPlus (single units + paid price + limits)');
 console.log('APP.JS VERSION: v22 — ApartmentPlus (full empty state: no fake charts/data)');
 console.log('%c🏢 آپارتمان پلاس | v22', 'color: #5b4cdb; font-size: 14px; font-weight: bold;');
@@ -6399,7 +6399,7 @@ function saveMessage() {
   }
 
   const messages = loadMessages();
-  let lastId = messages.length > 0 ? Math.max(...messages.map(m => m.id || 0)) : 0;
+  let lastId = Math.max(messages.length > 0 ? Math.max(...messages.map(m => m.id || 0)) : 0, Date.now());
 
   const now = new Date();
   const persianDate = now.toLocaleDateString('fa-IR');
@@ -6541,7 +6541,8 @@ function sendConversationReply() {
   const persianDate = now.toLocaleDateString('fa-IR');
   const persianTime = now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
 
-  const newId = messages.length > 0 ? Math.max(...messages.map(m => m.id || 0)) + 1 : 1;
+  // شناسه یکتا بین دستگاه‌ها (همگام‌سازی ابری)
+  const newId = Math.max(messages.length > 0 ? Math.max(...messages.map(m => m.id || 0)) + 1 : 1, Date.now());
 
   messages.push({
     id: newId,
@@ -9046,6 +9047,11 @@ function changePassword() {
   if (currentPass && currentPass === newPass) { toastWarning('رمز عبور جدید نباید با رمز فعلی یکسان باشد.'); return; }
 
   if (typeof simpleHashAuth === 'function') {
+    // رمز روی سرور همگام‌سازی هم عوض شود تا ورود از دستگاه‌های دیگر کار کند
+    if (window.AptSync && savedHash) {
+      window.AptSync.changeManagerPassword(savedHash, simpleHashAuth(newPass))
+        .catch(() => toastWarning('رمز روی سرور ابری عوض نشد؛ اینترنت را بررسی و دوباره تلاش کنید.'));
+    }
     localStorage.setItem('ham_sakhteman_user_password', simpleHashAuth(newPass));
   } else {
     savePasswordHash(simpleHash(newPass));

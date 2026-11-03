@@ -1,19 +1,21 @@
 // v2: network-first برای HTML/JS/CSS تا اصلاحات جدید فوراً به کاربر برسد
 // (نسخه قبلی cache-first بود و صفحات قدیمی برای همیشه از کش نمایش داده می‌شد)
-const CACHE = 'apartman-plus-v2';
+const CACHE = 'apartman-plus-v3';
+// مسیرها نسبی‌اند تا روی هر دامنه‌ای (Vercel یا GitHub Pages) کار کند
 const ASSETS = [
-  '/building-manager/',
-  '/building-manager/index.html',
-  '/building-manager/resident.html',
-  '/building-manager/login.html',
-  '/building-manager/manifest.json',
-  '/building-manager/css/style.css',
-  '/building-manager/css/resident-style.css',
-  '/building-manager/js/app.js',
-  '/building-manager/js/auth.js',
-  '/building-manager/js/plans.js',
-  '/building-manager/js/resident-app.js',
-  '/building-manager/assets/logo.png'
+  './',
+  'index.html',
+  'resident.html',
+  'login.html',
+  'manifest.json',
+  'css/style.css',
+  'css/resident-style.css',
+  'js/app.js',
+  'js/auth.js',
+  'js/plans.js',
+  'js/sync.js',
+  'js/resident-app.js',
+  'assets/logo.png'
 ];
 
 self.addEventListener('install', e => {
@@ -32,6 +34,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).pathname.includes('/api/')) return; // سرور همگام‌سازی هرگز کش نشود
   e.respondWith(
     fetch(e.request)
       .then(res => {

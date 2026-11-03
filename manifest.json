@@ -3,7 +3,7 @@
   "short_name": "آپارتمان پلاس",
   "description": "نرم‌افزار هوشمند مدیریت شارژ و حسابداری ساختمان",
   "start_url": "resident.html",
-  "scope": "/building-manager/",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f172a",

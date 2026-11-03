@@ -324,7 +324,16 @@ function verifyBuildingCode() {
   }
 
   // پیدا کردن شماره مدیر از روی کد ساختمان (پشتیبانی از کلید scoped)
-  const managerPhone = _findManagerPhoneByBuildingCode(code);
+  let managerPhone = _findManagerPhoneByBuildingCode(code);
+  // ☁️ ساختمان روی این گوشی نیست → یک بار از سرور ابری بگیر
+  if (!managerPhone && window.AptSync && !verifyBuildingCode._remoteTried) {
+    verifyBuildingCode._remoteTried = true;
+    errorEl.textContent = '⏳ در حال جستجوی ساختمان…'; errorEl.classList.add('show');
+    window.AptSync.openBuilding(code)
+      .catch(() => {})
+      .finally(() => { errorEl.classList.remove('show'); verifyBuildingCode(); verifyBuildingCode._remoteTried = false; });
+    return;
+  }
   if (!managerPhone) {
     // یک بار بدون scope هم چک کن
     const dataFallback = loadData();
@@ -542,9 +551,9 @@ function syncUnitToManagerPanel(resident, opts) {
   };
 
   if (!unit) {
-    const newId = units.length > 0
+    const newId = Math.max(units.length > 0
       ? Math.max(...units.map(u => Number(u.id) || 0)) + 1
-      : 1;
+      : 1, Date.now());
     unit = {
       id: newId,
       block: block,
@@ -705,7 +714,8 @@ function registerResident() {
     return;
   }
 
-  const newId = registered.length > 0 ? Math.max(...registered.map(r => r.id || 0)) + 1 : 1;
+  // شناسه یکتا بین دستگاه‌ها (دو ساکن هم‌زمان از دو گوشی ثبت‌نام کنند)
+  const newId = Math.max(registered.length > 0 ? Math.max(...registered.map(r => r.id || 0)) + 1 : 1, Date.now());
 
   const newResident = {
     id: newId,
@@ -1246,9 +1256,9 @@ function sendResidentMessage() {
     : '—';
 
   const allMessages = loadMessages();
-  const newId = allMessages.length > 0
+  const newId = Math.max(allMessages.length > 0
     ? Math.max(...allMessages.map(m => m.id || 0)) + 1
-    : 1;
+    : 1, Date.now());
 
   const now = new Date();
   const persianDate = now.toLocaleDateString('fa-IR');
@@ -2014,6 +2024,17 @@ function loginResident() {
   if (err) err.classList.remove('show');
 
   if (!code || !phone || !pass) return fail('کد ساختمان، موبایل و رمز را وارد کنید.');
+
+  // ☁️ ورود از گوشی جدید: اطلاعات ساختمان و ثبت‌نام خود ساکن را از سرور بگیر
+  if (window.AptSync && !loginResident._remoteTried) {
+    loginResident._remoteTried = true;
+    if (err) { err.textContent = '⏳ در حال بررسی…'; err.classList.add('show'); }
+    const p = _findManagerPhoneByBuildingCode(code) ? Promise.resolve() : window.AptSync.openBuilding(code);
+    p.then(() => window.AptSync.residentRemoteLogin(code, phone, hashResidentPassword(pass)))
+      .catch(() => {})
+      .finally(() => { if (err) err.classList.remove('show'); loginResident(); loginResident._remoteTried = false; });
+    return;
+  }
 
   const managerPhone = _findManagerPhoneByBuildingCode(code);
   if (!managerPhone) return fail('ساختمانی با این کد پیدا نشد.');
