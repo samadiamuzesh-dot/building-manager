@@ -68,39 +68,163 @@ function saveRegisteredResidents(list) {
   localStorage.setItem(RESIDENT_REGISTERED_KEY, JSON.stringify(list));
 }
 
+/* کلید ذخیره‌سازی per-account مدیر (با شماره موبایل) */
+let _residentResolvedPhone = null;
+
+function _findManagerPhoneByBuildingCode(code) {
+  if (!code) return null;
+  const target = String(code).trim().toUpperCase();
+
+  // اول کلید قدیمی بدون scope
+  try {
+    const raw = localStorage.getItem('ham_sakhteman_v3');
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data?.building?.code && String(data.building.code).toUpperCase() === target) {
+        return localStorage.getItem('ham_sakhteman_user_phone') || null;
+      }
+    }
+  } catch (e) {}
+
+  // جستجو در همه کلیدهای scoped
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith('ham_sakhteman_v3_')) continue;
+    try {
+      const data = JSON.parse(localStorage.getItem(key) || 'null');
+      if (data?.building?.code && String(data.building.code).toUpperCase() === target) {
+        // استخراج شماره از انتهای کلید
+        return key.replace('ham_sakhteman_v3_', '') || null;
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
+function _getScopedKey(baseKey) {
+  // اگر قبلاً با کد ساختمان شماره مدیر پیدا شده
+  if (_residentResolvedPhone) {
+    return `${baseKey}_${_residentResolvedPhone}`;
+  }
+  // اگر کاربر مدیر لاگین است
+  const phone = localStorage.getItem('ham_sakhteman_user_phone');
+  if (phone) {
+    const normalized = String(phone).replace(/\D/g, '');
+    return `${baseKey}_${normalized}`;
+  }
+  return baseKey;
+}
+
 function loadData() {
-  const raw = localStorage.getItem('ham_sakhteman_v3');
-  if (raw) { try { return JSON.parse(raw); } catch (e) { return null; } }
+  // اول scoped (اگر شماره مشخص است)
+  const scopedKey = _getScopedKey('ham_sakhteman_v3');
+  let raw = localStorage.getItem(scopedKey);
+  if (raw) {
+    try { return JSON.parse(raw); } catch (e) {}
+  }
+  // سپس کلید قدیمی
+  raw = localStorage.getItem('ham_sakhteman_v3');
+  if (raw) {
+    try { return JSON.parse(raw); } catch (e) {}
+  }
   return null;
 }
 
 function loadUnits() {
-  const raw = localStorage.getItem('ham_sakhteman_units');
-  if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
+  const scopedKey = _getScopedKey('ham_sakhteman_units');
+  let raw = localStorage.getItem(scopedKey);
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    } catch (e) {}
+  }
+  // فقط اگر scope مشخص نیست، کلید قدیمی را به‌عنوان fallback بخوان
+  if (!_residentResolvedPhone) {
+    raw = localStorage.getItem('ham_sakhteman_units');
+    if (raw) {
+      try {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) return arr;
+      } catch (e) {}
+    }
+  }
   return [];
 }
 
 function loadCharges() {
-  const raw = localStorage.getItem('ham_sakhteman_charges');
-  if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
+  const scopedKey = _getScopedKey('ham_sakhteman_charges');
+  let raw = localStorage.getItem(scopedKey);
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    } catch (e) {}
+  }
+  raw = localStorage.getItem('ham_sakhteman_charges');
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    } catch (e) {}
+  }
   return [];
 }
 
 function loadNotices() {
-  const raw = localStorage.getItem('ham_sakhteman_notices');
-  if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
+  const scopedKey = _getScopedKey('ham_sakhteman_notices');
+  let raw = localStorage.getItem(scopedKey);
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    } catch (e) {}
+  }
+  raw = localStorage.getItem('ham_sakhteman_notices');
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    } catch (e) {}
+  }
   return [];
 }
 
 function loadMessages() {
-  const raw = localStorage.getItem('ham_sakhteman_messages');
-  if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
+  const scopedKey = _getScopedKey('ham_sakhteman_messages');
+  let raw = localStorage.getItem(scopedKey);
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    } catch (e) {}
+  }
+  raw = localStorage.getItem('ham_sakhteman_messages');
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    } catch (e) {}
+  }
   return [];
 }
 
 function loadVotings() {
-  const raw = localStorage.getItem('ham_sakhteman_votings');
-  if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
+  const scopedKey = _getScopedKey('ham_sakhteman_votings');
+  let raw = localStorage.getItem(scopedKey);
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    } catch (e) {}
+  }
+  raw = localStorage.getItem('ham_sakhteman_votings');
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    } catch (e) {}
+  }
   return [];
 }
 
@@ -139,6 +263,21 @@ function verifyBuildingCode() {
     errorEl.classList.add('show');
     return;
   }
+
+  // پیدا کردن شماره مدیر از روی کد ساختمان (پشتیبانی از کلید scoped)
+  const managerPhone = _findManagerPhoneByBuildingCode(code);
+  if (!managerPhone) {
+    // یک بار بدون scope هم چک کن
+    const dataFallback = loadData();
+    if (!dataFallback?.building?.code || String(dataFallback.building.code).toUpperCase() !== code) {
+      input.classList.add('input-error');
+      errorEl.textContent = 'کد ساختمان اشتباه است یا ساختمانی ثبت نشده. دوباره چک کنید.';
+      errorEl.classList.add('show');
+      return;
+    }
+  }
+
+  _residentResolvedPhone = managerPhone || (localStorage.getItem('ham_sakhteman_user_phone') || '').replace(/\D/g, '') || null;
 
   const data = loadData();
   if (!data || !data.building) {
@@ -194,28 +333,51 @@ function goToStep2() {
 }
 
 function updateUnitOptionsForBlock(blockName) {
-  const units = loadUnits();
   const unitSelect = document.getElementById('residentUnitSelect');
+  const data = loadData();
+  const building = data?.building;
+  const existingUnits = loadUnits();
+  const registered = loadRegisteredResidents();
 
-  const filtered = units.filter(u => {
-    if (blockName === '—' || !blockName) {
-      return u.block === '—' || !u.block;
-    }
-    return String(u.block).trim() === String(blockName).trim();
-  });
+  // حداکثر تعداد واحد این بلوک / ساختمان از تعریف ثبت‌نام مدیر
+  let maxUnits = 0;
+  if (building?.type === 'complex' && Array.isArray(building.blocks)) {
+    const blk = building.blocks.find(b => String(b.name).trim() === String(blockName).trim());
+    maxUnits = blk ? (parseInt(blk.units) || 0) : 0;
+  } else {
+    maxUnits = parseInt(building?.totalUnits) || 0;
+  }
 
-  if (filtered.length === 0) {
-    unitSelect.innerHTML = '<option value="">— واحدی یافت نشد —</option>';
+  // اگر هنوز تعریف نشده، از واحدهای موجود کمک بگیر
+  if (maxUnits < 1) {
+    const filtered = existingUnits.filter(u => {
+      if (blockName === '—' || !blockName) return u.block === '—' || !u.block;
+      return String(u.block).trim() === String(blockName).trim();
+    });
+    maxUnits = filtered.reduce((m, u) => Math.max(m, parseInt(u.number) || 0), 0);
+  }
+
+  if (maxUnits < 1) {
+    unitSelect.innerHTML = '<option value="">— واحدی تعریف نشده —</option>';
     return;
   }
 
   unitSelect.innerHTML = '<option value="">— انتخاب کن —</option>';
-  filtered.forEach(u => {
+  for (let n = 1; n <= maxUnits; n++) {
+    // واحدهایی که قبلاً توسط ساکن ثبت‌نام شده‌اند را غیرفعال نشان بده
+    const already = registered.find(r =>
+      r.buildingCode === tempBuildingCode &&
+      String(r.block).trim() === String(blockName).trim() &&
+      Number(r.unitNumber) === n
+    );
     const opt = document.createElement('option');
-    opt.value = u.number;
-    opt.textContent = 'واحد ' + toPersianNumR(u.number);
+    opt.value = n;
+    opt.textContent = already
+      ? ('واحد ' + toPersianNumR(n) + ' (ثبت‌نام شده)')
+      : ('واحد ' + toPersianNumR(n));
+    if (already) opt.disabled = true;
     unitSelect.appendChild(opt);
-  });
+  }
 }
 
 function verifyUnit() {
@@ -271,6 +433,139 @@ function goToStep3() {
   document.getElementById('residentStep3').style.display = 'block';
 }
 
+
+/** ذخیره/به‌روزرسانی واحد در پنل مدیر وقتی ساکن ثبت‌نام می‌کند */
+function syncUnitToManagerPanel(resident) {
+  if (!resident) return;
+
+  // اطمینان از داشتن شماره مدیر برای کلید scoped
+  if (!_residentResolvedPhone && resident.buildingCode) {
+    _residentResolvedPhone = _findManagerPhoneByBuildingCode(resident.buildingCode);
+  }
+
+  const unitsKey = _getScopedKey('ham_sakhteman_units');
+  let units = [];
+  try {
+    const raw = localStorage.getItem(unitsKey);
+    if (raw) units = JSON.parse(raw) || [];
+    if (!Array.isArray(units)) units = [];
+  } catch (e) {
+    units = [];
+  }
+
+  // فقط از کلید scoped بخوان — کلید قدیمی بدون scope را قاطی نکن
+  // (قبلاً باعث می‌شد همه واحدهای قدیمی یکجا لود شوند)
+
+  const block = String(resident.block || '—').trim() || '—';
+  const number = parseInt(resident.unitNumber, 10);
+  if (!number || number < 1) {
+    console.warn('syncUnitToManagerPanel: invalid unit number', resident);
+    return;
+  }
+
+  let unit = units.find(u =>
+    String(u.block || '').trim() === block && Number(u.number) === number
+  );
+
+  const isApproved = resident.status === 'approved';
+  const person = {
+    name: resident.name || null,
+    phone: resident.phone || null,
+    birthDate: null,
+    nationalId: null,
+    type: 'settled',
+    registered: true,
+    approved: isApproved,
+  };
+
+  if (!unit) {
+    const newId = units.length > 0
+      ? Math.max(...units.map(u => Number(u.id) || 0)) + 1
+      : 1;
+    unit = {
+      id: newId,
+      block: block,
+      number: number,
+      code: (block === '—' ? 'S' : block) + '-' + toPersianNumR(number),
+      floor: '',
+      area: 0,
+      peopleCount: 1,
+      parkingCount: 0,
+      storageCount: 0,
+      status: 'occupied',
+      owner: { name: null, phone: null, birthDate: null, nationalId: null, type: 'settled', registered: false, approved: false },
+      tenant: { name: null, phone: null, birthDate: null, nationalId: null, type: 'settled', registered: false, approved: false },
+      defaultChargeOwner: 0,
+      defaultChargeTenant: 0,
+      chargeAmount: 0,
+      debt: null,
+      notes: '',
+      createdAt: new Date().toISOString(),
+      source: 'resident_register',
+    };
+    units.push(unit);
+  }
+
+  // نقش ساکن را در واحد بنویس
+  const role = (resident.role || 'owner').toLowerCase();
+  if (role === 'tenant' || role === 'مستاجر' || role === 'ساکن') {
+    unit.tenant = { ...person };
+    // اگر مالک خالی است، حداقل وضعیت پر بودن واحد را نشان بده
+    if (!unit.owner?.name) {
+      unit.status = 'occupied';
+    }
+  } else {
+    unit.owner = { ...person };
+    unit.status = 'occupied';
+  }
+
+  unit.updatedAt = new Date().toISOString();
+  if (resident.peopleCount) {
+    unit.peopleCount = Math.max(1, parseInt(resident.peopleCount, 10) || 1);
+  } else {
+    unit.peopleCount = Math.max(Number(unit.peopleCount) || 0, 1);
+  }
+
+  try {
+    localStorage.setItem(unitsKey, JSON.stringify(units));
+  } catch (e) {
+    console.error('syncUnitToManagerPanel failed', e);
+  }
+
+  // اعلان برای مدیر
+  try {
+    const notifKey = _residentResolvedPhone
+      ? ('ham_sakhteman_notifications_' + _residentResolvedPhone)
+      : 'ham_sakhteman_notifications';
+    let notifs = [];
+    try {
+      const rawN = localStorage.getItem(notifKey);
+      if (rawN) notifs = JSON.parse(rawN) || [];
+      if (!Array.isArray(notifs)) notifs = [];
+    } catch (e) { notifs = []; }
+
+    const unitLabel = block && block !== '—'
+      ? (block + ' - واحد ' + toPersianNumR(number))
+      : ('واحد ' + toPersianNumR(number));
+    const roleLabel = (role === 'tenant' || role === 'مستاجر' || role === 'ساکن') ? 'مستاجر' : 'مالک';
+
+    notifs.unshift({
+      id: Date.now(),
+      type: 'resident_register',
+      title: 'ثبت‌نام ساکن جدید',
+      message: roleLabel + ' «' + (resident.name || '') + '» برای ' + unitLabel + ' ثبت‌نام کرد. شماره: ' + (resident.phone || '—'),
+      createdAt: new Date().toISOString(),
+      read: false,
+    });
+    // حداکثر ۵۰ اعلان
+    if (notifs.length > 50) notifs = notifs.slice(0, 50);
+    localStorage.setItem(notifKey, JSON.stringify(notifs));
+  } catch (e) {
+    console.warn('notification for manager failed', e);
+  }
+}
+
+
 /* ============ مرحله ۳: ثبت‌نام ============ */
 function registerResident() {
   const nameInput = document.getElementById('residentName');
@@ -290,6 +585,7 @@ function registerResident() {
   const name = nameInput.value.trim();
   const phone = phoneInput.value.trim();
   const role = roleInput.value;
+  const peopleCount = parseInt(document.getElementById('residentPeopleCount')?.value, 10) || 1;
   const password = passInput.value;
   const passConfirm = passConfirmInput.value;
 
@@ -342,6 +638,7 @@ function registerResident() {
     name: name,
     phone: phone,
     role: role,
+    peopleCount: peopleCount,
     password: password,
     registeredAt: new Date().toISOString(),
     status: 'pending', // در انتظار تأیید مدیر
@@ -349,6 +646,9 @@ function registerResident() {
 
   registered.push(newResident);
   saveRegisteredResidents(registered);
+
+  // نمایش خودکار در پنل مدیر (نام، شماره، بلوک/واحد)
+  syncUnitToManagerPanel(newResident);
 
   // نشست
   setResidentSession({
@@ -359,6 +659,7 @@ function registerResident() {
     name: name,
     phone: phone,
     role: role,
+    managerPhone: _residentResolvedPhone || null,
   });
 
   showResidentToast('ثبت‌نام با موفقیت انجام شد 🎉', 'success');
@@ -483,7 +784,11 @@ function switchResidentPage(pageKey) {
   if (pageKey === 'dashboard') renderResidentDashboard();
   if (pageKey === 'charges') renderResidentCharges();
   if (pageKey === 'notices') renderResidentNotices();
-  if (pageKey === 'messages') renderResidentMessages();
+  if (pageKey === 'messages') {
+    const uid = getUnitIdBySession();
+    if (uid) openResidentChatDirect(uid);
+    else renderResidentMessages();
+  }
   if (pageKey === 'voting') renderResidentVoting();
   if (pageKey === 'profile') renderResidentProfile();
 }
@@ -527,17 +832,18 @@ function renderResidentCharges() {
     let extraInfo = '';
 
     if (c.paid) {
-      // پرداخت شده
-      status = '<span style="color:#16a34a; font-weight:800;">✅ پرداخت شده</span>';
+      // پرداخت شده / تأیید شده
+      status = '<span style="color:#16a34a; font-weight:800;">✅ پرداخت تأیید شد</span>';
       extraInfo = `
         <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
           <span style="color:#64748b;">تاریخ پرداخت</span>
           <strong>${c.paidDate || '—'}</strong>
         </div>
-        <div style="display:flex; justify-content:space-between; padding:8px 0;">
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
           <span style="color:#64748b;">روش پرداخت</span>
           <strong>${c.payMethod || '—'}</strong>
         </div>
+        ${c.trackingCode ? `<div style="display:flex; justify-content:space-between; padding:8px 0;"><span style="color:#64748b;">شماره پیگیری</span><strong dir="ltr">${c.trackingCode}</strong></div>` : ''}
       `;
     } else if (c.pendingApproval) {
       // در انتظار تأیید مدیر
@@ -547,9 +853,13 @@ function renderResidentCharges() {
           <span style="color:#64748b;">روش پرداخت</span>
           <strong>${c.payMethod || '—'}</strong>
         </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+          <span style="color:#64748b;">شماره پیگیری</span>
+          <strong dir="ltr">${c.trackingCode || '—'}</strong>
+        </div>
         <div style="display:flex; justify-content:space-between; padding:8px 0;">
           <span style="color:#64748b;">تاریخ اعلام</span>
-          <strong>${new Date(c.pendingAt).toLocaleDateString('fa-IR')}</strong>
+          <strong>${c.pendingAt ? new Date(c.pendingAt).toLocaleDateString('fa-IR') : '—'}</strong>
         </div>
       `;
     } else {
@@ -709,40 +1019,94 @@ function renderResidentMessages() {
 }
 
 function openResidentChat(unitId, subject = null) {
+  openResidentChatDirect(unitId, subject);
+}
+
+function openResidentChatDirect(unitId, subject = null) {
   residentCurrentChatUnitId = unitId;
 
+  // صفحه پیام‌ها همان چت مستقیم است
   document.querySelectorAll('.resident-page').forEach(p => p.classList.remove('active'));
-  document.getElementById('resident-chat').classList.add('active');
+  const page = document.getElementById('resident-messages');
+  if (page) page.classList.add('active');
 
   document.querySelectorAll('.resident-nav-item').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.residentPage === 'messages');
   });
 
-  const title = document.getElementById('residentChatTitle');
-  const subtitle = document.getElementById('residentChatSubtitle');
-
-  if (subject) {
-    title.textContent = subject;
-  } else {
-    title.textContent = 'گفتگوی جدید';
-  }
-
-  subtitle.textContent = 'پاسخگویی توسط مدیر ساختمان';
-
   renderResidentChatMessages(subject);
 
-  // پاک کردن فرم
   const input = document.getElementById('residentChatInput');
-  if (input) input.value = '';
+  if (input) {
+    input.value = '';
+    setTimeout(() => input.focus(), 200);
+  }
 
-  // فوکوس
-  setTimeout(() => input?.focus(), 200);
-
-  // شروع چک خودکار
   if (residentChatInterval) clearInterval(residentChatInterval);
   residentChatInterval = setInterval(() => {
     renderResidentChatMessages(subject);
-  }, 2000);
+  }, 3000);
+}
+
+/** رندر پیام‌های چت ساکن با مدیر */
+function renderResidentChatMessages(subject = null) {
+  const container = document.getElementById('residentChatMessages');
+  if (!container) return;
+
+  const session = getResidentSession();
+  const myUnitId = getUnitIdBySession() || residentCurrentChatUnitId;
+  if (!session || !myUnitId) {
+    container.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:40px;">واحد شما یافت نشد</p>';
+    return;
+  }
+
+  let msgs = (loadMessages() || []).filter(m => Number(m.unitId) === Number(myUnitId));
+  if (subject) {
+    msgs = msgs.filter(m => (m.subject || 'بدون موضوع') === subject);
+  }
+  msgs.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+
+  if (msgs.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;color:#94a3b8;padding:40px 16px;">
+        <div style="font-size:48px;margin-bottom:8px;">💬</div>
+        <p>هنوز پیامی رد و بدل نشده. اولین پیام را بنویسید.</p>
+      </div>`;
+    return;
+  }
+
+  // پیام‌های ارسالی مدیر برای ساکن = direction sent (از دید مدیر)
+  // پیام ساکن = direction received (از دید مدیر)
+  container.innerHTML = msgs.map(m => {
+    const fromResident = m.direction === 'received';
+    const align = fromResident ? 'flex-end' : 'flex-start';
+    const bg = fromResident ? 'linear-gradient(135deg,#5b4cdb,#4338ca)' : '#f1f5f9';
+    const color = fromResident ? '#fff' : '#1e293b';
+    const who = fromResident ? 'شما' : 'مدیر';
+    return `
+      <div style="display:flex;justify-content:${align};margin-bottom:10px;">
+        <div style="max-width:80%;background:${bg};color:${color};padding:10px 14px;border-radius:14px;font-size:13.5px;line-height:1.7;">
+          <div style="font-size:11px;opacity:0.8;margin-bottom:4px;">${who} · ${m.date || ''} ${m.time || ''}</div>
+          <div>${(m.body || '').replace(/</g,'&lt;')}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // اسکرول به آخر
+  container.scrollTop = container.scrollHeight;
+
+  // علامت‌خواندن پیام‌های مدیر
+  try {
+    const all = loadMessages();
+    let changed = false;
+    all.forEach(m => {
+      if (Number(m.unitId) === Number(myUnitId) && m.direction === 'sent' && !m.read) {
+        m.read = true;
+        changed = true;
+      }
+    });
+    if (changed) saveMessages(all);
+  } catch (e) {}
 }
 
 function closeResidentChat() {
@@ -807,7 +1171,7 @@ allMessages.push({
     createdAt: now.toISOString(),
   });
 
-  localStorage.setItem('ham_sakhteman_messages', JSON.stringify(allMessages));
+  saveMessages(allMessages);
 
   input.value = '';
   renderResidentMessages();
@@ -818,7 +1182,7 @@ allMessages.push({
     const target = msgs.find(x => x.id === newId);
     if (target) {
       target.delivered = true;
-      localStorage.setItem('ham_sakhteman_messages', JSON.stringify(msgs));
+      saveMessages(msgs);
       renderResidentMessages();
     }
   }, 800);
@@ -900,21 +1264,27 @@ function renderResidentVoting() {
   const session = getResidentSession();
   if (!session) return;
 
-  const votings = loadVotings();
+  const votings = loadVotings() || [];
   const now = new Date();
 
-  // فیلتر: فقط رأی‌گیری‌های فعال
-  const activeVotings = votings.filter(v => {
-    const start = new Date(v.startDateTime || v.createdAt);
-    const end = new Date(v.endDateTime || v.createdAt);
-    return now >= start && now <= end;
-  });
+  const isEnded = (v) => {
+    if (v.status === 'ended' || v.status === 'closed') return true;
+    if (!v.endDateTime) return false;
+    const end = new Date(v.endDateTime);
+    return !isNaN(end.getTime()) && now > end;
+  };
+  const isNotStarted = (v) => {
+    if (!v.startDateTime) return false;
+    const start = new Date(v.startDateTime);
+    return !isNaN(start.getTime()) && now < start;
+  };
 
-  // رأی‌گیری‌های پایان‌یافته
-  const endedVotings = votings.filter(v => {
-    const end = new Date(v.endDateTime || v.createdAt);
-    return now > end;
-  }).sort((a, b) => new Date(b.endDateTime) - new Date(a.endDateTime));
+  // فعال: تمام‌نشده و شروع‌شده (یا بدون تاریخ)
+  const activeVotings = votings.filter(v => !isEnded(v) && !isNotStarted(v));
+
+  // پایان‌یافته
+  const endedVotings = votings.filter(v => isEnded(v))
+    .sort((a, b) => new Date(b.endDateTime || 0) - new Date(a.endDateTime || 0));
 
   if (activeVotings.length === 0 && endedVotings.length === 0) {
     container.innerHTML = `
@@ -1288,20 +1658,25 @@ function renderResidentProfile() {
     ? `${session.block} - واحد ${toPersianNumR(session.unitNumber)}`
     : `واحد ${toPersianNumR(session.unitNumber)}`;
 
-  // ============ اطلاعات من ============
+  // ============ اطلاعات من (قابل ویرایش) ============
+  const currentPeople = myUnit?.peopleCount || 1;
   let infoHtml = `
     <div class="resident-card">
       <div class="resident-card-header">
         <h3>👤 اطلاعات من</h3>
       </div>
 
-      <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-        <span style="color:#64748b;">نام</span>
-        <strong>${session.name || '—'}</strong>
+      <div class="resident-form-group" style="margin-top:8px;">
+        <label for="profileEditName">نام و نام خانوادگی</label>
+        <input type="text" id="profileEditName" class="resident-form-input" value="${session.name || ''}" />
       </div>
-      <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-        <span style="color:#64748b;">موبایل</span>
-        <strong dir="ltr">${session.phone || '—'}</strong>
+      <div class="resident-form-group">
+        <label for="profileEditPhone">شماره موبایل</label>
+        <input type="tel" id="profileEditPhone" class="resident-form-input" value="${session.phone || ''}" dir="ltr" maxlength="11" />
+      </div>
+      <div class="resident-form-group">
+        <label for="profileEditPeople">تعداد نفرات ساکن</label>
+        <input type="number" id="profileEditPeople" class="resident-form-input" min="1" max="20" value="${currentPeople}" />
       </div>
       <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
         <span style="color:#64748b;">نقش</span>
@@ -1311,6 +1686,8 @@ function renderResidentProfile() {
         <span style="color:#64748b;">واحد</span>
         <strong>${unitLabel}</strong>
       </div>
+      <button type="button" class="resident-submit-btn" id="profileSaveBtn" style="margin-top:16px;">💾 ذخیره تغییرات</button>
+      <div id="profileSaveMsg" style="margin-top:8px;font-size:13px;text-align:center;"></div>
     </div>
   `;
 
@@ -1412,6 +1789,78 @@ function renderResidentProfile() {
   container.innerHTML = infoHtml;
 
   document.getElementById('residentLogoutBtn2')?.addEventListener('click', logoutResident);
+
+  document.getElementById('profileSaveBtn')?.addEventListener('click', () => {
+    saveResidentProfile();
+  });
+}
+
+/** ذخیره ویرایش پروفایل ساکن */
+function saveResidentProfile() {
+  const session = getResidentSession();
+  if (!session) return;
+
+  const name = (document.getElementById('profileEditName')?.value || '').trim();
+  const phone = (document.getElementById('profileEditPhone')?.value || '').trim();
+  const people = parseInt(document.getElementById('profileEditPeople')?.value, 10) || 1;
+  const msg = document.getElementById('profileSaveMsg');
+
+  if (!name || name.length < 3) {
+    if (msg) { msg.style.color = '#b91c1c'; msg.textContent = 'نام باید حداقل ۳ کاراکتر باشد.'; }
+    return;
+  }
+  if (!isValidIranMobileR(phone)) {
+    if (msg) { msg.style.color = '#b91c1c'; msg.textContent = 'شماره موبایل معتبر نیست.'; }
+    return;
+  }
+
+  // به‌روزرسانی نشست
+  session.name = name;
+  session.phone = phone;
+  setResidentSession(session);
+
+  // به‌روزرسانی لیست ثبت‌نام‌شده‌ها
+  const registered = loadRegisteredResidents();
+  const r = registered.find(x => x.id === session.residentId);
+  if (r) {
+    r.name = name;
+    r.phone = phone;
+    r.peopleCount = people;
+    saveRegisteredResidents(registered);
+  }
+
+  // همگام با پنل مدیر
+  const residentPayload = {
+    buildingCode: session.buildingCode,
+    block: session.block,
+    unitNumber: session.unitNumber,
+    name: name,
+    phone: phone,
+    role: session.role,
+    peopleCount: people,
+    status: r?.status || 'pending',
+  };
+  syncUnitToManagerPanel(residentPayload);
+
+  // به‌روزرسانی تعداد نفرات روی واحد
+  try {
+    const unitsKey = _getScopedKey('ham_sakhteman_units');
+    let units = [];
+    const raw = localStorage.getItem(unitsKey);
+    if (raw) units = JSON.parse(raw) || [];
+    const block = String(session.block || '—').trim();
+    const number = parseInt(session.unitNumber, 10);
+    const unit = units.find(u => String(u.block || '').trim() === block && Number(u.number) === number);
+    if (unit) {
+      unit.peopleCount = people;
+      localStorage.setItem(unitsKey, JSON.stringify(units));
+      localStorage.setItem('ham_sakhteman_units', JSON.stringify(units));
+    }
+  } catch (e) {}
+
+  if (msg) { msg.style.color = '#16a34a'; msg.textContent = '✅ اطلاعات با موفقیت ذخیره شد.'; }
+  showResidentToast('اطلاعات پروفایل ذخیره شد', 'success');
+  renderResidentHeader();
 }
 
 /* ============ خروج ============ */
@@ -1424,9 +1873,14 @@ function logoutResident() {
 
 /* ============ راه‌اندازی ============ */
 function initResidentApp() {
-  // اگه نشست هست، پنل رو باز کن
+  // اگه نشست هست، پنل رو باز کن و scope داده‌ها را از نشست بازیابی کن
   const session = getResidentSession();
   if (session) {
+    if (session.managerPhone) {
+      _residentResolvedPhone = session.managerPhone;
+    } else if (session.buildingCode) {
+      _residentResolvedPhone = _findManagerPhoneByBuildingCode(session.buildingCode);
+    }
     openResidentPanel();
   } else {
     document.getElementById('residentLoginPage').style.display = 'flex';
@@ -1551,25 +2005,33 @@ const methodSelect = document.getElementById('residentPayMethod');
 const confirmBtn = document.getElementById('residentPayConfirmBtn');
 const notice = document.querySelector('.resident-pay-notice');
 
+const trackingWrap = document.getElementById('residentPayTrackingWrap');
 if (methodSelect) {
-  methodSelect.onchange = () => {
+  const syncPayUI = () => {
     const m = methodSelect.value;
     if (m === 'آنلاین') {
       if (confirmBtn) confirmBtn.innerHTML = '✅ پرداخت آنلاین';
+      if (trackingWrap) trackingWrap.style.display = 'none';
       if (notice) {
-        notice.innerHTML = '⚠️ <strong>توجه:</strong> درگاه پرداخت شبیه‌سازی شده است. با کلیک روی پرداخت، مبلغ کسر نمی‌شود و شارژ خودکار پرداخت شده می‌شود.';
+        notice.innerHTML = '⚠️ <strong>توجه:</strong> درگاه آزمایشی است. با پرداخت، شارژ به‌صورت خودکار در پنل مدیر تسویه و ثبت می‌شود.';
         notice.style.background = '#fef3c7';
         notice.style.color = '#92400e';
       }
     } else {
       if (confirmBtn) confirmBtn.innerHTML = '📩 اعلام پرداخت';
+      if (trackingWrap) trackingWrap.style.display = 'block';
       if (notice) {
-        notice.innerHTML = '📩 <strong>توجه:</strong> پس از اعلام پرداخت، مدیر باید آن را تأیید کند. تا آن زمان، شارژ «در انتظار تأیید» می‌ماند.';
+        notice.innerHTML = '📩 <strong>توجه:</strong> شماره پیگیری واریز را وارد کنید. پس از اعلام، مدیر باید پرداخت را تأیید کند.';
         notice.style.background = '#dbeafe';
         notice.style.color = '#1e40af';
       }
     }
   };
+  methodSelect.onchange = syncPayUI;
+  syncPayUI();
+}
+if (document.getElementById('residentPayTracking')) {
+  document.getElementById('residentPayTracking').value = '';
 }
   const modal = document.getElementById('residentPayModal');
   if (modal) modal.classList.add('open');
@@ -1592,8 +2054,10 @@ function confirmResidentPay() {
   }
 
   const method = document.getElementById('residentPayMethod')?.value || 'آنلاین';
+  const trackingEl = document.getElementById('residentPayTracking');
+  const tracking = (trackingEl?.value || '').trim();
 
-  // ===== اگر آنلاین: خودکار تأیید =====
+  // ===== اگر آنلاین: خودکار تسویه — بدون نیاز به تأیید مدیر =====
   if (method === 'آنلاین') {
     const now = new Date();
     const persianDate = now.toLocaleDateString('fa-IR');
@@ -1603,12 +2067,16 @@ function confirmResidentPay() {
     charge.payMethod = method;
     charge.payDescription = 'پرداخت آنلاین توسط ساکن';
     charge.paidAt = now.toISOString();
+    charge.pendingApproval = false;
+    charge.trackingCode = tracking || ('ONL-' + Date.now());
+    charge.paidByResident = true;
 
     saveCharges(charges);
     updateResidentUnitDebt();
+    notifyManagerAboutPayment(charge, true);
 
     closeResidentPayModal();
-    showResidentToast('✅ پرداخت آنلاین با موفقیت انجام شد!', 'success');
+    showResidentToast('✅ پرداخت آنلاین با موفقیت انجام شد و در پنل مدیر ثبت شد!', 'success');
 
     setTimeout(() => {
       renderResidentCharges();
@@ -1617,21 +2085,64 @@ function confirmResidentPay() {
     return;
   }
 
-  // ===== اگر کارت به کارت یا انتقال: در انتظار تأیید مدیر =====
+  // ===== کارت به کارت / انتقال بانکی: شماره پیگیری الزامی + در انتظار تأیید مدیر =====
+  if (!tracking) {
+    showResidentToast('لطفاً شماره پیگیری / کد رهگیری واریز را وارد کنید.', 'warning');
+    if (trackingEl) trackingEl.focus();
+    return;
+  }
+
   charge.payMethod = method;
   charge.payDescription = `اعلام پرداخت توسط ساکن - روش: ${method}`;
-  charge.pendingApproval = true;      // ← در انتظار تأیید
+  charge.trackingCode = tracking;
+  charge.pendingApproval = true;
   charge.pendingAt = new Date().toISOString();
-  // paid رو false نگه می‌داریم
+  charge.paid = false;
+  charge.paidByResident = true;
 
   saveCharges(charges);
+  notifyManagerAboutPayment(charge, false);
 
   closeResidentPayModal();
-  showResidentToast('📩 پرداخت شما ثبت شد. منتظر تأیید مدیر باشید.', 'info');
+  showResidentToast('📩 پرداخت ثبت شد. پس از تأیید مدیر، شارژ تسویه می‌شود.', 'info');
 
   setTimeout(() => {
     renderResidentCharges();
   }, 300);
+}
+
+/** اعلان به مدیر درباره پرداخت ساکن */
+function notifyManagerAboutPayment(charge, autoApproved) {
+  try {
+    const notifKey = _residentResolvedPhone
+      ? ('ham_sakhteman_notifications_' + _residentResolvedPhone)
+      : 'ham_sakhteman_notifications';
+    let notifs = [];
+    try {
+      const raw = localStorage.getItem(notifKey);
+      if (raw) notifs = JSON.parse(raw) || [];
+      if (!Array.isArray(notifs)) notifs = [];
+    } catch (e) { notifs = []; }
+
+    const title = autoApproved ? 'پرداخت آنلاین شارژ' : 'اعلام پرداخت در انتظار تأیید';
+    const msg = autoApproved
+      ? (`پرداخت آنلاین شارژ ${charge.month} ${charge.year} به مبلغ ${formatTomanR(charge.total)} ثبت و تسویه شد.`)
+      : (`ساکن پرداخت شارژ ${charge.month} ${charge.year} را اعلام کرد. پیگیری: ${charge.trackingCode || '—'} — نیاز به تأیید دارد.`);
+
+    notifs.unshift({
+      id: Date.now(),
+      type: autoApproved ? 'payment_online' : 'payment_pending',
+      title,
+      message: msg,
+      createdAt: new Date().toISOString(),
+      read: false,
+      chargeId: charge.id,
+    });
+    if (notifs.length > 50) notifs = notifs.slice(0, 50);
+    localStorage.setItem(notifKey, JSON.stringify(notifs));
+  } catch (e) {
+    console.warn('notifyManagerAboutPayment failed', e);
+  }
 }
 function updateResidentUnitDebt() {
   const session = getResidentSession();
@@ -1682,23 +2193,28 @@ function bindResidentPayModal() {
    ============================================================ */
 
 function saveCharges(charges) {
-  localStorage.setItem('ham_sakhteman_charges', JSON.stringify(charges));
+  const key = _getScopedKey('ham_sakhteman_charges');
+  localStorage.setItem(key, JSON.stringify(charges));
 }
 
 function saveUnits(units) {
-  localStorage.setItem('ham_sakhteman_units', JSON.stringify(units));
+  const key = _getScopedKey('ham_sakhteman_units');
+  localStorage.setItem(key, JSON.stringify(units));
 }
 
 function saveMessages(messages) {
-  localStorage.setItem('ham_sakhteman_messages', JSON.stringify(messages));
+  const key = _getScopedKey('ham_sakhteman_messages');
+  localStorage.setItem(key, JSON.stringify(messages));
 }
 
 function saveNotices(notices) {
-  localStorage.setItem('ham_sakhteman_notices', JSON.stringify(notices));
+  const key = _getScopedKey('ham_sakhteman_notices');
+  localStorage.setItem(key, JSON.stringify(notices));
 }
 
 function saveVotings(votings) {
-  localStorage.setItem('ham_sakhteman_votings', JSON.stringify(votings));
+  const key = _getScopedKey('ham_sakhteman_votings');
+  localStorage.setItem(key, JSON.stringify(votings));
 }
 /* ============================================================
    🔔 اعلان‌ها — کامل
