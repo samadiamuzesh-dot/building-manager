@@ -1279,14 +1279,18 @@ function renderResidentVoting() {
     return !isNaN(start.getTime()) && now < start;
   };
 
-  // فعال: تمام‌نشده و شروع‌شده (یا بدون تاریخ)
+  // فعال
   const activeVotings = votings.filter(v => !isEnded(v) && !isNotStarted(v));
+
+  // آینده (هنوز شروع نشده)
+  const upcomingVotings = votings.filter(v => isNotStarted(v) && !isEnded(v))
+    .sort((a, b) => new Date(a.startDateTime || 0) - new Date(b.startDateTime || 0));
 
   // پایان‌یافته
   const endedVotings = votings.filter(v => isEnded(v))
     .sort((a, b) => new Date(b.endDateTime || 0) - new Date(a.endDateTime || 0));
 
-  if (activeVotings.length === 0 && endedVotings.length === 0) {
+  if (activeVotings.length === 0 && upcomingVotings.length === 0 && endedVotings.length === 0) {
     container.innerHTML = `
       <div class="resident-card" style="text-align:center; padding:40px 20px;">
         <div style="font-size:56px; margin-bottom:12px;">🗳️</div>
@@ -1308,11 +1312,22 @@ function renderResidentVoting() {
         🟢 رأی‌گیری‌های فعال (${toPersianNumR(activeVotings.length)})
       </h3>
     `;
-
     activeVotings.forEach(v => {
       html += renderVotingCard(v, 'active', session);
     });
+    html += `</div>`;
+  }
 
+  // ============ رأی‌گیری‌های آینده ============
+  if (upcomingVotings.length > 0) {
+    html += `<div style="margin-bottom:20px;">
+      <h3 style="font-size:14px; font-weight:800; color:#d97706; margin-bottom:12px;">
+        🟡 رأی‌گیری‌های آینده (${toPersianNumR(upcomingVotings.length)})
+      </h3>
+    `;
+    upcomingVotings.forEach(v => {
+      html += renderVotingCard(v, 'upcoming', session);
+    });
     html += `</div>`;
   }
 
@@ -1323,17 +1338,13 @@ function renderResidentVoting() {
         ⚫ پایان‌یافته (${toPersianNumR(endedVotings.length)})
       </h3>
     `;
-
     endedVotings.forEach(v => {
       html += renderVotingCard(v, 'ended', session);
     });
-
     html += `</div>`;
   }
 
   container.innerHTML = html;
-
-  // بایند دکمه‌ها
   bindVotingActions();
 }
 
@@ -1354,12 +1365,27 @@ function renderVotingCard(voting, status, session) {
   const startDate = voting.startDate || '—';
   const endDate = voting.endDate || '—';
 
-  let statusBadge = '';
-  if (status === 'active') {
-    statusBadge = '<span class="resident-badge resident-badge-green">🟢 فعال</span>';
-  } else {
-    statusBadge = '<span class="resident-badge resident-badge-gray">⚫ پایان‌یافته</span>';
-  }
+ let statusBadge = '';
+if (status === 'active') {
+  statusBadge = '<span class="resident-badge resident-badge-green">🟢 فعال</span>';
+} else if (status === 'upcoming') {
+  statusBadge = '<span class="resident-badge" style="background:#fef3c7; color:#92400e;">🟡 آینده</span>';
+} else {
+  statusBadge = '<span class="resident-badge resident-badge-gray">⚫ پایان‌یافته</span>';
+}
+   // ===== اگر هنوز شروع نشده =====
+else if (status === 'upcoming') {
+  html += `
+    <div style="background:#fef3c7; border-radius:10px; padding:12px; text-align:center; margin-bottom:12px;">
+      <div style="font-size:13px; color:#92400e; font-weight:700;">
+        ⏳ این رأی‌گیری هنوز شروع نشده است
+      </div>
+      <div style="font-size:12px; color:#b45309; margin-top:4px;">
+        از ${voting.startDate || '—'} ساعت ${voting.startTime || '—'}
+      </div>
+    </div>
+  `;
+}
 
   let html = `
     <div class="resident-card" style="margin-bottom:12px;">
