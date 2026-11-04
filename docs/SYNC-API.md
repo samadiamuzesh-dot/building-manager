@@ -2,7 +2,14 @@
 
 پنل‌ها همچنان با localStorage کار می‌کنند. `js/sync.js` هر تغییر را به `POST /api/sync` می‌فرستد و هر ۱۲ ثانیه (و هنگام باز شدن برنامه) تغییرات دستگاه‌های دیگر را می‌گیرد. آدرس سرور را می‌شود با `window.APT_SYNC_URL = 'https://.../api/sync'` قبل از بارگذاری `sync.js` عوض کرد (مثلاً بعد از انتقال به هاست PHP).
 
-## راه‌اندازی روی Vercel
+## سرور فعلی (موقت): افزونه وردپرس روی elhamsamadi.ir
+- افزونه «Apartment Plus Sync» (پوشه `server/wordpress/apt-sync`) مسیر `https://elhamsamadi.ir/wp-json/apt-sync/v1/sync` را با همین قرارداد ارائه می‌دهد؛ داده در جدول‌های `wp_apt_sync` و `wp_apt_sync_codes`.
+- رمز مدیر با `password_hash` (bcrypt) نگه داشته می‌شود؛ کلید امضای توکن در گزینه `apt_sync_secret`.
+- CORS فقط برای `samadiamuzesh-dot.github.io` و خود elhamsamadi.ir باز است (فیلتر `apt_sync_origins`). هدر `X-Robots-Tag: noindex` دارد و صفحه عمومی نمی‌سازد.
+- `js/sync.js` به‌طور پیش‌فرض به این آدرس وصل می‌شود؛ با `window.APT_SYNC_URL` قابل تغییر است.
+- برای انتقال به هاست جدا: همین افزونه یا `api/sync.php` با همین قرارداد، سپس جدول‌ها را منتقل و `DEFAULT_API` را عوض کنید.
+
+## راه‌اندازی روی Vercel (کنار گذاشته شد؛ از ایران در دسترس نبود)
 1. ریپو را در Vercel ایمپورت کنید (Framework: Other، بدون Build Command).
 2. Storage → Upstash Redis (پلن رایگان) را بسازید و به پروژه وصل کنید؛ متغیرهای `KV_REST_API_URL` و `KV_REST_API_TOKEN` خودکار اضافه می‌شوند.
 3. (اختیاری) متغیر `SYNC_SECRET` را با یک رشته تصادفی بلند بگذارید.

@@ -1,6 +1,6 @@
 // v2: network-first برای HTML/JS/CSS تا اصلاحات جدید فوراً به کاربر برسد
 // (نسخه قبلی cache-first بود و صفحات قدیمی برای همیشه از کش نمایش داده می‌شد)
-const CACHE = 'apartman-plus-v3';
+const CACHE = 'apartman-plus-v4';
 // مسیرها نسبی‌اند تا روی هر دامنه‌ای (Vercel یا GitHub Pages) کار کند
 const ASSETS = [
   './',
@@ -34,7 +34,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  if (new URL(e.request.url).pathname.includes('/api/')) return; // سرور همگام‌سازی هرگز کش نشود
+  if (/\/api\/|\/wp-json\//.test(new URL(e.request.url).pathname)) return; // سرور همگام‌سازی هرگز کش نشود
   e.respondWith(
     fetch(e.request)
       .then(res => {
