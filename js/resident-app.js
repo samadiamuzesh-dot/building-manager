@@ -129,6 +129,23 @@ function _findManagerPhoneByBuildingCode(code) {
   if (!code) return null;
   const target = String(code).trim().toUpperCase();
 
+  // ☁️ ساختمانی که همین الان از سرور باز شده، معتبرترین منبع است
+  try {
+    const open = JSON.parse(localStorage.getItem('apt_sync_open') || 'null');
+    if (open && open.phone && String(open.code || '').toUpperCase() === target &&
+        localStorage.getItem('ham_sakhteman_v3_' + open.phone)) {
+      return String(open.phone);
+    }
+  } catch (e) {}
+  // نشست فعلی ساکن (اگر همین ساختمان است)
+  try {
+    const s = JSON.parse(localStorage.getItem('ham_sakhteman_resident_session') || 'null');
+    if (s && s.managerPhone && String(s.buildingCode || '').toUpperCase() === target) {
+      const d = JSON.parse(localStorage.getItem('ham_sakhteman_v3_' + s.managerPhone) || 'null');
+      if (d?.building?.code && String(d.building.code).toUpperCase() === target) return String(s.managerPhone);
+    }
+  } catch (e) {}
+
   // اول کلید قدیمی بدون scope
   try {
     const raw = localStorage.getItem('ham_sakhteman_v3');
@@ -528,6 +545,14 @@ function syncUnitToManagerPanel(resident, opts) {
   // فقط از کلید scoped بخوان — کلید قدیمی بدون scope را قاطی نکن
   // (قبلاً باعث می‌شد همه واحدهای قدیمی یکجا لود شوند)
 
+  // اگر شماره واحد نیامده (نشست‌های قدیمی)، از ثبت‌نام خود ساکن پیدا کن
+  if (!(parseInt(resident.unitNumber, 10) >= 1)) {
+    const code = String(resident.buildingCode || '').toUpperCase();
+    const ph = normalizePhoneR(resident.phone || '');
+    const reg = loadRegisteredResidents().find(r => r && String(r.buildingCode || '').toUpperCase() === code &&
+      (normalizePhoneR(r.phone || '') === ph || (resident.id && r.id === resident.id)));
+    if (reg) { resident = Object.assign({}, resident, { unitNumber: reg.unitNumber, block: resident.block || reg.block }); }
+  }
   const block = String(resident.block || '—').trim() || '—';
   const number = parseInt(resident.unitNumber, 10);
   if (!number || number < 1) {

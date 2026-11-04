@@ -91,11 +91,17 @@
 
   /* ---------------- ادغام سه‌طرفه ---------------- */
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  function merge3(baseS, localS, remoteS) {
+  // واحدها و ثبت‌نام‌ها با id به هم ارجاع دارند؛ id آن‌ها عوض نشود
+  const NO_REID = ['units', REG, 'v3', 'settings', 'plan'];
+  function freshId(l, r) {
+    const max = Math.max(0, ...l.concat(r).map(x => Number(x.id) || 0));
+    return Math.max(max + 1, Date.now()) + Math.floor(Math.random() * 1000);
+  }
+  function merge3(baseS, localS, remoteS, base) {
     if (localS === remoteS) return localS;
     if (baseS === localS) return remoteS;
     if (baseS === remoteS) return localS;
-    const b = jparse(baseS, null), l = jparse(localS, null), r = jparse(remoteS, null);
+    const b = baseS === '' ? [] : jparse(baseS, null), l = jparse(localS, null), r = jparse(remoteS, null); // '' = می‌دانیم قبلاً خالی بوده
     if (Array.isArray(l) && Array.isArray(r) && l.every(x => x && x.id != null) && r.every(x => x && x.id != null)) {
       const B = new Map((Array.isArray(b) ? b : []).map(x => [String(x && x.id), x]));
       const L = new Map(l.map(x => [String(x.id), x]));
@@ -105,6 +111,10 @@
         if (!lx) { if (bx && same(bx, x)) return; out.push(x); return; } // محلی حذف کرده
         if (bx && same(bx, lx)) out.push(x);          // فقط سرور تغییر داده
         else if (bx && same(bx, x)) out.push(lx);     // فقط محلی تغییر داده
+        else if (!bx && Array.isArray(b) && !NO_REID.includes(base)) {
+          // هر دو دستگاه همزمان ردیف تازه با یک id ساخته‌اند → هر دو بمانند
+          out.push(x); out.push(Object.assign({}, lx, { id: freshId(l, r) }));
+        }
         else out.push(Object.assign({}, x, lx));      // هر دو → محلی برنده
       });
       const R = new Set(r.map(x => String(x.id)));
@@ -163,7 +173,7 @@
       catch (e) {
         if (e.status !== 404) throw e;
         // اولین بار: ساختمان این مدیر را روی سرور بساز و همه داده‌ها را بفرست
-        j = await call({ action: 'register', phone: c.phone, passHash, code: c.code });
+        j = await registerWithFreeCode(c, passHash);
         const d = new Set(jparse(get(dirtyKey(c)), []));
         BASES.forEach(b => { if (get(P + b + '_' + c.phone) != null) d.add(b); });
         if (c.code) d.add(REG);
@@ -179,6 +189,32 @@
     return t;
   }
 
+  // اگر کد ساختمان روی سرور متعلق به مدیر دیگری باشد، یک کد تازه بساز و دوباره ثبت کن
+  async function registerWithFreeCode(c, passHash) {
+    for (let i = 0; i < 6; i++) {
+      try { return await call({ action: 'register', phone: c.phone, passHash, code: c.code }); }
+      catch (e) {
+        if (e.status !== 409 || !c.code) throw e;
+        const prefix = (c.code.match(/^[A-Z]+-/) || ['S-'])[0];
+        const newCode = prefix + Math.floor(100000 + Math.random() * 900000);
+        const v3 = jparse(get(P + 'v3_' + c.phone), null);
+        if (v3 && v3.building) {
+          v3.building.code = newCode;
+          applying = true;
+          try { set(P + 'v3_' + c.phone, JSON.stringify(v3)); } finally { applying = false; }
+          // ثبت‌نام‌های محلی ساکنین این ساختمان هم کد جدید بگیرند
+          const regs = jparse(get(P + REG), []);
+          let changed = false;
+          regs.forEach(r => { if (r && String(r.buildingCode || '').toUpperCase() === c.code) { r.buildingCode = newCode; changed = true; } });
+          if (changed) { applying = true; try { set(P + REG, JSON.stringify(regs)); } finally { applying = false; } }
+          fire([P + 'v3_' + c.phone]);
+        }
+        c.code = newCode;
+      }
+    }
+    throw Object.assign(new Error('code_taken'), { status: 409 });
+  }
+
   /* ---------------- pull / push ---------------- */
   async function pullOnce(c, token) {
     const since = Number(get(revKey(c))) || 0;
@@ -192,9 +228,9 @@
       const local = localValue(c, base, false);
       const prev = snap[base] ? snap[base].v : undefined;
       let merged;
-      if (prev === undefined) merged = (local == null) ? rec.v : merge3(null, local, rec.v);
+      if (prev === undefined) merged = (local == null) ? rec.v : merge3(since > 0 ? '' : null, local, rec.v, base);
       else if (local === prev) merged = rec.v;
-      else merged = merge3(prev, local, rec.v);
+      else merged = merge3(prev, local, rec.v, base);
       snap[base] = { v: rec.v, r: rec.r };
       if (merged !== local) { writeLocal(c, base, merged); changedKeys.push(fullKey(c, base)); }
       if (merged !== rec.v && (c.role === 'm' || RESIDENT_WRITABLE.includes(base))) dirty.add(base); else dirty.delete(base);
@@ -229,8 +265,8 @@
     });
     Object.entries(j.conflicts || {}).forEach(([base, rec]) => {
       const local = localValue(c, base, false);
-      const prev = snap[base] ? snap[base].v : null;
-      const merged = merge3(prev, local, rec.v);
+      const prev = snap[base] ? snap[base].v : (Number(get(revKey(c))) > 0 ? '' : null);
+      const merged = merge3(prev, local, rec.v, base);
       snap[base] = { v: rec.v, r: rec.r };
       if (merged !== local) { writeLocal(c, base, merged); changedKeys.push(fullKey(c, base)); }
       if (merged !== rec.v) d2.add(base); else d2.delete(base);
