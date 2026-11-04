@@ -1986,3 +1986,9 @@ html, body {
     max-width: none;
   }
 }
+
+/* انتخاب مالک / مستاجر */
+.resident-role-choice { display: flex; gap: 10px; }
+.resident-role-opt { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 10px; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; font-weight: 700; color: #334155; background: #fff; transition: all .15s; }
+.resident-role-opt input { width: 18px; height: 18px; accent-color: #6d28d9; margin: 0; }
+.resident-role-opt:has(input:checked) { border-color: #7c3aed; background: #f5f3ff; color: #5b21b6; }

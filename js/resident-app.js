@@ -605,14 +605,24 @@ function syncUnitToManagerPanel(resident, opts) {
 
   // نقش ساکن را در واحد بنویس
   const role = (resident.role || 'owner').toLowerCase();
+  // اطلاعات تکمیلی قبلی (تاریخ تولد، کد ملی و…) پاک نشود
+  const mergePerson = (prev) => {
+    const out = Object.assign({}, prev || {});
+    Object.keys(person).forEach(k => { if (person[k] != null || out[k] === undefined) out[k] = person[k]; });
+    if (resident.extra && typeof resident.extra === 'object') Object.assign(out, resident.extra);
+    return out;
+  };
   if (role === 'tenant' || role === 'مستاجر' || role === 'ساکن') {
-    unit.tenant = { ...person };
-    // اگر مالک خالی است، حداقل وضعیت پر بودن واحد را نشان بده
-    if (!unit.owner?.name) {
-      unit.status = 'occupied';
+    const samePerson = !unit.tenant?.phone || unit.tenant.phone === person.phone;
+    unit.tenant = samePerson ? mergePerson(unit.tenant) : mergePerson(null);
+    // نام مالکی که مستاجر وارد کرده (اگر مالک هنوز ثبت‌نام نکرده)
+    if (resident.ownerName && !unit.owner?.registered) {
+      unit.owner = Object.assign({ phone: null, birthDate: null, nationalId: null, type: 'settled', registered: false, approved: false }, unit.owner || {}, { name: resident.ownerName });
     }
+    unit.status = 'occupied';
   } else {
-    unit.owner = { ...person };
+    const samePerson = !unit.owner?.phone || unit.owner.phone === person.phone;
+    unit.owner = samePerson ? mergePerson(unit.owner) : mergePerson(null);
     unit.status = 'occupied';
   }
 
@@ -722,6 +732,20 @@ function registerResident() {
     return;
   }
 
+  // مستاجر باید نام مالک را وارد کند
+  let ownerName = '';
+  if (role === 'tenant') {
+    const oIn = document.getElementById('residentOwnerName');
+    const oErr = document.getElementById('residentOwnerNameError');
+    ownerName = (oIn?.value || '').trim();
+    oIn?.classList.remove('input-error'); oErr?.classList.remove('show');
+    if (ownerName.length < 3) {
+      oIn?.classList.add('input-error');
+      if (oErr) { oErr.textContent = 'نام مالک واحد را وارد کنید (حداقل ۳ حرف).'; oErr.classList.add('show'); }
+      return;
+    }
+  }
+
   // ذخیره ثبت‌نام
   const registered = loadRegisteredResidents();
   const isTenantRole = (x) => ['tenant', 'مستاجر', 'ساکن'].includes(String(x || '').toLowerCase());
@@ -750,6 +774,7 @@ function registerResident() {
     name: name,
     phone: normalizePhoneR(phone),
     role: role,
+    ownerName: ownerName || null,
     peopleCount: peopleCount,
     passwordHash: hashResidentPassword(password),
     registeredAt: new Date().toISOString(),
@@ -911,6 +936,7 @@ function switchResidentPage(pageKey) {
 }
 
 function renderResidentCharges() {
+  try { renderResidentPeersPayments(); } catch (e) { console.warn('peers', e); }
   const session = getResidentSession();
   const container = document.getElementById('residentChargesList');
   if (!session || !container) return;
@@ -1026,6 +1052,67 @@ function renderResidentCharges() {
       openResidentPayModal(chargeId);
     });
   });
+}
+/**
+ * 📋 وضعیت پرداخت سایر ساکنین (شفافیت)
+ * مجتمع: فقط واحدهای بلوک خود ساکن — ساختمان/برج: همه واحدها
+ * شماره موبایل کسی نمایش داده نمی‌شود.
+ */
+function renderResidentPeersPayments() {
+  const box = document.getElementById('residentPeersBox');
+  const session = getResidentSession();
+  if (!box || !session) return;
+  const building = loadData()?.building || {};
+  const isComplex = building.type === 'complex';
+  const myBlock = String(session.block || '—').trim() || '—';
+  const units = loadUnits().filter(u => !isComplex || String(u.block || '—').trim() === myBlock);
+  const charges = loadCharges();
+  if (!units.length) { box.innerHTML = ''; return; }
+
+  const rows = units.map(u => {
+    const mine = charges.filter(c => Number(c.unitId) === Number(u.id));
+    const paid = mine.filter(c => c.paid).reduce((s, c) => s + (Number(c.paidAmount) || Number(c.total) || 0), 0);
+    const debt = mine.filter(c => !c.paid).reduce((s, c) => s + (Number(c.total) || 0), 0);
+    const pending = mine.some(c => !c.paid && c.pendingApproval);
+    const lastPaid = mine.filter(c => c.paid).map(c => c.paidDate || '').sort().pop() || '';
+    const who = u.tenant?.name || u.owner?.name || '—';
+    const label = (u.block && u.block !== '—') ? `${u.block}-${toPersianNumR(u.number)}` : `واحد ${toPersianNumR(u.number)}`;
+    const isMe = String(u.block || '—').trim() === myBlock && Number(u.number) === Number(session.unitNumber);
+    return { u, paid, debt, pending, lastPaid, who, label, isMe };
+  }).sort((a, b) => (b.debt - a.debt) || ((Number(a.u.number) || 0) - (Number(b.u.number) || 0)));
+
+  const debtors = rows.filter(r => r.debt > 0).length;
+  const totalPaid = rows.reduce((s, r) => s + r.paid, 0);
+  const totalDebt = rows.reduce((s, r) => s + r.debt, 0);
+  const scope = isComplex ? `بلوک ${escapeHtmlR(myBlock)}` : 'ساختمان';
+
+  box.innerHTML = `
+    <div class="resident-card" style="margin-top:18px;">
+      <div class="resident-card-header"><h3>📋 وضعیت پرداخت ساکنین ${scope}</h3></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px;">
+        <div style="flex:1;min-width:110px;background:#f0fdf4;border-radius:10px;padding:8px 10px;"><small style="color:#64748b;">مجموع واریزی</small><div style="font-weight:800;color:#15803d;">${formatTomanR(totalPaid)}</div></div>
+        <div style="flex:1;min-width:110px;background:#fef2f2;border-radius:10px;padding:8px 10px;"><small style="color:#64748b;">مجموع بدهی</small><div style="font-weight:800;color:#b91c1c;">${formatTomanR(totalDebt)}</div></div>
+        <div style="flex:1;min-width:80px;background:#f8fafc;border-radius:10px;padding:8px 10px;"><small style="color:#64748b;">بدهکاران</small><div style="font-weight:800;">${formatNumberR(debtors)} واحد</div></div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:#f5f3ff;color:#5b21b6;">
+            <th style="padding:8px;text-align:right;">واحد</th>
+            <th style="padding:8px;text-align:right;">ساکن</th>
+            <th style="padding:8px;text-align:right;">واریزی</th>
+            <th style="padding:8px;text-align:right;">بدهی</th>
+          </tr></thead>
+          <tbody>${rows.map(r => `
+            <tr style="border-bottom:1px solid #f1f5f9;${r.isMe ? 'background:#faf5ff;' : ''}">
+              <td style="padding:8px;white-space:nowrap;">${escapeHtmlR(r.label)}${r.isMe ? ' <small style="color:#7c3aed;">(شما)</small>' : ''}</td>
+              <td style="padding:8px;">${escapeHtmlR(r.who)}</td>
+              <td style="padding:8px;color:#15803d;white-space:nowrap;">${r.paid ? formatTomanR(r.paid) : '—'}${r.lastPaid ? `<div style="color:#94a3b8;font-size:11px;">${escapeHtmlR(r.lastPaid)}</div>` : ''}</td>
+              <td style="padding:8px;white-space:nowrap;${r.debt ? 'color:#b91c1c;font-weight:700;' : 'color:#16a34a;'}">${r.debt ? formatTomanR(r.debt) : '✅ تسویه'}${r.pending ? '<div style="color:#d97706;font-size:11px;">⏳ در انتظار تأیید</div>' : ''}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 }
 function renderResidentNotices() {
   const container = document.getElementById('residentNoticesList');
@@ -1802,222 +1889,189 @@ function renderResidentProfile() {
   const container = document.getElementById('residentProfileContent');
   if (!session || !container) return;
 
-  const units = loadUnits();
-  const myUnit = units.find(u => {
-    if (session.block === '—' || !session.block) {
-      return (u.block === '—' || !u.block) && Number(u.number) === Number(session.unitNumber);
-    }
-    return String(u.block).trim() === String(session.block).trim()
-        && Number(u.number) === Number(session.unitNumber);
-  });
-
-  const roleLabel = session.role === 'owner' ? '👤 مالک' : '🏘️ مستاجر';
-  const unitLabel = session.block && session.block !== '—'
-    ? `${session.block} - واحد ${toPersianNumR(session.unitNumber)}`
-    : `واحد ${toPersianNumR(session.unitNumber)}`;
-
-  // ============ اطلاعات من (قابل ویرایش) ============
-  const currentPeople = myUnit?.peopleCount || 1;
-  let infoHtml = `
-    <div class="resident-card">
-      <div class="resident-card-header">
-        <h3>👤 اطلاعات من</h3>
-      </div>
-
-      <div class="resident-form-group" style="margin-top:8px;">
-        <label for="profileEditName">نام و نام خانوادگی</label>
-        <input type="text" id="profileEditName" class="resident-form-input" value="${session.name || ''}" />
-      </div>
+  const myUnit = getMyUnit();
+  const isTenant = session.role === 'tenant';
+  const me = (myUnit && (isTenant ? myUnit.tenant : myUnit.owner)) || {};
+  const isComplex = session.block && session.block !== '—';
+  const v = (x) => escapeHtmlR(x == null ? '' : String(x));
+  const field = (id, label, value, opts = {}) => `
       <div class="resident-form-group">
-        <label for="profileEditPhone">شماره موبایل</label>
-        <input type="tel" id="profileEditPhone" class="resident-form-input" value="${session.phone || ''}" dir="ltr" maxlength="11" />
-      </div>
-      <div class="resident-form-group">
-        <label for="profileEditPeople">تعداد نفرات ساکن</label>
-        <input type="number" id="profileEditPeople" class="resident-form-input" min="1" max="20" value="${currentPeople}" />
-      </div>
+        <label for="${id}">${label}</label>
+        <input type="${opts.type === 'number' ? 'text' : (opts.type || 'text')}" ${opts.type === 'number' ? 'inputmode="numeric"' : ''} id="${id}" class="resident-form-input" value="${v(value)}"
+               ${opts.ltr ? 'dir="ltr"' : ''} ${opts.max ? `maxlength="${opts.max}"` : ''} ${opts.min != null ? `min="${opts.min}"` : ''}
+               ${opts.ph ? `placeholder="${opts.ph}"` : ''} />
+      </div>`;
+  const ro = (label, value) => `
       <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-        <span style="color:#64748b;">نقش</span>
-        <strong>${roleLabel}</strong>
+        <span style="color:#64748b;">${label}</span><strong>${value}</strong>
+      </div>`;
+
+  // ============ اطلاعات من ============
+  let html = `
+    <div class="resident-card">
+      <div class="resident-card-header"><h3>👤 اطلاعات من</h3></div>
+      ${field('profileEditName', 'نام و نام خانوادگی', session.name)}
+      ${field('profileEditPhone', 'شماره موبایل', session.phone, { type: 'tel', ltr: true, max: 11 })}
+      <div class="resident-form-group">
+        <label>نقش من در واحد</label>
+        <div class="resident-role-choice">
+          <label class="resident-role-opt"><input type="radio" name="profileRoleRadio" value="owner" ${!isTenant ? 'checked' : ''} /> <span>👤 مالک</span></label>
+          <label class="resident-role-opt"><input type="radio" name="profileRoleRadio" value="tenant" ${isTenant ? 'checked' : ''} /> <span>🏘️ مستاجر</span></label>
+        </div>
       </div>
-      <div style="display:flex; justify-content:space-between; padding:10px 0;">
-        <span style="color:#64748b;">واحد</span>
-        <strong>${unitLabel}</strong>
-      </div>
-      <button type="button" class="resident-submit-btn" id="profileSaveBtn" style="margin-top:16px;">💾 ذخیره تغییرات</button>
-      <div id="profileSaveMsg" style="margin-top:8px;font-size:13px;text-align:center;"></div>
-    </div>
-  `;
+      ${field('profileEditNationalId', 'کد ملی', me.nationalId, { ltr: true, max: 10, ph: 'اختیاری' })}
+      ${field('profileEditBirthDate', 'تاریخ تولد', me.birthDate, { ph: 'مثلاً ۱۳۷۰/۰۵/۱۲ (اختیاری)' })}
+    </div>`;
 
   // ============ اطلاعات واحد ============
-  if (myUnit) {
-    infoHtml += `
-      <div class="resident-card">
-        <div class="resident-card-header">
-          <h3>🏠 اطلاعات واحد</h3>
-        </div>
-
-        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="color:#64748b;">بلوک</span>
-          <strong>${myUnit.block || '—'}</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="color:#64748b;">شماره واحد</span>
-          <strong>${toPersianNumR(myUnit.number) || '—'}</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="color:#64748b;">📐 متراژ</span>
-          <strong>${myUnit.area ? formatNumberR(myUnit.area) + ' متر' : '—'}</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="color:#64748b;">👥 تعداد افراد</span>
-          <strong>${myUnit.peopleCount ? formatNumberR(myUnit.peopleCount) + ' نفر' : '—'}</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-          <span style="color:#64748b;">🚗 پارکینگ</span>
-          <strong>${myUnit.parkingCount ? formatNumberR(myUnit.parkingCount) : '—'}</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:10px 0;">
-          <span style="color:#64748b;">📦 انباری</span>
-          <strong>${myUnit.storageCount ? formatNumberR(myUnit.storageCount) : '—'}</strong>
-        </div>
+  const u = myUnit || {};
+  html += `
+    <div class="resident-card">
+      <div class="resident-card-header"><h3>🏠 اطلاعات واحد</h3></div>
+      ${isComplex ? ro('بلوک', v(session.block)) : ''}
+      ${ro('شماره واحد', toPersianNumR(session.unitNumber))}
+      <div id="profileOwnerBox" style="${isTenant ? '' : 'display:none;'}">
+        ${field('profileEditOwnerName', '🏠 نام مالک', u.owner?.name)}
+        ${field('profileEditOwnerPhone', '📱 موبایل مالک', u.owner?.phone, { type: 'tel', ltr: true, max: 11, ph: 'اختیاری' })}
       </div>
-    `;
+      ${field('profileEditPeople', '👥 تعداد نفرات ساکن', u.peopleCount || 1, { type: 'number', min: 1 })}
+      ${field('profileEditFloor', '🏢 طبقه', u.floor, { ph: 'اختیاری' })}
+      ${field('profileEditArea', '📐 متراژ (متر)', u.area || '', { type: 'number', min: 0, ph: 'اختیاری' })}
+      ${field('profileEditParkingCount', '🚗 تعداد پارکینگ', u.parkingCount || '', { type: 'number', min: 0 })}
+      ${field('profileEditParkingNumber', '🚗 شماره پارکینگ', u.parkingNumber, { ph: 'اختیاری' })}
+      ${field('profileEditStorageCount', '📦 تعداد انباری', u.storageCount || '', { type: 'number', min: 0 })}
+      ${field('profileEditStorageNumber', '📦 شماره انباری', u.storageNumber, { ph: 'اختیاری' })}
+      ${field('profileEditLandline', '☎️ تلفن ثابت', u.landlinePhone, { type: 'tel', ltr: true, ph: 'اختیاری' })}
+      ${field('profileEditWaterBill', '💧 شناسه قبض آب', u.waterBillId, { ltr: true, ph: 'اختیاری' })}
+      ${field('profileEditElectricityBill', '⚡ شناسه قبض برق', u.electricityBillId, { ltr: true, ph: 'اختیاری' })}
+      ${field('profileEditGasBill', '🔥 شناسه قبض گاز', u.gasBillId, { ltr: true, ph: 'اختیاری' })}
+      ${field('profileEditPhoneBill', '📞 شناسه قبض تلفن', u.phoneBillId, { ltr: true, ph: 'اختیاری' })}
+    </div>`;
 
-    // ============ اطلاعات مالک ============
-    if (myUnit.owner?.name) {
-      infoHtml += `
-        <div class="resident-card">
-          <div class="resident-card-header">
-            <h3>👤 مالک</h3>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-            <span style="color:#64748b;">نام</span>
-            <strong>${myUnit.owner.name}</strong>
-          </div>
-          <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-            <span style="color:#64748b;">موبایل</span>
-            <strong dir="ltr">${myUnit.owner.phone || '—'}</strong>
-          </div>
-          ${myUnit.owner.nationalId ? `
-            <div style="display:flex; justify-content:space-between; padding:10px 0;">
-              <span style="color:#64748b;">کد ملی</span>
-              <strong dir="ltr">${myUnit.owner.nationalId}</strong>
-            </div>
-          ` : ''}
-        </div>
-      `;
-    }
-
-    // ============ اطلاعات ساکن ============
-    if (myUnit.tenant?.name && session.role !== 'tenant') {
-      infoHtml += `
-        <div class="resident-card">
-          <div class="resident-card-header">
-            <h3>🏘️ ساکن</h3>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-            <span style="color:#64748b;">نام</span>
-            <strong>${myUnit.tenant.name}</strong>
-          </div>
-          <div style="display:flex; justify-content:space-between; padding:10px 0;">
-            <span style="color:#64748b;">موبایل</span>
-            <strong dir="ltr">${myUnit.tenant.phone || '—'}</strong>
-          </div>
-        </div>
-      `;
-    }
-  } else {
-    infoHtml += `
-      <div class="resident-card" style="text-align:center; padding:30px;">
-        <p style="color:#94a3b8;">اطلاعات واحد یافت نشد</p>
-      </div>
-    `;
+  // مستاجر همین واحد (برای مالک، فقط نمایش)
+  const other = myUnit && !isTenant ? myUnit.tenant : null;
+  if (other?.name) {
+    html += `<div class="resident-card"><div class="resident-card-header"><h3>🏘️ مستاجر واحد</h3></div>
+      ${ro('نام', v(other.name))}${ro('موبایل', `<span dir="ltr">${v(other.phone || '—')}</span>`)}</div>`;
   }
 
-  // ============ دکمه خروج ============
-  infoHtml += `
+  html += `
+    <button type="button" class="resident-submit-btn" id="profileSaveBtn" style="margin-top:8px;">💾 ذخیره تغییرات</button>
+    <div id="profileSaveMsg" style="margin-top:8px;font-size:13px;text-align:center;"></div>
     <button class="resident-submit-btn" id="residentLogoutBtn2" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); margin-top: 20px;">
       🚪 خروج از حساب
-    </button>
-  `;
+    </button>`;
 
-  container.innerHTML = infoHtml;
-
+  container.innerHTML = html;
+  container.querySelectorAll('input[name="profileRoleRadio"]').forEach(r => r.addEventListener('change', () => {
+    const t = container.querySelector('input[name="profileRoleRadio"]:checked')?.value === 'tenant';
+    const box = document.getElementById('profileOwnerBox'); if (box) box.style.display = t ? '' : 'none';
+  }));
   document.getElementById('residentLogoutBtn2')?.addEventListener('click', logoutResident);
-
-  document.getElementById('profileSaveBtn')?.addEventListener('click', () => {
-    saveResidentProfile();
-  });
+  document.getElementById('profileSaveBtn')?.addEventListener('click', saveResidentProfile);
 }
 
-/** ذخیره ویرایش پروفایل ساکن */
+/** ذخیره ویرایش پروفایل و اطلاعات واحد ساکن (به جز بلوک و شماره واحد) */
 function saveResidentProfile() {
   const session = getResidentSession();
   if (!session) return;
-
-  const name = (document.getElementById('profileEditName')?.value || '').trim();
-  const phone = (document.getElementById('profileEditPhone')?.value || '').trim();
-  const people = parseInt(document.getElementById('profileEditPeople')?.value, 10) || 1;
+  const faDigits = (s) => String(s || '').replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  const val = (id) => (document.getElementById(id)?.value || '').trim();
+  const num = (id) => { const n = parseFloat(faDigits(val(id))); return isFinite(n) && n >= 0 ? n : 0; };
   const msg = document.getElementById('profileSaveMsg');
+  const fail = (t) => { if (msg) { msg.style.color = '#b91c1c'; msg.textContent = t; } };
 
-  if (!name || name.length < 3) {
-    if (msg) { msg.style.color = '#b91c1c'; msg.textContent = 'نام باید حداقل ۳ کاراکتر باشد.'; }
-    return;
-  }
-  if (!isValidIranMobileR(phone)) {
-    if (msg) { msg.style.color = '#b91c1c'; msg.textContent = 'شماره موبایل معتبر نیست.'; }
-    return;
-  }
+  const name = val('profileEditName');
+  const phone = normalizePhoneR(val('profileEditPhone'));
+  const role = document.querySelector('input[name="profileRoleRadio"]:checked')?.value || session.role || 'owner';
+  const people = Math.max(1, parseInt(num('profileEditPeople'), 10) || 1);
+  const ownerName = val('profileEditOwnerName');
+  const ownerPhone = normalizePhoneR(val('profileEditOwnerPhone'));
+  const nationalId = faDigits(val('profileEditNationalId'));
 
-  // به‌روزرسانی نشست
-  const oldPhone = session.phone;
-  session.name = name;
-  session.phone = normalizePhoneR(phone);
-  setResidentSession(session);
+  if (!name || name.length < 3) return fail('نام باید حداقل ۳ کاراکتر باشد.');
+  if (!isValidIranMobileR(phone)) return fail('شماره موبایل معتبر نیست.');
+  if (role === 'tenant' && ownerName.length < 3) return fail('نام مالک را وارد کنید.');
+  if (role === 'tenant' && ownerPhone && !isValidIranMobileR(ownerPhone)) return fail('موبایل مالک معتبر نیست.');
+  if (nationalId && !/^\d{10}$/.test(nationalId)) return fail('کد ملی باید ۱۰ رقم باشد.');
 
-  // به‌روزرسانی لیست ثبت‌نام‌شده‌ها
   const registered = loadRegisteredResidents();
   const r = registered.find(x => x.id === session.residentId);
+  const isT = (x) => ['tenant', 'مستاجر', 'ساکن'].includes(String(x || '').toLowerCase());
+  if (role !== session.role) {
+    const taken = registered.find(x => x.id !== session.residentId && x.status !== 'rejected' &&
+      String(x.buildingCode).toUpperCase() === String(session.buildingCode).toUpperCase() &&
+      String(x.block).trim() === String(session.block).trim() && Number(x.unitNumber) === Number(session.unitNumber) &&
+      isT(x.role) === (role === 'tenant'));
+    if (taken) return fail(`برای این واحد قبلاً «${role === 'tenant' ? 'مستاجر' : 'مالک'}» ثبت‌نام کرده است.`);
+  }
+
+  const oldPhone = session.phone;
+  const oldRole = session.role;
+
+  // ۱) واحد
+  const units = loadUnits();
+  const block = String(session.block || '—').trim() || '—';
+  const unit = units.find(x => String(x.block || '—').trim() === block && Number(x.number) === Number(session.unitNumber));
+  if (unit) {
+    const slot = role === 'tenant' ? 'tenant' : 'owner';
+    const oldSlot = oldRole === 'tenant' ? 'tenant' : 'owner';
+    const prev = Object.assign({}, unit[oldSlot] || {});
+    if (slot !== oldSlot && (!unit[oldSlot]?.phone || unit[oldSlot].phone === oldPhone)) {
+      unit[oldSlot] = { name: null, phone: null, birthDate: null, nationalId: null, type: 'settled', registered: false, approved: false };
+    }
+    unit[slot] = Object.assign({}, slot === oldSlot ? prev : {}, {
+      name, phone,
+      nationalId: nationalId || null,
+      birthDate: val('profileEditBirthDate') || null,
+      type: prev.type || 'settled',
+      registered: true,
+      approved: r?.status === 'approved' || !!prev.approved,
+    });
+    if (role === 'tenant' && !(unit.owner?.registered && unit.owner?.phone && unit.owner.phone !== ownerPhone)) {
+      unit.owner = Object.assign({ birthDate: null, nationalId: null, type: 'settled', registered: false, approved: false }, unit.owner || {},
+        { name: ownerName, phone: ownerPhone || unit.owner?.phone || null });
+    }
+    Object.assign(unit, {
+      peopleCount: people,
+      floor: val('profileEditFloor') || null,
+      area: num('profileEditArea'),
+      parkingCount: parseInt(num('profileEditParkingCount'), 10) || 0,
+      parkingNumber: val('profileEditParkingNumber') || null,
+      storageCount: parseInt(num('profileEditStorageCount'), 10) || 0,
+      storageNumber: val('profileEditStorageNumber') || null,
+      landlinePhone: val('profileEditLandline') || null,
+      waterBillId: val('profileEditWaterBill') || null,
+      electricityBillId: val('profileEditElectricityBill') || null,
+      gasBillId: val('profileEditGasBill') || null,
+      phoneBillId: val('profileEditPhoneBill') || null,
+      status: 'occupied',
+      updatedAt: new Date().toISOString(),
+    });
+    saveUnits(units);
+  }
+
+  // ۲) ثبت‌نام
   if (r) {
-    r.name = name;
-    r.phone = normalizePhoneR(phone);
-    r.peopleCount = people;
+    Object.assign(r, { name, phone, role, peopleCount: people, ownerName: role === 'tenant' ? ownerName : null });
     saveRegisteredResidents(registered);
   }
 
-  // همگام با پنل مدیر
-  const residentPayload = {
-    buildingCode: session.buildingCode,
-    block: session.block,
-    unitNumber: session.unitNumber,
-    name: name,
-    phone: phone,
-    role: session.role,
-    peopleCount: people,
-    status: r?.status || 'pending',
-  };
-  syncUnitToManagerPanel(residentPayload, { silent: true });
+  // ۳) نشست
+  Object.assign(session, { name, phone, role });
+  setResidentSession(session);
 
-  // به‌روزرسانی تعداد نفرات روی واحد
+  // ۴) اعلان برای مدیر
   try {
-    const unitsKey = _getScopedKey('ham_sakhteman_units');
-    let units = [];
-    const raw = localStorage.getItem(unitsKey);
-    if (raw) units = JSON.parse(raw) || [];
-    const block = String(session.block || '—').trim();
-    const number = parseInt(session.unitNumber, 10);
-    const unit = units.find(u => String(u.block || '').trim() === block && Number(u.number) === number);
-    if (unit) {
-      unit.peopleCount = people;
-      localStorage.setItem(unitsKey, JSON.stringify(units));
-    }
+    const notifKey = _residentResolvedPhone ? ('ham_sakhteman_notifications_' + _residentResolvedPhone) : 'ham_sakhteman_notifications';
+    let notifs = []; try { notifs = JSON.parse(localStorage.getItem(notifKey) || '[]') || []; } catch (e) {}
+    const lbl = block !== '—' ? (block + ' - واحد ' + toPersianNumR(session.unitNumber)) : ('واحد ' + toPersianNumR(session.unitNumber));
+    notifs.unshift({ id: Date.now(), type: 'resident_update', title: 'ویرایش اطلاعات واحد', message: '«' + name + '» اطلاعات ' + lbl + ' را به‌روز کرد.', createdAt: new Date().toISOString(), read: false });
+    localStorage.setItem(notifKey, JSON.stringify(notifs.slice(0, 50)));
   } catch (e) {}
 
   if (msg) { msg.style.color = '#16a34a'; msg.textContent = '✅ اطلاعات با موفقیت ذخیره شد.'; }
-  showResidentToast('اطلاعات پروفایل ذخیره شد', 'success');
+  showResidentToast('اطلاعات ذخیره شد', 'success');
   renderResidentHeader();
 }
 
@@ -2163,6 +2217,11 @@ function initResidentApp() {
   });
 
    document.getElementById('residentRegisterBtn')?.addEventListener('click', registerResident);
+  document.querySelectorAll('input[name="residentRoleRadio"]').forEach(r => r.addEventListener('change', () => {
+    const v = document.querySelector('input[name="residentRoleRadio"]:checked')?.value || 'owner';
+    const hid = document.getElementById('residentRole'); if (hid) hid.value = v;
+    const g = document.getElementById('residentOwnerNameGroup'); if (g) g.style.display = v === 'tenant' ? 'block' : 'none';
+  }));
 
   // ورود ساکن قبلی
   document.getElementById('residentShowLogin')?.addEventListener('click', (e) => { e.preventDefault(); showResidentLoginStep(true); });

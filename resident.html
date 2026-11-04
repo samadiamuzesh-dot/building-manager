@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <title>آپارتمان پلاس | اپلیکیشن ساکنین</title>
-        <link rel="stylesheet" href="css/resident-style.css?v=12">
+        <link rel="stylesheet" href="css/resident-style.css?v=13">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap">
     <!-- این خط را جایگزین لینک قبلی منیفست کنید -->
   <link rel="manifest" href="manifest.json">
@@ -117,11 +117,17 @@
       </div>
 
       <div class="resident-form-group">
-        <label for="residentRole">نقش شما در این واحد <span class="resident-required">*</span></label>
-        <select id="residentRole" class="resident-form-input">
-          <option value="owner">👤 مالک</option>
-          <option value="tenant">🏘️ مستاجر</option>
-        </select>
+        <input type="hidden" id="residentRole" value="owner" />
+        <div class="resident-role-choice" role="radiogroup" aria-label="مالک یا مستاجر">
+          <label class="resident-role-opt"><input type="radio" name="residentRoleRadio" value="owner" checked /> <span>👤 مالک هستم</span></label>
+          <label class="resident-role-opt"><input type="radio" name="residentRoleRadio" value="tenant" /> <span>🏘️ مستاجر هستم</span></label>
+        </div>
+      </div>
+
+      <div class="resident-form-group" id="residentOwnerNameGroup" style="display:none;">
+        <label for="residentOwnerName">🏠 نام مالک واحد <span class="resident-required">*</span></label>
+        <input type="text" id="residentOwnerName" class="resident-form-input" placeholder="مثلاً: رضا محمدی" />
+        <div class="resident-error-msg" id="residentOwnerNameError"></div>
       </div>
 
       <div class="resident-form-group">
@@ -246,6 +252,7 @@
         <h2>💰 شارژهای من</h2>
       </div>
       <div id="residentChargesList"></div>
+      <div id="residentPeersBox"></div>
     </section>
 
     <!-- صفحه اطلاعیه‌ها -->
@@ -333,7 +340,7 @@
 <!-- Toast Container -->
 <div id="residentToastContainer" class="resident-toast-container"></div>
 <script src="js/sync.js?v=3"></script>
-<script src="js/resident-app.js?v=16"></script>
+<script src="js/resident-app.js?v=17"></script>
   <!-- ============ مودال پرداخت آنلاین ============ -->
 <div class="resident-modal-backdrop" id="residentPayModal">
   <div class="resident-modal">

@@ -8,11 +8,11 @@ const PLANS = {
     name: 'رایگان',
     icon: '🆓',
     description: 'برای ساختمان‌های کوچک',
-    unitsLimit: 10,
+    unitsLimit: 4,
     price: 0,
     period: 'همیشه',
     features: [
-      { label: 'تا ۱۰ واحد', included: true },
+      { label: 'تا ۴ واحد', included: true },
       { label: 'داشبورد مدیریت', included: true },
       { label: 'مدیریت واحدها', included: true },
       { label: 'صدور شارژ', included: true },
