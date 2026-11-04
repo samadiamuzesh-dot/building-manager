@@ -12,6 +12,8 @@
   if (typeof window === 'undefined' || !window.localStorage) return;
   if (window.APT_SYNC_URL === false) return;
   if (location.protocol === 'file:') return;
+  // GitHub Pages سرور ندارد؛ فقط وقتی آدرس سرور صریحاً داده شده فعال شود
+  if (/\.github\.io$/i.test(location.hostname) && !window.APT_SYNC_URL) return;
 
   const API = window.APT_SYNC_URL || new URL('api/sync', location.href).href;
   const P = 'ham_sakhteman_';
