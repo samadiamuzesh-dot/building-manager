@@ -4940,3 +4940,32 @@ body.dark-mode .modal-detail .detail-item {
   #page-dashboard .table-box table { min-width: 0 !important; }
   #page-dashboard .table-box table th, #page-dashboard .table-box table td { padding: 10px 6px; font-size: 12.5px; white-space: nowrap; }
 }
+
+/* جدول خالی: پیام «هنوز … ثبت نشده» و دکمه‌اش روی موبایل بیرون از کادر نیفتد */
+.table-box table:has(> tbody > tr:only-child > td[colspan]) { min-width: 0 !important; }
+.table-box table:has(> tbody > tr:only-child > td[colspan]) thead { display: none; }
+
+/* ===== موبایل/تبلت: منوی کشویی به جای لیست بلند بالای هر صفحه ===== */
+.menu-toggle-btn { display: none; }
+@media (max-width: 900px) {
+  .menu-toggle-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--border, #e2e8f0);
+    background: #fff; color: #1e1b4b; cursor: pointer; flex-shrink: 0;
+  }
+  body.dark-mode .menu-toggle-btn { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+  .app-body > .sidebar {
+    position: fixed !important; top: 0; bottom: 0; right: 0; left: auto;
+    width: 82vw !important; max-width: 300px; z-index: 9500;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    transform: translateX(105%); transition: transform .25s ease;
+    box-shadow: -10px 0 30px rgba(0,0,0,.25);
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  }
+  .app-body > .sidebar.open { transform: none; }
+  .sidebar-nav ul { flex-direction: column !important; flex-wrap: nowrap !important; }
+  .sidebar-nav li { min-width: 0 !important; flex: none !important; }
+  .sidebar-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 9400; display: none; }
+  .sidebar-backdrop.open { display: block; }
+  body.sidebar-locked { overflow: hidden; }
+}

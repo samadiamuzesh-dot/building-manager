@@ -1525,7 +1525,7 @@ function updateSidebarLockStates() {
   }
 }
 
-function showUpgradeModal(pageKey = null) {
+async function showUpgradeModal(pageKey = null) {
   const plan = loadPlan();
   const totalUnits = plan?.totalUnits || 0;
 
@@ -1560,7 +1560,7 @@ function showUpgradeModal(pageKey = null) {
                 (price > 0 ? `💰 قیمت: ${formatPrice(price)}\n\n` : '') +
                 'آیا می‌خواهید الان ارتقا دهید؟';
 
-    if (confirm(msg)) {
+    if ((await appConfirm(msg))) {
       handleUpgrade();
     }
   }
@@ -1643,7 +1643,7 @@ function showMockPaymentModal(paymentInfo) {
   });
 }
 
-function confirmProPlan() {
+async function confirmProPlan() {
   const totalUnits = getTotalUnitsFromWizard();
   const result = calculatePrice(totalUnits);
 
@@ -1652,13 +1652,13 @@ function confirmProPlan() {
   if (finalPrice === 0) {
     finalPrice = 4 * 100000;
 
-    if (!confirm(
+    if (!(await appConfirm(
       `💎 پلن حرفه‌ای\n\n` +
       `ساختمان شما ${toPersianNum(totalUnits)} واحد دارد.\n` +
       `(پلن رایگان برای این ساختمان کافی است)\n\n` +
       `💰 قیمت پلن حرفه‌ای: ${formatPrice(finalPrice)}\n\n` +
       `آیا می‌خواهید پلن حرفه‌ای را خریداری کنید؟`
-    )) {
+    ))) {
       return;
     }
   }
@@ -2108,11 +2108,11 @@ function renderPendingResidentsBanner() {
   host.querySelectorAll('[data-reject-resident]').forEach(b => b.addEventListener('click', () => setResidentRegistrationStatus(Number(b.dataset.rejectResident), 'rejected')));
 }
 
-function setResidentRegistrationStatus(residentId, status) {
+async function setResidentRegistrationStatus(residentId, status) {
   const { all } = loadRegisteredResidentsForBuilding();
   const r = all.find(x => Number(x.id) === Number(residentId));
   if (!r) return;
-  if (status === 'rejected' && !confirm(`ثبت‌نام «${r.name}» رد شود؟ اطلاعات او از واحد حذف می‌شود.`)) return;
+  if (status === 'rejected' && !(await appConfirm(`ثبت‌نام «${r.name}» رد شود؟ اطلاعات او از واحد حذف می‌شود.`))) return;
 
   r.status = status;
   r.reviewedAt = new Date().toISOString();
@@ -2274,7 +2274,7 @@ function bindUnitsPage() {
   }
   const tbody = document.getElementById('unitsTableBody');
   if (tbody) {
-    tbody.addEventListener('click', (e) => {
+    tbody.addEventListener('click', async (e) => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
 
@@ -2284,7 +2284,7 @@ function bindUnitsPage() {
       if (action === 'view') {
         openUnitDetail(id);
       } else if (action === 'delete') {
-        if (confirm('⚠️ آیا از حذف این واحد مطمئن هستید؟\n\nاین عمل قابل بازگشت نیست.')) {
+        if ((await appConfirm('⚠️ آیا از حذف این واحد مطمئن هستید؟\n\nاین عمل قابل بازگشت نیست.'))) {
           UNITS = UNITS.filter(u => u.id !== id);
           saveUnits();
           renderUnitsPage();
@@ -3797,7 +3797,7 @@ function updateIssuePreview() {
 /* ============================================================
    ✅ صدور شارژ — تابع اصلی (اضافه‌شده)
    ============================================================ */
-function issueChargeConfirm() {
+async function issueChargeConfirm() {
   const month = document.getElementById('issueMonth')?.value;
   const year = document.getElementById('issueYear')?.value;
   const blockFilter = document.getElementById('issueBlockSelect')?.value || 'all';
@@ -3841,7 +3841,7 @@ function issueChargeConfirm() {
     if (replaceableCharges.length) msg += `\n• ${toPersianNum(replaceableCharges.length)} شارژ پرداخت‌نشده با مبلغ جدید جایگزین می‌شود.`;
     if (lockedCharges.length) msg += `\n• ${toPersianNum(lockedCharges.length)} شارژ پرداخت‌شده/در انتظار تأیید دست نمی‌خورد.`;
     msg += '\n\nادامه می‌دهید؟';
-    if (!confirm(msg)) return;
+    if (!(await appConfirm(msg))) return;
   }
 
   let charges = loadCharges();
@@ -4045,7 +4045,7 @@ function closePayChargeModal() {
   currentPayChargeId = null;
 }
 
-function confirmPayCharge() {
+async function confirmPayCharge() {
   if (!currentPayChargeId) return;
 
   const charges = loadCharges();
@@ -4060,7 +4060,7 @@ function confirmPayCharge() {
   const payDescription = document.getElementById('payDescription')?.value || '';
 
   if (charge.paid) {
-    if (!confirm('⚠️ آیا از لغو پرداخت این شارژ مطمئن هستید؟')) return;
+    if (!(await appConfirm('⚠️ آیا از لغو پرداخت این شارژ مطمئن هستید؟'))) return;
 
     clearChargePayment(charge);
     saveCharges(charges);
@@ -4615,8 +4615,8 @@ function saveSideIncome() {
 
   toastSuccess(isEdit ? 'درآمد ویرایش شد.' : 'درآمد جدید ثبت شد.');
 }
-function deleteSideIncome(incomeId) {
-  if (!confirm('⚠️ آیا از حذف این درآمد مطمئن هستید؟')) return;
+async function deleteSideIncome(incomeId) {
+  if (!(await appConfirm('⚠️ آیا از حذف این درآمد مطمئن هستید؟'))) return;
 
   let incomes = loadSideIncomes();
   incomes = incomes.filter(i => i.id !== incomeId);
@@ -4960,8 +4960,8 @@ function updatePaymentsSortIcons() {
   });
 }
 
-function cancelPayment(chargeId) {
-  if (!confirm('⚠️ آیا از لغو این پرداخت مطمئن هستید؟')) return;
+async function cancelPayment(chargeId) {
+  if (!(await appConfirm('⚠️ آیا از لغو این پرداخت مطمئن هستید؟'))) return;
 
   const charges = loadCharges();
   const charge = charges.find(c => c.id === chargeId);
@@ -5245,7 +5245,7 @@ function newPayDeselectAll() {
   });
 }
 
-function confirmNewPayment() {
+async function confirmNewPayment() {
   const payDate = document.getElementById('newPayDate')?.value.trim();
   const payMethod = document.getElementById('newPayMethod')?.value || 'نقدی';
   const payDescription = document.getElementById('newPayDescription')?.value.trim() || '';
@@ -5261,7 +5261,7 @@ function confirmNewPayment() {
   }
 
   const count = newPaySelectedCharges.length;
-  if (!confirm(`آیا از ثبت پرداخت برای ${count} مورد مطمئن هستید؟`)) {
+  if (!(await appConfirm(`آیا از ثبت پرداخت برای ${count} مورد مطمئن هستید؟`))) {
     return;
   }
 
@@ -5568,8 +5568,8 @@ function saveExpense() {
   }
 }
 
-function deleteExpense(expenseId) {
-  if (!confirm('⚠️ آیا از حذف این هزینه مطمئن هستید؟')) return;
+async function deleteExpense(expenseId) {
+  if (!(await appConfirm('⚠️ آیا از حذف این هزینه مطمئن هستید؟'))) return;
 
   let expenses = loadExpenses();
   expenses = expenses.filter(e => e.id !== expenseId);
@@ -5787,7 +5787,7 @@ function renderNoticesStats() {
   const all = loadNotices();
 
   const total = all.length;
-  const thisMonth = all.filter(n => n.month === getTodayPersianMonth()).length;
+  const thisMonth = all.filter(n => n.month === getTodayPersianMonth() && (!n.year || String(n.year) === String(getTodayPersianYear()))).length;
   const receivers = all.reduce((s, n) => s + (Number(n.receivers) || 0), 0);
   const withImage = all.filter(n => n.image).length;
 
@@ -6070,7 +6070,8 @@ function saveNotice() {
   const persianDate = now.toLocaleDateString('fa-IR');
 
   const notices = loadNotices();
-  const newId = notices.length > 0 ? Math.max(...notices.map(n => n.id || 0)) + 1 : 1;
+  // شناسه یکتا (با همگام‌سازی چند دستگاه، max+1 تکراری می‌شد)
+  const newId = Math.max(Date.now(), ...notices.map(n => Number(n.id) || 0)) + 1;
 
   notices.push({
     id: newId,
@@ -6083,6 +6084,7 @@ function saveNotice() {
     image: noticeImageData,
     date: persianDate,
     month: getTodayPersianMonth(),
+    year: String(getTodayPersianYear()),
     createdAt: new Date().toISOString(),
   });
 
@@ -6093,8 +6095,8 @@ function saveNotice() {
   toastSuccess(`اطلاعیه ارسال شد. (${receivers} دریافت‌کننده)`);
 }
 
-function deleteNotice(noticeId) {
-  if (!confirm('⚠️ آیا از حذف این اطلاعیه مطمئن هستید؟')) return;
+async function deleteNotice(noticeId) {
+  if (!(await appConfirm('⚠️ آیا از حذف این اطلاعیه مطمئن هستید؟'))) return;
 
   let notices = loadNotices();
   notices = notices.filter(n => n.id !== noticeId);
@@ -6115,7 +6117,7 @@ function viewNotice(noticeId) {
       ? `🏢 بلوک ${notice.targetBlock}`
       : `🏠 ${notice.targetUnits?.length || 0} واحد`;
 
-  alert(`📢 ${notice.title}\n\n${notice.body}\n\n👥 مخاطب: ${targetLabel}\n📅 تاریخ: ${notice.date}`);
+  appAlert(`📢 ${notice.title}\n\n${notice.body}\n\n👥 مخاطب: ${targetLabel}\n📅 تاریخ: ${notice.date}`);
 }
 
 function bindNoticesPage() {
@@ -7172,7 +7174,7 @@ function persianToGregorian(jy, jm, jd) {
   return { year: gy, month: gm, day: gd };
 }
 
-function showVotingResults(votingId) {
+async function showVotingResults(votingId) {
   const votings = loadVotings();
   const voting = votings.find(v => v.id === votingId);
   if (!voting) return;
@@ -7180,7 +7182,7 @@ function showVotingResults(votingId) {
   const status = getVotingStatus(voting);
 
   if (status !== 'ended') {
-    if (!confirm('⚠️ رأی‌گیری هنوز تمام نشده. آیا می‌خواهید نتایج فعلی را ببینید؟')) {
+    if (!(await appConfirm('⚠️ رأی‌گیری هنوز تمام نشده. آیا می‌خواهید نتایج فعلی را ببینید؟'))) {
       return;
     }
   }
@@ -7268,8 +7270,8 @@ function closeVotingResults() {
   document.getElementById('votingResultsModal').classList.remove('open');
 }
 
-function deleteVoting(votingId) {
-  if (!confirm('⚠️ آیا از حذف این رأی‌گیری مطمئن هستید؟')) return;
+async function deleteVoting(votingId) {
+  if (!(await appConfirm('⚠️ آیا از حذف این رأی‌گیری مطمئن هستید؟'))) return;
 
   let votings = loadVotings();
   votings = votings.filter(v => v.id !== votingId);
@@ -8272,14 +8274,14 @@ function uploadBackup(file) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
       const backup = JSON.parse(e.target.result);
       const keys = getAccountDataKeys();
       const hasAny = Object.keys(keys).some(k => backup[k]);
       if (!hasAny) { toastError('فایل پشتیبان خالی یا نامعتبر است.'); return; }
 
-      if (!confirm('⚠️ آیا مطمئن هستید؟ تمام داده‌های فعلی این حساب جایگزین می‌شوند.')) return;
+      if (!(await appConfirm('⚠️ آیا مطمئن هستید؟ تمام داده‌های فعلی این حساب جایگزین می‌شوند.'))) return;
 
       // هم فرمت جدید و هم فرمت قدیمی (همان نام‌ها) پشتیبانی می‌شود
       Object.entries(keys).forEach(([name, key]) => {
@@ -8306,9 +8308,9 @@ function uploadBackup(file) {
   reader.readAsText(file);
 }
 
-function resetAllData() {
-  if (!confirm('⚠️ هشدار: تمام داده‌های این ساختمان پاک می‌شوند!\n\nآیا مطمئن هستید؟')) return;
-  if (!confirm('⚠️ آیا واقعاً مطمئن هستید؟ این کار قابل بازگشت نیست.')) return;
+async function resetAllData() {
+  if (!(await appConfirm('⚠️ هشدار: تمام داده‌های این ساختمان پاک می‌شوند!\n\nآیا مطمئن هستید؟'))) return;
+  if (!(await appConfirm('⚠️ آیا واقعاً مطمئن هستید؟ این کار قابل بازگشت نیست.'))) return;
 
   // ✅ اصلاح: فقط داده‌های همین حساب پاک می‌شود (قبلاً localStorage.clear() همه حساب‌ها،
   // ثبت‌نام ساکنین و نشست ورود را هم پاک می‌کرد)
@@ -8722,9 +8724,9 @@ function closeNotifPanel() {
   document.getElementById('notifPanel')?.classList.remove('open');
 }
 
-function clearAllNotifications() {
+async function clearAllNotifications() {
   if (notifications.length === 0) return;
-  if (!confirm('⚠️ همه اعلان‌ها پاک شوند؟')) return;
+  if (!(await appConfirm('⚠️ همه اعلان‌ها پاک شوند؟'))) return;
 
   notifications = [];
   saveNotifications();
@@ -8864,8 +8866,8 @@ function bindProfile() {
   });
 }
 
-function handleLogout() {
-  if (!confirm('⚠️ آیا از خروج از پنل مطمئن هستید؟\n\nداده‌ها پاک نمی‌شوند.')) {
+async function handleLogout() {
+  if (!(await appConfirm('⚠️ آیا از خروج از پنل مطمئن هستید؟\n\nداده‌ها پاک نمی‌شوند.'))) {
     return;
   }
 
@@ -9062,7 +9064,7 @@ function fillProfileBuildingInfo(data) {
   if (elBlocks) {
     elBlocks.textContent = b.type === 'complex' ? formatNumber(b.blocks?.length || 0) : '۱';
   }
-  if (elUnits) elUnits.textContent = formatNumber(UNITS.length);
+  if (elUnits) elUnits.textContent = formatNumber(Number(b.totalUnits) || (typeof getExpectedUnitsCount === 'function' && getExpectedUnitsCount(b)) || UNITS.length);
   if (elCreated) {
     elCreated.textContent = b.createdAt
       ? new Date(b.createdAt).toLocaleDateString('fa-IR')
@@ -9313,11 +9315,11 @@ function renderProfileActivity() {
   `).join('');
 }
 
-function deleteAccount() {
-  if (!confirm('⚠️ هشدار: تمام اطلاعات برای همیشه پاک می‌شوند!')) return;
-  if (!confirm('⚠️ آیا واقعاً مطمئن هستید؟ این کار قابل بازگشت نیست.')) return;
+async function deleteAccount() {
+  if (!(await appConfirm('⚠️ هشدار: تمام اطلاعات برای همیشه پاک می‌شوند!'))) return;
+  if (!(await appConfirm('⚠️ آیا واقعاً مطمئن هستید؟ این کار قابل بازگشت نیست.'))) return;
 
-  const input = prompt('برای تأیید نهایی، کلمه «حذف» را تایپ کنید:');
+  const input = await appPrompt('برای تأیید نهایی، کلمه «حذف» را تایپ کنید:');
   if (input !== 'حذف') {
     toastError('عملیات لغو شد.');
     return;
@@ -9671,10 +9673,23 @@ function renderProfitBarChart() {
     }
 
     ctx.fillStyle = '#64748b';
-    ctx.font = '11.5px Vazirmatn, Tahoma';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(m.label || m.month, centerX, padding.top + chartH + 12);
+    const lbl = m.label || m.month;
+    if (groupWidth < 46) {
+      // موبایل: برچسب ماه‌ها مایل تا روی هم نیفتند
+      ctx.save();
+      ctx.font = '10px Vazirmatn, Tahoma';
+      ctx.translate(centerX, padding.top + chartH + 8);
+      ctx.rotate(-Math.PI / 4);
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(lbl, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.font = '11.5px Vazirmatn, Tahoma';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(lbl, centerX, padding.top + chartH + 12);
+    }
   });
 }
 
@@ -10415,8 +10430,8 @@ function replyToTicket() {
   toastSuccess('پاسخ شما ثبت شد.');
 }
 
-function deleteTicket(ticketId) {
-  if (!confirm('⚠️ آیا از حذف این تیکت مطمئن هستید؟')) return;
+async function deleteTicket(ticketId) {
+  if (!(await appConfirm('⚠️ آیا از حذف این تیکت مطمئن هستید؟'))) return;
 
   let tickets = loadTickets();
   tickets = tickets.filter(t => t.id !== ticketId);
@@ -10503,8 +10518,8 @@ function renderSubscriptionPage() {
       btnFree.textContent = 'غیرفعال کردن حرفه‌ای';
       btnFree.disabled = false;
       btnFree.className = 'btn btn-cancel plan-select-btn';
-      btnFree.onclick = () => {
-        if (!confirm('آیا از غیرفعال کردن پلن حرفه‌ای مطمئن هستید؟')) return;
+      btnFree.onclick = async () => {
+        if (!(await appConfirm('آیا از غیرفعال کردن پلن حرفه‌ای مطمئن هستید؟'))) return;
         const newPlan = {
           type: 'free',
           totalUnits: UNITS.length,
@@ -10599,3 +10614,39 @@ function processMockPaymentSuccess(paymentInfo) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+/* سال شمسی جاری در فوتر */
+document.addEventListener('DOMContentLoaded', () => {
+  try { const el = document.getElementById('footerYear'); if (el) el.textContent = toPersianNum(getTodayPersianYear()); } catch (e) {}
+});
+
+/* ===== منوی کشویی موبایل (≤۹۰۰px) ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const sidebar = document.querySelector('.app-body > .sidebar');
+    const brand = document.querySelector('.topbar .brand');
+    if (!sidebar || !brand || document.getElementById('menuToggleBtn')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.id = 'menuToggleBtn'; btn.className = 'menu-toggle-btn';
+    btn.setAttribute('aria-label', 'منو');
+    btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
+    brand.insertBefore(btn, brand.firstChild);
+    const backdrop = document.createElement('div');
+    backdrop.className = 'sidebar-backdrop';
+    document.body.appendChild(backdrop);
+    const setOpen = (open) => {
+      sidebar.classList.toggle('open', open);
+      backdrop.classList.toggle('open', open);
+      document.body.classList.toggle('sidebar-locked', open);
+    };
+    btn.addEventListener('click', () => setOpen(!sidebar.classList.contains('open')));
+    backdrop.addEventListener('click', () => setOpen(false));
+    sidebar.addEventListener('click', (e) => {
+      if (!window.matchMedia('(max-width: 900px)').matches) return;
+      const li = e.target.closest('li[data-page], [data-page-link], .subscription-nav-item, .upgrade-btn, button');
+      if (!li) return;
+      if (li.classList && li.classList.contains('has-submenu') && !e.target.closest('.submenu')) return; // باز/بستن زیرمنو
+      setTimeout(() => { setOpen(false); window.scrollTo(0, 0); }, 60);
+    });
+  } catch (e) { console.warn('mobile menu', e); }
+});

@@ -1728,7 +1728,7 @@ function bindVotingActions() {
 }
 
 /* ✅ ثبت رأی */
-function submitVote(votingId) {
+async function submitVote(votingId) {
   const session = getResidentSession();
   if (!session) return;
 
@@ -1745,7 +1745,7 @@ function submitVote(votingId) {
   const candidateName = selected.dataset.candidateName;
 
   // تأیید
-  if (!confirm(`آیا از ثبت رأی خود به «${candidateName}» مطمئن هستید؟`)) {
+  if (!(await appConfirm(`آیا از ثبت رأی خود به «${candidateName}» مطمئن هستید؟`))) {
     return;
   }
 
@@ -2076,8 +2076,8 @@ function saveResidentProfile() {
 }
 
 /* ============ خروج ============ */
-function logoutResident() {
-  if (!confirm('آیا از خروج مطمئن هستید؟')) return;
+async function logoutResident() {
+  if (!(await appConfirm('آیا از خروج مطمئن هستید؟'))) return;
   clearResidentSession();
   showResidentToast('از حساب خارج شدید', 'success');
   setTimeout(() => location.reload(), 800);
@@ -2866,8 +2866,8 @@ function closeResidentNotifPanel() {
 }
 
 /* ✅ پاک کردن همه */
-function clearResidentNotifications() {
-  if (!confirm('⚠️ همه اعلان‌ها پاک شوند؟')) return;
+async function clearResidentNotifications() {
+  if (!(await appConfirm('⚠️ همه اعلان‌ها پاک شوند؟'))) return;
 
   // همه رو به عنوان خوانده‌شده علامت بزن
   const notifications = generateResidentNotifications();
