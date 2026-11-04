@@ -142,8 +142,8 @@ function getLastNPersianMonths(n, endMonthIdx, endYear) {
 function formatAxisAmount(v) {
   const n = Number(v) || 0;
   if (n >= 1e9) return formatNumber(Math.round(n / 1e8) / 10) + ' میلیارد';
-  if (n >= 1e6) return formatNumber(Math.round(n / 1e5) / 10) + ' م';
-  if (n >= 1e3) return formatNumber(Math.round(n / 1e3)) + ' ه';
+  if (n >= 1e6) return formatNumber(Math.round(n / 1e5) / 10) + ' میلیون';
+  if (n >= 1e3) return formatNumber(Math.round(n / 1e3)) + ' هزار';
   return formatNumber(n);
 }
 
@@ -714,20 +714,24 @@ function switchPage(pageKey) {
 let currentBlockFilter = 'all';
 let currentStatusFilter = 'all';
 
-function getFilteredUnits() {
+function getFilteredUnits(opts) {
   let list = UNITS;
+  const ignoreStatus = !!(opts && opts.ignoreStatus);
 
   if (currentBlockFilter !== 'all' && currentBlockFilter !== '' && currentBlockFilter !== null) {
     const filterName = String(currentBlockFilter).trim();
     list = list.filter(u => String(u.block).trim() === filterName);
   }
 
+  if (ignoreStatus) return list;
+
+  const isRegistered = u => !!((u.owner?.name || u.owner?.registered) || (u.tenant?.name || u.tenant?.registered));
   if (currentStatusFilter === 'debt') {
     list = list.filter(u => Number(u.debt) > 0);
   } else if (currentStatusFilter === 'paid') {
-    list = list.filter(u => Number(u.debt) === 0);
+    list = list.filter(u => isRegistered(u) && !(Number(u.debt) > 0));
   } else if (currentStatusFilter === 'empty') {
-    list = list.filter(u => !u.owner?.name);
+    list = list.filter(u => !isRegistered(u));
   }
 
   return list;
@@ -782,10 +786,20 @@ function renderDashboardUnits() {
   const tbody = document.getElementById('dashboardUnitsBody');
   if (!tbody) return;
 
-  // فقط واحدهایی که حداقل یک ساکن/مالک ثبت‌نام کرده
-  const units = getFilteredUnits().filter(u =>
-    (u.owner?.name || u.owner?.registered) || (u.tenant?.name || u.tenant?.registered)
-  );
+  // فقط واحدهایی که حداقل یک ساکن/مالک ثبت‌نام کرده (به جز فیلتر «ثبت‌نام نکرده»)
+  const units = currentStatusFilter === 'empty'
+    ? getFilteredUnits()
+    : getFilteredUnits().filter(u =>
+        (u.owner?.name || u.owner?.registered) || (u.tenant?.name || u.tenant?.registered)
+      );
+
+  if (units.length === 0 && currentStatusFilter !== 'all') {
+    const msg = currentStatusFilter === 'debt' ? 'هیچ واحد بدهکاری نیست. ✅'
+      : currentStatusFilter === 'paid' ? 'هنوز واحد تسویه‌شده‌ای نیست.'
+      : 'همه واحدها ثبت‌نام کرده‌اند. ✅';
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:36px;">${msg}</td></tr>`;
+    return;
+  }
 
   if (units.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:36px;">
@@ -831,10 +845,10 @@ function renderDashboardUnits() {
 function renderDonutChart(paidUnits, debtUnits) {
   const canvas = document.getElementById('donutChart');
   if (!canvas) return;
-  const size = 180;
-  const { ctx } = prepareCanvas(canvas, size, size);
-
-  const cx = size / 2, cy = size / 2, radius = 70, lineWidth = 18;
+  const { ctx, W, H } = prepareCanvas(canvas, 180, 180);
+  const size = Math.min(W, H);
+  const lineWidth = Math.max(12, Math.round(size * 0.1));
+  const cx = W / 2, cy = H / 2, radius = size / 2 - lineWidth / 2 - 2;
   const total = paidUnits + debtUnits || 1;
   const paidAngle = (paidUnits / total) * Math.PI * 2;
 
@@ -1003,7 +1017,8 @@ function renderStats() {
   //   buildDemoUnits(building);
   // }
 
-  const units = getFilteredUnits().filter(u =>
+  // آمار و نمودار فقط با فیلتر بلوک (فیلتر وضعیت فقط روی جدول اثر دارد)
+  const units = getFilteredUnits({ ignoreStatus: true }).filter(u =>
     (u.owner?.name || u.owner?.registered) || (u.tenant?.name || u.tenant?.registered)
   );
 
@@ -1082,6 +1097,7 @@ function renderDashboard() {
     buildBlockFilterOptions(data.building);
   }
 
+  refreshUnitsDebtIfStale();
   const { paidUnits, debtUnits } = renderStats();
   renderDashboardUnits();
   renderDonutChart(paidUnits, debtUnits);
@@ -3891,6 +3907,22 @@ function issueChargeConfirm() {
     : `شارژ بلوک ${blockFilter} برای ${month} ${toPersianNum(year)} (${toPersianNum(newCharges.length)} واحد) صادر شد.`;
 
   toastSuccess(msg);
+}
+
+/** بدهی واحدها را از روی شارژها (که ممکن است از دستگاه دیگر همگام شده باشند) تازه می‌کند */
+function refreshUnitsDebtIfStale() {
+  try {
+    const charges = loadCharges() || [];
+    if (!charges.length || !Array.isArray(UNITS)) return;
+    let changed = false;
+    UNITS.forEach(unit => {
+      const own = charges.filter(c => Number(c.unitId) === Number(unit.id));
+      if (!own.length) return; // واحد بدون شارژ: بدهی دستی مدیر دست نخورد
+      const d = own.filter(c => !c.paid).reduce((s, c) => s + (Number(c.total) || 0), 0);
+      if (Number(unit.debt) !== d || unit.debtExplicit !== true) { unit.debt = d; unit.debtExplicit = true; changed = true; }
+    });
+    if (changed) saveUnits();
+  } catch (e) { console.warn('refreshUnitsDebt', e); }
 }
 
 function updateUnitsDebtFromCharges() {
@@ -7453,6 +7485,7 @@ function parseReportDate(dateStr) {
 }
 
 function renderReportsPage() {
+  refreshUnitsDebtIfStale();
   const range = getReportDateRange();
 
   const labelEl = document.getElementById('reportPeriodLabel');
@@ -7498,10 +7531,10 @@ function renderReportsPage() {
 function renderReportDonutChart(paid, unpaid) {
   const canvas = document.getElementById('reportDonutChart');
   if (!canvas) return;
-  const size = 180;
-  const { ctx } = prepareCanvas(canvas, size, size);
-
-  const cx = size / 2, cy = size / 2, radius = 70, lineWidth = 18;
+  const { ctx, W, H } = prepareCanvas(canvas, 180, 180);
+  const size = Math.min(W, H);
+  const lineWidth = Math.max(12, Math.round(size * 0.1));
+  const cx = W / 2, cy = H / 2, radius = size / 2 - lineWidth / 2 - 2;
   const total = paid + unpaid || 1;
   const paidAngle = (paid / total) * Math.PI * 2;
 

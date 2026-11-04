@@ -4930,3 +4930,13 @@ body.dark-mode .modal-detail .detail-item {
     color: var(--text) !important;
   }
 }
+
+/* داشبورد موبایل: جدول وضعیت واحدها بدون اسکرول افقی (مستاجر و موبایل پنهان) */
+@media (max-width: 600px) {
+  #page-dashboard .table-box table th:nth-child(4),
+  #page-dashboard .table-box table td:nth-child(4),
+  #page-dashboard .table-box table th:nth-child(5),
+  #page-dashboard .table-box table td:nth-child(5) { display: none; }
+  #page-dashboard .table-box table { min-width: 0 !important; }
+  #page-dashboard .table-box table th, #page-dashboard .table-box table td { padding: 10px 6px; font-size: 12.5px; white-space: nowrap; }
+}
