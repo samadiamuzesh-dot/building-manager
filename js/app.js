@@ -3379,9 +3379,9 @@ function bindChargesPage() {
 }
 
 /** تأیید پرداخت اعلام‌شده توسط ساکن (کارت به کارت / انتقال) */
-function approveResidentPayment(chargeId) {
+function approveResidentPayment(chargeId, skipConfirm) {
   const charges = loadCharges();
-  const charge = charges.find(c => c.id === chargeId);
+  const charge = charges.find(c => Number(c.id) === Number(chargeId));
   if (!charge) {
     toastWarning('شارژ پیدا نشد.');
     return;
@@ -3390,7 +3390,7 @@ function approveResidentPayment(chargeId) {
     toastWarning('این شارژ قبلاً پرداخت شده است.');
     return;
   }
-  if (!confirm(`پرداخت ${formatToman(charge.total || 0)} برای ${charge.month} ${toPersianNum(charge.year)} تأیید شود؟ پس از تأیید، شارژ تسویه می‌شود.`)) return;
+  if (!skipConfirm) { openPaymentReview(chargeId); return; }
 
   const now = new Date();
   // تاریخ وصول = تاریخ واریزی که ساکن اعلام کرده (نه لحظه تأیید مدیر)
@@ -3451,7 +3451,7 @@ function archiveChargeReceipt(charge) {
   charge.receiptArchived = true;
   _receiptPut(charge.id, rec).catch(e => console.warn('receipt archive failed', e));
 }
-async function viewChargeReceipt(chargeId) {
+async function viewChargeReceipt(chargeId, mode) {
   const charge = (loadCharges() || []).find(c => Number(c.id) === Number(chargeId));
   if (!charge) return;
   let img = charge.receiptImage || null;
@@ -3474,10 +3474,35 @@ async function viewChargeReceipt(chargeId) {
   ov.innerHTML = `<div style="background:#fff;border-radius:18px;max-width:440px;width:100%;max-height:92vh;overflow:auto;padding:18px;direction:rtl;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><strong style="font-size:16px;">🧾 رسید واریز</strong><button type="button" data-close style="border:none;background:#f1f5f9;border-radius:10px;padding:6px 12px;cursor:pointer;font-family:inherit;">✖</button></div>
       ${rows}
+      ${mode ? `<div data-review style="margin-top:14px;">
+        <div data-reject-box style="display:${mode === 'reject' ? 'block' : 'none'};margin-bottom:10px;">
+          <label style="font-size:13px;font-weight:700;display:block;margin-bottom:6px;">دلیل رد (برای ساکن نمایش داده می‌شود)</label>
+          <input type="text" data-reason class="form-input" value="این واریز در حساب دیده نشد" style="width:100%;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" data-do-approve class="btn btn-primary" style="flex:1;padding:10px;">✅ تأیید پرداخت</button>
+          <button type="button" data-do-reject class="btn btn-danger" style="flex:1;padding:10px;">✖ رد پرداخت</button>
+        </div>
+      </div>` : ''}
       <div style="margin-top:12px;text-align:center;">${img ? `<a href="${img}" download="receipt-${charge.id}.jpg"><img src="${img}" alt="رسید" style="max-width:100%;border-radius:12px;border:1px solid #e2e8f0;"></a>` : '<div style="color:#94a3b8;font-size:13px;padding:20px;">عکس رسید روی این دستگاه موجود نیست.</div>'}</div>
     </div>`;
-  ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) ov.remove(); });
+  ov.addEventListener('click', e => {
+    if (e.target === ov || e.target.closest('[data-close]')) { ov.remove(); return; }
+    if (e.target.closest('[data-do-approve]')) { ov.remove(); approveResidentPayment(charge.id, true); return; }
+    if (e.target.closest('[data-do-reject]')) {
+      const box = ov.querySelector('[data-reject-box]');
+      if (box && box.style.display === 'none') { box.style.display = 'block'; ov.querySelector('[data-reason]')?.focus(); return; }
+      const reason = (ov.querySelector('[data-reason]')?.value || '').trim();
+      ov.remove(); rejectResidentPayment(charge.id, reason || 'رد شده توسط مدیر');
+    }
+  });
   document.body.appendChild(ov);
+}
+/** بررسی اعلام واریز ساکن: جزئیات + رسید + دکمه‌های تأیید/رد (بدون confirm/prompt مرورگر) */
+function openPaymentReview(chargeId, mode) {
+  const charge = (loadCharges() || []).find(c => Number(c.id) === Number(chargeId));
+  if (!charge || charge.paid || !charge.pendingApproval) { toastWarning('این اعلام پرداخت پیدا نشد یا قبلاً بررسی شده.'); return; }
+  viewChargeReceipt(chargeId, mode || 'review');
 }
 
 /** ISO → «۱۴۰۵/۰۸/۱۳» */
@@ -3487,15 +3512,15 @@ function getTodayPersianDateFromIso(iso) {
 }
 
 /** رد اعلام پرداخت ساکن (مثلاً شماره پیگیری نامعتبر) */
-function rejectResidentPayment(chargeId) {
+function rejectResidentPayment(chargeId, givenReason) {
   const charges = loadCharges();
   const charge = charges.find(c => Number(c.id) === Number(chargeId));
   if (!charge || charge.paid || !charge.pendingApproval) {
     toastWarning('این اعلام پرداخت پیدا نشد یا قبلاً بررسی شده.');
     return;
   }
-  const reason = prompt('دلیل رد پرداخت (برای ساکن نمایش داده می‌شود):', 'این واریز در حساب دیده نشد');
-  if (reason === null) return;
+  if (givenReason == null) { openPaymentReview(chargeId, 'reject'); return; }
+  const reason = String(givenReason);
 
   const tracking = charge.trackingCode;
   clearChargePayment(charge);
