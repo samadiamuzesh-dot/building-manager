@@ -2284,8 +2284,14 @@ function bindUnitsPage() {
       if (action === 'view') {
         openUnitDetail(id);
       } else if (action === 'delete') {
-        if ((await appConfirm('⚠️ آیا از حذف این واحد مطمئن هستید؟\n\nاین عمل قابل بازگشت نیست.'))) {
+        const _uc = (loadCharges() || []).filter(c => Number(c.unitId) === Number(id));
+        const _unpaid = _uc.filter(c => !c.paid && !c.pendingApproval);
+        let _msg = '⚠️ آیا از حذف این واحد مطمئن هستید؟\n\nاین عمل قابل بازگشت نیست.';
+        if (_unpaid.length) _msg += `\n• ${toPersianNum(_unpaid.length)} شارژ پرداخت‌نشده این واحد هم حذف می‌شود.`;
+        if (_uc.length - _unpaid.length > 0) _msg += `\n• پرداخت‌های قبلی این واحد در گزارش‌ها می‌ماند.`;
+        if ((await appConfirm(_msg))) {
           UNITS = UNITS.filter(u => u.id !== id);
+          if (_unpaid.length) { const _rm = new Set(_unpaid.map(c => c.id)); saveCharges(loadCharges().filter(c => !_rm.has(c.id))); }
           saveUnits();
           renderUnitsPage();
           renderUnitsStats();
@@ -2519,7 +2525,8 @@ function saveUnit() {
   const defaultChargeTenant = parseInt(document.getElementById('defaultChargeTenant').value) || 0;
  
 
-  const charge = parseInt(document.getElementById('unitCharge').value) || 500000;
+  const _chRaw = document.getElementById('unitCharge').value;
+  const charge = _chRaw === '' ? 500000 : (parseInt(_chRaw) || 0); // صفر = معاف از شارژ
   const debt = parseInt(document.getElementById('unitDebt').value) || 0;
   const notes = document.getElementById('unitNotes').value.trim();
 
@@ -3625,7 +3632,7 @@ function openIssueChargeModal() {
   const deadline = Number(settings.paymentDeadline) || 0;
   const mIdx = PERSIAN_MONTHS.indexOf(currentChargeMonth) + 1;
   document.getElementById('issueDueDate').value = (deadline > 0 && mIdx > 0)
-    ? toPersianNum(`${currentChargeYear}/${String(mIdx).padStart(2, '0')}/${String(Math.min(deadline, mIdx <= 6 ? 31 : 30)).padStart(2, '0')}`)
+    ? toPersianNum(`${currentChargeYear}/${String(mIdx).padStart(2, '0')}/${String(Math.min(deadline, mIdx <= 6 ? 31 : (mIdx <= 11 ? 30 : (typeof isPersianLeapYear === 'function' && isPersianLeapYear(Number(currentChargeYear)) ? 30 : 29)))).padStart(2, '0')}`)
     : '';
   document.getElementById('issueDescription').value = '';
 
@@ -3850,7 +3857,7 @@ async function issueChargeConfirm() {
     charges = charges.filter(c => !replaceIds.has(c.id));
   }
 
-  let lastId = charges.length > 0 ? Math.max(...charges.map(c => Number(c.id) || 0)) : 0;
+  let lastId = Math.max(Date.now(), ...charges.map(c => Number(c.id) || 0)); // یکتا بین چند دستگاه
 
   const targetUnits = units.filter(u => !lockedUnitIds.has(Number(u.id)));
   if (targetUnits.length === 0) {
@@ -4601,7 +4608,7 @@ function saveSideIncome() {
       income.session = session;
     }
   } else {
-    const newId = incomes.length > 0 ? Math.max(...incomes.map(i => i.id || 0)) + 1 : 1;
+    const newId = Math.max(Date.now(), ...incomes.map(i => Number(i.id) || 0)) + 1;
     incomes.push({
       id: newId,
       title, category, amount, date, month, year, payer, method, description, block, session,
@@ -5549,7 +5556,7 @@ function saveExpense() {
       expense.description = description;
     }
   } else {
-    const newId = expenses.length > 0 ? Math.max(...expenses.map(e => e.id || 0)) + 1 : 1;
+    const newId = Math.max(Date.now(), ...expenses.map(e => Number(e.id) || 0)) + 1;
     expenses.push({
       id: newId, title, category, amount, date, month, year, block, description,
       createdAt: new Date().toISOString(),
@@ -7089,7 +7096,7 @@ function saveVoting() {
     return;
   }
 
-  const newId = votings.length > 0 ? Math.max(...votings.map(v => v.id || 0)) + 1 : 1;
+  const newId = Math.max(Date.now(), ...votings.map(v => Number(v.id) || 0)) + 1;
 
   votings.push({
     id: newId,
@@ -10294,7 +10301,7 @@ function saveTicket() {
   if (!message) { toastWarning('لطفاً متن پیام را وارد کنید.'); return; }
 
   const tickets = loadTickets();
-  const newId = tickets.length > 0 ? Math.max(...tickets.map(t => t.id || 0)) + 1 : 1;
+  const newId = Math.max(Date.now(), ...tickets.map(t => Number(t.id) || 0)) + 1;
   const dt = getPersianDateTime();
 
   tickets.push({
@@ -10650,3 +10657,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   } catch (e) { console.warn('mobile menu', e); }
 });
+
+/* ===== راهنمای مبلغ زیر فیلدهای پولی: «۱٬۲۵۰٬۰۰۰ تومان» تا صفرها اشتباه وارد نشوند ===== */
+(function () {
+  function hintFor(inp) {
+    let h = inp.nextElementSibling;
+    if (!h || !h.classList || !h.classList.contains('money-hint')) {
+      h = document.createElement('div');
+      h.className = 'money-hint';
+      h.style.cssText = 'font-size:11.5px;color:#6366f1;margin-top:4px;min-height:14px;';
+      inp.insertAdjacentElement('afterend', h);
+    }
+    const v = Number(String(inp.value || '').replace(/[^\d.]/g, ''));
+    h.textContent = v > 0 ? `${toPersianNum(Math.round(v).toLocaleString('en-US')).replace(/,/g, '٬')} تومان` + (v >= 1e6 ? ` (≈ ${toPersianNum(String(+(v / 1e6).toFixed(2)))} میلیون)` : '') : '';
+  }
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input[type="number"][step="10000"]')) hintFor(t);
+  });
+  // مقدار اولیه وقتی مودال باز می‌شود
+  document.addEventListener('focusin', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input[type="number"][step="10000"]')) hintFor(t);
+  });
+})();
+
+/** سال کبیسه شمسی (اسفند ۳۰ روزه) */
+function isPersianLeapYear(jy) {
+  try {
+    const g = persianToGregorian(jy, 12, 30);
+    const gy = Array.isArray(g) ? g[0] : (g.gy || g.year), gm = Array.isArray(g) ? g[1] : (g.gm || g.month), gd = Array.isArray(g) ? g[2] : (g.gd || g.day);
+    const p = gregorianToPersian(gy, gm, gd);
+    return p.month === 12 && p.day === 30;
+  } catch (e) { return false; }
+}
