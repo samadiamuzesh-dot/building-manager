@@ -2,13 +2,13 @@
 /**
  * Plugin Name: Apartment Plus Sync (آپارتمان پلاس — همگام‌سازی)
  * Description: سرور همگام‌سازی موقت پنل مدیر و پنل ساکن برنامه «آپارتمان پلاس». فقط یک مسیر REST دارد (/wp-json/apt-sync/v1/sync)، هیچ صفحه یا محتوای عمومی نمی‌سازد و روی سئوی سایت اثری ندارد.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Requires PHP: 7.2
  * Author: Hark
  */
 if (!defined('ABSPATH')) exit;
 
-define('APT_SYNC_VER', '1.0.0');
+define('APT_SYNC_VER', '1.0.1');
 define('APT_SYNC_MAX_BODY', 4 * 1024 * 1024);
 require_once __DIR__ . '/includes/class-core.php';
 require_once __DIR__ . '/includes/class-store-wpdb.php';
@@ -43,6 +43,7 @@ add_action('rest_api_init', function () {
 			$body = json_decode($raw, true);
 			$core = new Apt_Sync_Core(new Apt_Sync_Store_WPDB(), apt_sync_secret());
 			list($status, $out) = $core->handle($body);
+			apt_sync_log($body, $status, $out);
 			return new WP_REST_Response($out, $status);
 		}),
 	));
@@ -94,3 +95,49 @@ add_filter('plugin_row_meta', function ($links, $file) {
 	if ($file === plugin_basename(__FILE__)) $links[] = '<a href="' . esc_url(rest_url('apt-sync/v1/sync')) . '" target="_blank">بررسی سرور</a>';
 	return $links;
 }, 10, 2);
+
+// گزارش ۶۰ درخواست آخر (بدون رمز و توکن) برای عیب‌یابی
+function apt_sync_log($body, $status, $out) {
+	$a = is_array($body) && isset($body['action']) ? (string) $body['action'] : '?';
+	$e = array('t' => current_time('mysql'), 'a' => $a, 's' => $status, 'o' => (string) get_http_origin());
+	if (is_array($body)) {
+		if (!empty($body['code'])) $e['code'] = substr((string) $body['code'], 0, 30);
+		if (!empty($body['phone'])) $e['ph'] = substr(Apt_Sync_Core::normPhone($body['phone']), -4);
+		if (!empty($body['changes']) && is_array($body['changes'])) $e['keys'] = implode(',', array_keys($body['changes']));
+	}
+	if (is_array($out) && isset($out['error'])) $e['err'] = $out['error'];
+	if (is_object($out['applied'] ?? null)) $e['ok'] = implode(',', array_keys((array) $out['applied']));
+	if (is_object($out['conflicts'] ?? null) && count((array) $out['conflicts'])) $e['cf'] = implode(',', array_keys((array) $out['conflicts']));
+	$log = get_option('apt_sync_log', array());
+	if (!is_array($log)) $log = array();
+	array_unshift($log, $e);
+	update_option('apt_sync_log', array_slice($log, 0, 60), false);
+}
+
+// صفحه مدیریت: ابزارها ← آپارتمان پلاس
+add_action('admin_menu', function () {
+	add_management_page('آپارتمان پلاس', 'آپارتمان پلاس (همگام‌سازی)', 'manage_options', 'apt-sync', 'apt_sync_admin_page');
+});
+function apt_sync_admin_page() {
+	global $wpdb; $t = $wpdb->prefix . 'apt_sync'; $c = $wpdb->prefix . 'apt_sync_codes';
+	echo '<div class="wrap" style="direction:rtl"><h1>آپارتمان پلاس — سرور همگام‌سازی</h1>';
+	echo '<p>آدرس سرور: <code>' . esc_html(rest_url('apt-sync/v1/sync')) . '</code></p>';
+	$phones = $wpdb->get_col("SELECT DISTINCT phone FROM $t");
+	echo '<h2>ساختمان‌ها (' . count($phones) . ')</h2><table class="widefat striped"><thead><tr><th>شماره مدیر</th><th>کد ساختمان</th><th>کدهای ایندکس</th><th>تعداد کلید</th><th>واحدها</th><th>ساکنین ثبت‌نامی</th><th>آخرین تغییر</th><th>توسط</th></tr></thead><tbody>';
+	foreach ($phones as $ph) {
+		$meta = json_decode((string) $wpdb->get_var($wpdb->prepare("SELECT v FROM $t WHERE phone=%s AND k='__meta'", $ph)), true);
+		$codes = implode('، ', $wpdb->get_col($wpdb->prepare("SELECT code FROM $c WHERE phone=%s", $ph)));
+		$n = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $t WHERE phone=%s AND k LIKE %s", $ph, 'k:%'));
+		$units = json_decode((string) $wpdb->get_var($wpdb->prepare("SELECT v FROM $t WHERE phone=%s AND k='k:units'", $ph)), true);
+		$regs = json_decode((string) $wpdb->get_var($wpdb->prepare("SELECT v FROM $t WHERE phone=%s AND k='k:registered_residents'", $ph)), true);
+		$rs = array(); foreach ((array) $regs as $r) { $st = is_array($r) && isset($r['status']) ? $r['status'] : '?'; $rs[$st] = ($rs[$st] ?? 0) + 1; }
+		$rsTxt = ''; foreach ($rs as $k => $v) $rsTxt .= esc_html($k) . ': ' . $v . ' ';
+		$last = $wpdb->get_row($wpdb->prepare("SELECT k, t, by_role FROM $t WHERE phone=%s AND k LIKE %s ORDER BY t DESC LIMIT 1", $ph, 'k:%'), ARRAY_A);
+		echo '<tr><td>' . esc_html(substr($ph, 0, 4) . '***' . substr($ph, -4)) . '</td><td>' . esc_html($meta['code'] ?? '') . '</td><td>' . esc_html($codes) . '</td><td>' . $n . '</td><td>' . (is_array($units) ? count($units) : '-') . '</td><td>' . ($rsTxt ?: '-') . '</td><td>' . ($last ? esc_html(wp_date('Y-m-d H:i:s', (int) ($last['t'] / 1000)) . ' (' . substr($last['k'], 2) . ')') : '-') . '</td><td>' . esc_html($last['by_role'] ?? '') . '</td></tr>';
+	}
+	echo '</tbody></table><h2>درخواست‌های اخیر</h2><table class="widefat striped"><thead><tr><th>زمان</th><th>اکشن</th><th>وضعیت</th><th>کد</th><th>تلفن</th><th>کلیدها</th><th>اعمال‌شده</th><th>تعارض</th><th>خطا</th><th>Origin</th></tr></thead><tbody>';
+	foreach ((array) get_option('apt_sync_log', array()) as $e) {
+		echo '<tr>'; foreach (array('t', 'a', 's', 'code', 'ph', 'keys', 'ok', 'cf', 'err', 'o') as $f) echo '<td>' . esc_html($e[$f] ?? '') . '</td>'; echo '</tr>';
+	}
+	echo '</tbody></table></div>';
+}
