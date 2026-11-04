@@ -3,8 +3,8 @@
    ------------------------------------------------------------
    این فایل قبل از app.js / resident-app.js / auth.js بارگذاری می‌شود.
    برنامه‌ها همچنان با localStorage کار می‌کنند؛ این لایه تغییرات را
-   به سرور (/api/sync) می‌فرستد و تغییرات دستگاه‌های دیگر را می‌گیرد.
-   - آدرس سرور: window.APT_SYNC_URL (پیش‌فرض: /api/sync هم‌دامنه)
+   به سرور همگام‌سازی می‌فرستد و تغییرات دستگاه‌های دیگر را می‌گیرد.
+   - آدرس سرور: window.APT_SYNC_URL (پیش‌فرض: افزونه وردپرس elhamsamadi.ir)
    - غیرفعال‌سازی: window.APT_SYNC_URL = false
    ============================================================ */
 (function () {
@@ -12,10 +12,10 @@
   if (typeof window === 'undefined' || !window.localStorage) return;
   if (window.APT_SYNC_URL === false) return;
   if (location.protocol === 'file:') return;
-  // GitHub Pages سرور ندارد؛ فقط وقتی آدرس سرور صریحاً داده شده فعال شود
-  if (/\.github\.io$/i.test(location.hostname) && !window.APT_SYNC_URL) return;
-
-  const API = window.APT_SYNC_URL || new URL('api/sync', location.href).href;
+  // سرور موقت: افزونه وردپرس روی elhamsamadi.ir (تا خرید هاست جدا).
+  // برای سرور دیگر قبل از این فایل window.APT_SYNC_URL را تنظیم کنید.
+  const DEFAULT_API = 'https://elhamsamadi.ir/wp-json/apt-sync/v1/sync';
+  const API = window.APT_SYNC_URL || DEFAULT_API;
   const P = 'ham_sakhteman_';
   const BASES = ['v3', 'units', 'charges', 'expenses', 'messages', 'notices', 'notifications',
     'settings', 'side_incomes', 'tickets', 'votings', 'plan'];
@@ -123,7 +123,9 @@
 
   /* ---------------- شبکه ---------------- */
   async function call(body, keepalive) {
-    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: !!keepalive, cache: 'no-store' });
+    const payload = JSON.stringify(body);
+    // مرورگرها keepalive را برای بدنه بالای ۶۴KB رد می‌کنند
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: !!keepalive && payload.length < 60000, cache: 'no-store', credentials: 'omit' });
     let j = {}; try { j = await r.json(); } catch (e) {}
     if (!r.ok) { const err = new Error(j.error || ('http_' + r.status)); err.status = r.status; err.data = j; throw err; }
     return j;
