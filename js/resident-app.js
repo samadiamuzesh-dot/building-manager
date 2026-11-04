@@ -2448,9 +2448,27 @@ function openResidentPayModal(chargeId) {
     };
   }
   _renderReceiptPreview();
+  const cashTo = document.getElementById('residentPayCashTo'); if (cashTo) cashTo.value = '';
+  document.querySelectorAll('input[name="residentPayKind"]').forEach(r => {
+    r.checked = r.value === 'bank';
+    r.onchange = _syncPayKindUI;
+  });
+  _syncPayKindUI();
 
   const modal = document.getElementById('residentPayModal');
   if (modal) modal.classList.add('open');
+}
+
+function _payKind() {
+  const r = document.querySelector('input[name="residentPayKind"]:checked');
+  return r ? r.value : 'bank';
+}
+function _syncPayKindUI() {
+  const kind = _payKind();
+  document.querySelectorAll('#residentPayModal [data-kind]').forEach(el => { el.style.display = el.dataset.kind === kind ? '' : 'none'; });
+  document.querySelectorAll('.rpay-method').forEach(l => l.classList.toggle('active', !!l.querySelector('input:checked')));
+  const lbl = document.getElementById('residentPayDateLabel'); if (lbl) lbl.textContent = kind === 'cash' ? 'تاریخ تحویل' : 'تاریخ واریز';
+  const btn = document.getElementById('residentPayConfirmBtn'); if (btn) btn.innerHTML = kind === 'cash' ? '💵 ثبت پرداخت نقدی' : '📩 ثبت و ارسال برای مدیر';
 }
 
 function closeResidentPayModal() {
@@ -2488,23 +2506,33 @@ function confirmResidentPay() {
     if (dateEl) dateEl.focus();
     return;
   }
-  if (!tracking && !_residentPayReceiptData) {
+  const kind = _payKind();
+  if (kind === 'bank' && !tracking && !_residentPayReceiptData) {
     showResidentToast('شماره پیگیری را وارد کنید یا عکس رسید را بفرستید.', 'warning');
     if (trackingEl) trackingEl.focus();
     return;
   }
-  if (card4 && card4.length !== 4) {
+  if (kind === 'bank' && card4 && card4.length !== 4) {
     showResidentToast('۴ رقم آخر کارت را کامل وارد کنید.', 'warning');
     if (card4El) card4El.focus();
     return;
   }
 
   const declaredDate = _faDigits(`${m[1]}/${String(m[2]).padStart(2, '0')}/${String(m[3]).padStart(2, '0')}`);
-  charge.payMethod = 'واریز بانکی';
-  charge.payDescription = 'اعلام واریز توسط ساکن' + (card4 ? ` — کارت مبدأ ****${card4}` : '');
-  charge.trackingCode = tracking || '';
-  charge.receipt = { date: declaredDate, card4: card4 || '', ref: _payRefFor(charge), amount: Number(charge.total || 0) };
-  charge.receiptImage = _residentPayReceiptData || null;
+  if (kind === 'cash') {
+    const to = (document.getElementById('residentPayCashTo')?.value || '').trim();
+    charge.payMethod = 'نقدی';
+    charge.payDescription = 'پرداخت نقدی اعلام‌شده توسط ساکن' + (to ? ` — تحویل به ${to}` : '');
+    charge.trackingCode = '';
+    charge.receipt = { date: declaredDate, kind: 'cash', to, ref: _payRefFor(charge), amount: Number(charge.total || 0) };
+    charge.receiptImage = null;
+  } else {
+    charge.payMethod = 'واریز بانکی';
+    charge.payDescription = 'اعلام واریز توسط ساکن' + (card4 ? ` — کارت مبدأ ****${card4}` : '');
+    charge.trackingCode = tracking || '';
+    charge.receipt = { date: declaredDate, card4: card4 || '', ref: _payRefFor(charge), amount: Number(charge.total || 0) };
+    charge.receiptImage = _residentPayReceiptData || null;
+  }
   charge.pendingApproval = true;
   charge.pendingAt = new Date().toISOString();
   charge.paid = false;
@@ -2545,7 +2573,7 @@ function notifyManagerAboutPayment(charge, autoApproved) {
     const title = autoApproved ? 'پرداخت آنلاین شارژ' : 'اعلام پرداخت در انتظار تأیید';
     const msg = autoApproved
       ? (`پرداخت آنلاین شارژ ${charge.month} ${charge.year} به مبلغ ${formatTomanR(charge.total)} ثبت و تسویه شد.`)
-      : (`${_payRefFor(charge)}: واریز ${formatTomanR(charge.total)} در تاریخ ${(charge.receipt && charge.receipt.date) || '—'} اعلام شد${charge.trackingCode ? ' — پیگیری ' + charge.trackingCode : ''}${charge.receiptImage ? ' (با عکس رسید)' : ''}. نیاز به تأیید دارد.`);
+      : (`${_payRefFor(charge)}: ${charge.payMethod === 'نقدی' ? 'پرداخت نقدی' : 'واریز'} ${formatTomanR(charge.total)} در تاریخ ${(charge.receipt && charge.receipt.date) || '—'} اعلام شد${charge.trackingCode ? ' — پیگیری ' + charge.trackingCode : ''}${charge.receiptImage ? ' (با عکس رسید)' : ''}. نیاز به تأیید دارد.`);
 
     notifs.unshift({
       id: Date.now(),

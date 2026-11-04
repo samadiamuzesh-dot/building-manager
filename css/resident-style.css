@@ -2040,3 +2040,7 @@ body:has(.resident-bottom-nav) #aptSyncBadge { bottom: calc(96px + env(safe-area
 .rpay-preview img { max-width:100%; max-height:260px; border-radius:12px; border:1px solid var(--border); }
 .rpay-remove { display:block; margin:8px auto 0; border:none; background:#fee2e2; color:#b91c1c; border-radius:10px; padding:6px 14px; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; }
 body:has(.resident-modal-backdrop.open) #aptSyncBadge { display: none !important; }
+.rpay-methods { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.rpay-method { display:flex; align-items:center; justify-content:center; gap:6px; border:2px solid var(--border); border-radius:14px; padding:12px 8px; font-size:14px; font-weight:800; color:#475569; cursor:pointer; background:#fff; transition:all .15s ease; }
+.rpay-method input { position:absolute; opacity:0; pointer-events:none; }
+.rpay-method.active { border-color:#6d5ce8; background:#f5f3ff; color:#4338ca; box-shadow:0 4px 12px rgba(67,56,202,.12); }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <title>آپارتمان پلاس | اپلیکیشن ساکنین</title>
-        <link rel="stylesheet" href="css/resident-style.css?v=15">
+        <link rel="stylesheet" href="css/resident-style.css?v=16">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap">
     <!-- این خط را جایگزین لینک قبلی منیفست کنید -->
   <link rel="manifest" href="manifest.json">
@@ -340,7 +340,7 @@
 <!-- Toast Container -->
 <div id="residentToastContainer" class="resident-toast-container"></div>
 <script src="js/sync.js?v=3"></script>
-<script src="js/resident-app.js?v=19"></script>
+<script src="js/resident-app.js?v=20"></script>
   <!-- ============ مودال اعلام واریز ============ -->
 <div class="resident-modal-backdrop" id="residentPayModal">
   <div class="resident-modal">
@@ -356,7 +356,13 @@
 
     <div class="resident-modal-body">
 
-      <div class="rpay-step"><span class="rpay-step-num">۱</span><span>مبلغ را با اپ بانک خودتان به حساب زیر واریز کنید.</span></div>
+      <div class="rpay-methods" role="radiogroup">
+        <label class="rpay-method"><input type="radio" name="residentPayKind" value="bank" checked><span>🏦 واریز بانکی</span></label>
+        <label class="rpay-method"><input type="radio" name="residentPayKind" value="cash"><span>💵 پرداخت نقدی</span></label>
+      </div>
+
+      <div class="rpay-step" data-kind="bank"><span class="rpay-step-num">۱</span><span>مبلغ را با اپ بانک خودتان به حساب زیر واریز کنید.</span></div>
+      <div class="rpay-step" data-kind="cash" style="display:none;"><span class="rpay-step-num">۱</span><span>مبلغ را نقدی به مدیر تحویل دهید و اینجا ثبت کنید تا مدیر تأیید کند.</span></div>
 
       <div class="resident-pay-info">
         <div class="resident-pay-row"><span>دوره</span><strong id="residentPayMonth">—</strong></div>
@@ -364,26 +370,31 @@
         <div class="resident-pay-row"><span>تاریخ سررسید</span><strong id="residentPayDueDate">—</strong></div>
       </div>
 
-      <div id="residentPayBankInfo" class="rpay-bank"></div>
+      <div id="residentPayBankInfo" class="rpay-bank" data-kind="bank"></div>
 
-      <div class="rpay-step"><span class="rpay-step-num">۲</span><span>بعد از واریز، اطلاعات رسید را وارد کنید تا مدیر تأیید کند.</span></div>
+      <div class="rpay-step" data-kind="bank"><span class="rpay-step-num">۲</span><span>بعد از واریز، اطلاعات رسید را وارد کنید تا مدیر تأیید کند.</span></div>
 
       <div class="resident-form-group">
-        <label for="residentPayDate">تاریخ واریز <span class="resident-required">*</span></label>
+        <label for="residentPayDate"><span id="residentPayDateLabel">تاریخ واریز</span> <span class="resident-required">*</span></label>
         <input type="text" id="residentPayDate" class="resident-form-input" inputmode="numeric" placeholder="مثلاً ۱۴۰۵/۰۸/۱۴" />
       </div>
 
-      <div class="resident-form-group">
+      <div class="resident-form-group" data-kind="cash" style="display:none;">
+        <label for="residentPayCashTo">تحویل به <span style="color:#94a3b8;font-weight:500;">(اختیاری)</span></label>
+        <input type="text" id="residentPayCashTo" class="resident-form-input" placeholder="مثلاً: مدیر ساختمان / سرایدار" />
+      </div>
+
+      <div class="resident-form-group" data-kind="bank">
         <label for="residentPayTracking">شماره پیگیری / مرجع</label>
         <input type="text" id="residentPayTracking" class="resident-form-input" inputmode="numeric" placeholder="از رسید اپ بانک" dir="ltr" />
       </div>
 
-      <div class="resident-form-group">
+      <div class="resident-form-group" data-kind="bank">
         <label for="residentPayCard4">۴ رقم آخر کارت مبدأ <span style="color:#94a3b8;font-weight:500;">(اختیاری)</span></label>
         <input type="text" id="residentPayCard4" class="resident-form-input" inputmode="numeric" maxlength="4" placeholder="مثلاً ۴۵۶۷" dir="ltr" />
       </div>
 
-      <div class="resident-form-group">
+      <div class="resident-form-group" data-kind="bank">
         <label>عکس رسید</label>
         <label class="rpay-upload" for="residentPayReceipt" id="residentPayReceiptLabel">
           <span class="rpay-upload-icon">📷</span>
@@ -395,7 +406,7 @@
 
       <input type="hidden" id="residentPayMethod" value="واریز بانکی" />
 
-      <div class="resident-pay-notice" style="background:#eef2ff;color:#3730a3;">
+      <div class="resident-pay-notice" data-kind="bank" style="background:#eef2ff;color:#3730a3;">
         حداقل یکی از «شماره پیگیری» یا «عکس رسید» لازم است. ارسال عکس، تأیید مدیر را سریع‌تر می‌کند.
       </div>
 
