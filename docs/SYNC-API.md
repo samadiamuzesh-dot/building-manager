@@ -1,0 +1,33 @@
+# سرور همگام‌سازی آپارتمان پلاس (قرارداد API)
+
+پنل‌ها همچنان با localStorage کار می‌کنند. `js/sync.js` هر تغییر را به `POST /api/sync` می‌فرستد و هر ۱۲ ثانیه (و هنگام باز شدن برنامه) تغییرات دستگاه‌های دیگر را می‌گیرد. آدرس سرور را می‌شود با `window.APT_SYNC_URL = 'https://.../api/sync'` قبل از بارگذاری `sync.js` عوض کرد (مثلاً بعد از انتقال به هاست PHP).
+
+## راه‌اندازی روی Vercel
+1. ریپو را در Vercel ایمپورت کنید (Framework: Other، بدون Build Command).
+2. Storage → Upstash Redis (پلن رایگان) را بسازید و به پروژه وصل کنید؛ متغیرهای `KV_REST_API_URL` و `KV_REST_API_TOKEN` خودکار اضافه می‌شوند.
+3. (اختیاری) متغیر `SYNC_SECRET` را با یک رشته تصادفی بلند بگذارید.
+4. Redeploy. تست: باز کردن `/api/sync` باید `{"ok":true,...,"storage":true}` بدهد.
+
+## اکشن‌ها (بدنه JSON)
+| action | ورودی | خروجی |
+|---|---|---|
+| `register` | `phone, passHash, code` | `token, phone, code` (اولین بار، توسط sync.js خودکار) |
+| `login` | `phone, passHash` | `token, phone, code` — خطاها: 404 `not_found`، 401 `bad_password`، 429 |
+| `open` | `code` (کد ساختمان) | توکن ساکن `token, phone, code` |
+| `resident_login` | `code, residentPhone, passHash` | `{ok, resident}` |
+| `pull` | `token, since` | `{keys: {base: {v, r}}, rev}` |
+| `push` | `token, changes: {base: {v, r}}` | `{applied: {base: r}, conflicts: {base: {v, r}}}` |
+| `change_password` | `token, oldHash, newHash` | `{ok}` |
+
+- `base` یکی از: v3, units, charges, expenses, messages, notices, notifications, settings, side_incomes, tickets, votings, plan, registered_residents.
+- `r` نسخه هر کلید است؛ اگر `r` ارسالی با نسخه سرور یکی نباشد، کلید در `conflicts` برمی‌گردد و کلاینت ادغام سه‌طرفه (بر اساس `id` ردیف‌ها) انجام می‌دهد و دوباره می‌فرستد.
+- ساکن فقط روی units, charges, messages, notifications, votings, tickets, registered_residents می‌نویسد؛ نمی‌تواند شارژ را «پرداخت‌شده» کند، شارژ صادر کند یا ثبت‌نام خودش را تأیید کند.
+- رمز ساکنین (`passwordHash`) هیچ‌وقت به کلاینت‌ها برگردانده نمی‌شود.
+
+## محدودیت‌های فعلی
+- رمز مدیر در مرورگر با هش ساده ساخته می‌شود؛ سرور آن را با scrypt ذخیره می‌کند و تلاش‌های ورود را محدود می‌کند، ولی برای امنیت کامل باید ورود به سرور منتقل شود.
+- هر کسی کد ساختمان را داشته باشد اطلاعات ساختمان (بدون رمزها) را می‌بیند؛ کد ساختمان را فقط به ساکنین بدهید.
+- عکس رسیدها اگر حجیم باشند حجم داده را زیاد می‌کنند.
+
+## انتقال به هاست PHP
+همین قرارداد را در `api/sync.php` پیاده کنید (ذخیره در MySQL: جدول buildings و جدول keys با ستون rev) و در صفحات `window.APT_SYNC_URL` را تنظیم کنید یا مسیر `/api/sync` را rewrite کنید. داده‌ها را با یک اسکریپت از Redis به MySQL منتقل کنید.

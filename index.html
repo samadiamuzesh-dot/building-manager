@@ -273,7 +273,7 @@
           <div class="stat-card">
             <div class="stat-icon stat-icon-green">💰</div>
             <div class="stat-body">
-              <div class="stat-label">شارژ دریافتی این ماه</div>
+              <div class="stat-label">دریافتی این ماه (شارژ + جانبی)</div>
               <div class="stat-value" id="statIncome">0</div>
             </div>
           </div>
@@ -535,7 +535,7 @@
           <div class="stat-card">
             <div class="stat-icon stat-icon-blue">🧾</div>
             <div class="stat-body">
-              <p class="stat-label">هزینه‌ها</p>
+              <p class="stat-label">مانده وصول‌نشده</p>
               <h3 class="stat-value" id="chargeExpenses">۰ تومان</h3>
             </div>
           </div>
@@ -623,6 +623,7 @@
               <option value="بهمن">بهمن</option>
               <option value="اسفند">اسفند</option>
             </select>
+            <select id="paymentsYearFilter" class="block-select" title="سال پرداخت"></select>
           </div>
 
           <div class="toolbar-left">
@@ -1328,7 +1329,7 @@
           <div class="stat-card">
             <div class="stat-icon stat-icon-purple">🏦</div>
             <div class="stat-body">
-              <p class="stat-label">مانده صندوق</p>
+              <p class="stat-label">تراز دوره (درآمد − هزینه)</p>
               <h3 class="stat-value" id="reportBalance">۰ تومان</h3>
             </div>
           </div>
@@ -1338,6 +1339,14 @@
             <div class="stat-body">
               <p class="stat-label">کل بدهی معوق</p>
               <h3 class="stat-value" id="reportDebt">۰ تومان</h3>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">💰</div>
+            <div class="stat-body">
+              <p class="stat-label">موجودی فعلی صندوق</p>
+              <h3 class="stat-value" id="reportFund">۰ تومان</h3>
             </div>
           </div>
         </div>
@@ -1847,6 +1856,13 @@
               <input type="number" id="setPaymentDeadline" class="form-input"
                      placeholder="مثلاً: 10" min="1" />
               <p class="hint-text">مثلاً: تا ۱۰ روز از تاریخ صدور شارژ.</p>
+            </div>
+
+            <div class="form-group">
+              <label for="setOpeningBalance">موجودی اولیه صندوق (تومان)</label>
+              <input type="number" id="setOpeningBalance" class="form-input"
+                     placeholder="مثلاً: 12000000" step="1000" />
+              <p class="hint-text">موجودی صندوق قبل از شروع کار با اپ. در «موجودی فعلی صندوق» گزارش‌ها لحاظ می‌شود. اگر صندوق بدهکار است، عدد منفی بزنید.</p>
             </div>
 
             <button class="btn btn-primary" id="setSaveFinancial">💾 ذخیره تنظیمات مالی</button>
@@ -4013,8 +4029,9 @@
     🎨 طراحی و توسعه: <strong>الهام صمدی</strong>
   </p>
 </footer>
+<script src="js/sync.js?v=1"></script>
 <script src="js/plans.js?v=2"></script>
-<script src="js/auth.js?v=2"></script>
-<script src="js/app.js?v=100014"></script>
+<script src="js/auth.js?v=3"></script>
+<script src="js/app.js?v=100016"></script>
 </body>
 </html>
