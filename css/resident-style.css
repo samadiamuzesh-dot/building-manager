@@ -2020,3 +2020,23 @@ html, body {
 .resident-panel, #residentPanel { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)) !important; }
 .resident-role-opt input { flex-shrink: 0; align-self: center; }
 body:has(.resident-bottom-nav) #aptSyncBadge { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+
+/* ============ اعلام واریز ============ */
+.rpay-step { display:flex; align-items:center; gap:10px; margin:14px 0 10px; font-size:13px; font-weight:700; color:var(--text); }
+.rpay-step:first-child { margin-top:0; }
+.rpay-step-num { flex-shrink:0; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#6d5ce8,#4338ca); color:#fff; font-size:13px; font-weight:800; }
+.rpay-bank { margin-top:10px; border:1px solid #e0e7ff; background:linear-gradient(180deg,#f8f7ff,#fff); border-radius:16px; padding:4px 12px; }
+.rpay-bank-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px dashed #e2e8f0; }
+.rpay-bank-row:last-child { border-bottom:none; }
+.rpay-bank-txt { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.rpay-bank-txt span { font-size:11.5px; color:#64748b; }
+.rpay-bank-txt strong { font-size:14px; color:var(--text); word-break:break-all; letter-spacing:.3px; }
+.rpay-copy { flex-shrink:0; border:1px solid #c7d2fe; background:#eef2ff; color:#4338ca; border-radius:10px; padding:6px 12px; font-family:inherit; font-size:12px; font-weight:800; cursor:pointer; }
+.rpay-copy:active { transform:scale(.96); }
+.rpay-bank-empty { font-size:12px; color:#b45309; background:#fef3c7; border-radius:10px; padding:10px; margin:8px 0; line-height:1.8; }
+.rpay-upload { display:flex; align-items:center; justify-content:center; gap:8px; border:2px dashed #c7d2fe; background:#f8f7ff; color:#4338ca; border-radius:14px; padding:16px; font-size:13px; font-weight:700; cursor:pointer; }
+.rpay-upload-icon { font-size:20px; }
+.rpay-preview { margin-top:10px; text-align:center; }
+.rpay-preview img { max-width:100%; max-height:260px; border-radius:12px; border:1px solid var(--border); }
+.rpay-remove { display:block; margin:8px auto 0; border:none; background:#fee2e2; color:#b91c1c; border-radius:10px; padding:6px 14px; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+body:has(.resident-modal-backdrop.open) #aptSyncBadge { display: none !important; }

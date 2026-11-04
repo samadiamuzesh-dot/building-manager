@@ -215,6 +215,8 @@ function clearChargePayment(charge) {
   charge.approvedByManager = false;
   charge.approvedAt = null;
   charge.paidByResident = false;
+  charge.receipt = null;
+  charge.receiptImage = null;
 }
 
 /* ============================================================
@@ -3205,14 +3207,19 @@ function renderPendingPaymentsBanner() {
     const label = unit
       ? ((unit.block && unit.block !== '—') ? (unit.block + '-' + toPersianNum(unit.number)) : ('واحد ' + toPersianNum(unit.number)))
       : '—';
-    const track = c.trackingCode ? (' — پیگیری: <span dir="ltr">' + escapeHtml(c.trackingCode) + '</span>') : '';
+    const track = (c.trackingCode ? (' — پیگیری: <span dir="ltr">' + escapeHtml(c.trackingCode) + '</span>') : '') +
+      (c.receipt && c.receipt.date ? (' — تاریخ واریز: ' + escapeHtml(c.receipt.date)) : '') +
+      (c.receipt && c.receipt.card4 ? (' — کارت ****' + escapeHtml(toPersianNum(c.receipt.card4))) : '');
+    const rcptBtn = c.receiptImage
+      ? '<button type="button" class="btn btn-secondary" data-view-receipt="' + c.id + '" style="padding:6px 14px;font-size:13px;">🧾 رسید</button>'
+      : '';
     return (
       '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:#fff;border-radius:10px;padding:10px 12px;border:1px solid #fde68a;">' +
         '<div style="font-size:13px;color:#334155;">' +
           '<strong>' + label + '</strong> — ' + c.month + ' ' + toPersianNum(c.year) +
           ' — ' + formatToman(c.total) + ' — ' + (c.payMethod || '—') + track +
         '</div>' +
-        '<div style="display:flex;gap:6px;">' +
+        '<div style="display:flex;gap:6px;">' + rcptBtn +
           '<button type="button" class="btn btn-primary" data-approve-charge="' + c.id + '" style="padding:6px 14px;font-size:13px;">✅ تأیید پرداخت</button>' +
           '<button type="button" class="btn btn-danger" data-reject-charge="' + c.id + '" style="padding:6px 14px;font-size:13px;">✖ رد</button>' +
         '</div>' +
@@ -3235,6 +3242,9 @@ function renderPendingPaymentsBanner() {
     btn.addEventListener('click', () => {
       rejectResidentPayment(Number(btn.dataset.rejectCharge));
     });
+  });
+  host.querySelectorAll('[data-view-receipt]').forEach(btn => {
+    btn.addEventListener('click', () => viewChargeReceipt(Number(btn.dataset.viewReceipt)));
   });
 }
 
@@ -3268,6 +3278,7 @@ function renderChargesTable(charges) {
       'نقدی': '💵',
       'کارت به کارت': '💳',
       'انتقال بانکی': '🏦',
+      'واریز بانکی': '🏦',
       'آنلاین': '🌐',
       'چک': '📝',
     };
@@ -3291,6 +3302,7 @@ function renderChargesTable(charges) {
     }
 
     let actions = `<button class="row-action-btn" data-charge-id="${c.id}" title="${c.paid ? 'مدیریت پرداخت' : 'ثبت پرداخت'}">💳</button>`;
+    if (c.receiptImage || c.receiptArchived) actions += `<button class="row-action-btn" data-view-receipt="${c.id}" title="مشاهده رسید">🧾</button>`;
     if (c.pendingApproval && !c.paid) {
       actions = `
         <button class="row-action-btn" data-approve-charge="${c.id}" title="تأیید پرداخت ساکن"
@@ -3302,6 +3314,7 @@ function renderChargesTable(charges) {
           ✖ رد
         </button>
         <button class="row-action-btn" data-charge-id="${c.id}" title="جزئیات">💳</button>
+        ${c.receiptImage ? `<button class="row-action-btn" data-view-receipt="${c.id}" title="مشاهده رسید">🧾</button>` : ''}
       `;
     }
 
@@ -3350,6 +3363,8 @@ function bindChargesPage() {
         approveResidentPayment(chargeId);
         return;
       }
+      const rcptBtn = e.target.closest('[data-view-receipt]');
+      if (rcptBtn) { viewChargeReceipt(Number(rcptBtn.dataset.viewReceipt)); return; }
       const rejectBtn = e.target.closest('[data-reject-charge]');
       if (rejectBtn) {
         rejectResidentPayment(Number(rejectBtn.dataset.rejectCharge));
@@ -3375,20 +3390,22 @@ function approveResidentPayment(chargeId) {
     toastWarning('این شارژ قبلاً پرداخت شده است.');
     return;
   }
-  if (!confirm('آیا پرداخت ساکن را تأیید می‌کنید؟ پس از تأیید، شارژ تسویه می‌شود.')) return;
+  if (!confirm(`پرداخت ${formatToman(charge.total || 0)} برای ${charge.month} ${toPersianNum(charge.year)} تأیید شود؟ پس از تأیید، شارژ تسویه می‌شود.`)) return;
 
   const now = new Date();
-  // تاریخ وصول = تاریخی که ساکن واریز را اعلام کرده (نه لحظه تأیید مدیر)
+  // تاریخ وصول = تاریخ واریزی که ساکن اعلام کرده (نه لحظه تأیید مدیر)
   const declaredAt = charge.pendingAt || now.toISOString();
+  const declaredDate = charge.receipt && parsePersianDateParts(charge.receipt.date) ? charge.receipt.date : null;
   charge.paid = true;
   charge.pendingApproval = false;
-  charge.paidDate = charge.paidDate || getTodayPersianDateFromIso(declaredAt);
+  charge.paidDate = declaredDate || charge.paidDate || getTodayPersianDateFromIso(declaredAt);
   charge.paidAt = declaredAt;
   charge.rejectedAt = null;
   charge.rejectReason = null;
   charge.approvedByManager = true;
   charge.approvedAt = now.toISOString();
-  if (!charge.payMethod) charge.payMethod = 'کارت به کارت';
+  if (!charge.payMethod) charge.payMethod = 'واریز بانکی';
+  archiveChargeReceipt(charge);
 
   saveCharges(charges);
   if (typeof updateUnitsDebtFromCharges === 'function') updateUnitsDebtFromCharges();
@@ -3402,6 +3419,65 @@ function approveResidentPayment(chargeId) {
   }
 
   toastSuccess('پرداخت ساکن تأیید و شارژ تسویه شد.');
+}
+
+/* ============================================================
+   🧾 رسید واریز ساکن
+   عکس رسید فقط تا زمان بررسی داخل شارژ (و همگام‌سازی) می‌ماند؛
+   بعد از تأیید در IndexedDB همین دستگاه مدیر بایگانی می‌شود تا داده همگام‌سازی سبک بماند.
+   ============================================================ */
+function _receiptDb() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) return reject(new Error('no_idb'));
+    const req = indexedDB.open('apt_receipts', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('r'); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function _receiptKey(chargeId) { return String(localStorage.getItem('ham_sakhteman_user_phone') || '') + ':' + String(chargeId); }
+async function _receiptPut(chargeId, rec) {
+  const db = await _receiptDb();
+  await new Promise((res, rej) => { const tx = db.transaction('r', 'readwrite'); tx.objectStore('r').put(rec, _receiptKey(chargeId)); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+}
+async function _receiptGet(chargeId) {
+  const db = await _receiptDb();
+  return new Promise((res, rej) => { const tx = db.transaction('r', 'readonly'); const q = tx.objectStore('r').get(_receiptKey(chargeId)); q.onsuccess = () => res(q.result || null); q.onerror = () => rej(q.error); });
+}
+function archiveChargeReceipt(charge) {
+  if (!charge || !charge.receiptImage) return;
+  const rec = { image: charge.receiptImage, receipt: charge.receipt || null, trackingCode: charge.trackingCode || '', month: charge.month, year: charge.year, at: new Date().toISOString() };
+  charge.receiptImage = null;
+  charge.receiptArchived = true;
+  _receiptPut(charge.id, rec).catch(e => console.warn('receipt archive failed', e));
+}
+async function viewChargeReceipt(chargeId) {
+  const charge = (loadCharges() || []).find(c => Number(c.id) === Number(chargeId));
+  if (!charge) return;
+  let img = charge.receiptImage || null;
+  let info = charge.receipt || null;
+  if (!img) {
+    try { const rec = await _receiptGet(charge.id); if (rec) { img = rec.image; info = info || rec.receipt; } } catch (e) {}
+  }
+  const unit = UNITS.find(u => Number(u.id) === Number(charge.unitId));
+  const label = unit ? ((unit.block && unit.block !== '—') ? (unit.block + '-' + toPersianNum(unit.number)) : ('واحد ' + toPersianNum(unit.number))) : '—';
+  const rows = [
+    ['واحد', label],
+    ['دوره', charge.month + ' ' + toPersianNum(charge.year)],
+    ['مبلغ', formatToman(charge.total || 0)],
+    ['تاریخ واریز', (info && info.date) || charge.paidDate || '—'],
+    ['شماره پیگیری', charge.trackingCode || '—'],
+    ['کارت مبدأ', info && info.card4 ? ('****' + toPersianNum(info.card4)) : '—'],
+  ].map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;"><span style="color:#64748b;">${k}</span><strong>${escapeHtml(String(v))}</strong></div>`).join('');
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = `<div style="background:#fff;border-radius:18px;max-width:440px;width:100%;max-height:92vh;overflow:auto;padding:18px;direction:rtl;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><strong style="font-size:16px;">🧾 رسید واریز</strong><button type="button" data-close style="border:none;background:#f1f5f9;border-radius:10px;padding:6px 12px;cursor:pointer;font-family:inherit;">✖</button></div>
+      ${rows}
+      <div style="margin-top:12px;text-align:center;">${img ? `<a href="${img}" download="receipt-${charge.id}.jpg"><img src="${img}" alt="رسید" style="max-width:100%;border-radius:12px;border:1px solid #e2e8f0;"></a>` : '<div style="color:#94a3b8;font-size:13px;padding:20px;">عکس رسید روی این دستگاه موجود نیست.</div>'}</div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) ov.remove(); });
+  document.body.appendChild(ov);
 }
 
 /** ISO → «۱۴۰۵/۰۸/۱۳» */
@@ -3418,7 +3494,7 @@ function rejectResidentPayment(chargeId) {
     toastWarning('این اعلام پرداخت پیدا نشد یا قبلاً بررسی شده.');
     return;
   }
-  const reason = prompt('دلیل رد پرداخت (برای ساکن نمایش داده می‌شود):', 'واریز با این شماره پیگیری پیدا نشد');
+  const reason = prompt('دلیل رد پرداخت (برای ساکن نمایش داده می‌شود):', 'این واریز در حساب دیده نشد');
   if (reason === null) return;
 
   const tracking = charge.trackingCode;
@@ -3956,6 +4032,7 @@ function confirmPayCharge() {
   charge.pendingApproval = false;
   charge.rejectedAt = null;
   charge.rejectReason = null;
+  archiveChargeReceipt(charge);
 
   saveCharges(charges);
   updateUnitsDebtFromCharges();
@@ -4235,6 +4312,7 @@ function renderSideIncomesPage() {
       'نقدی': '💵',
       'کارت به کارت': '💳',
       'انتقال بانکی': '🏦',
+      'واریز بانکی': '🏦',
       'چک': '📝',
     };
     const methodIcon = methodIcons[i.method] || '💰';
@@ -5139,6 +5217,7 @@ function confirmNewPayment() {
       charge.payMethod = payMethod;
       charge.payDescription = payDescription;
       charge.paidAt = new Date().toISOString();
+      archiveChargeReceipt(charge);
       successCount++;
     }
   });
@@ -8000,6 +8079,8 @@ function fillPaymentForm() {
 
   document.getElementById('setManagerCard').value = settings.managerCard || '';
   document.getElementById('setManagerSheba').value = settings.managerSheba || '';
+  const ownerEl = document.getElementById('setManagerCardOwner');
+  if (ownerEl) ownerEl.value = settings.managerCardOwner || '';
 }
 
 function savePaymentSettings() {
@@ -8007,6 +8088,7 @@ function savePaymentSettings() {
 
   settings.managerCard = document.getElementById('setManagerCard').value.trim();
   settings.managerSheba = document.getElementById('setManagerSheba').value.trim();
+  settings.managerCardOwner = (document.getElementById('setManagerCardOwner')?.value || '').trim();
 
   saveSettings(settings);
   toastSuccess('اطلاعات پرداخت ذخیره شد.');

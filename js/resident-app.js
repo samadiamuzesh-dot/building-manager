@@ -1001,8 +1001,8 @@ function renderResidentCharges() {
           <strong dir="ltr">${escapeHtmlR(c.trackingCode || '—')}</strong>
         </div>
         <div style="display:flex; justify-content:space-between; padding:8px 0;">
-          <span style="color:#64748b;">تاریخ اعلام</span>
-          <strong>${c.pendingAt ? new Date(c.pendingAt).toLocaleDateString('fa-IR') : '—'}</strong>
+          <span style="color:#64748b;">تاریخ واریز</span>
+          <strong>${(c.receipt && c.receipt.date) || (c.pendingAt ? new Date(c.pendingAt).toLocaleDateString('fa-IR') : '—')}${c.receiptImage ? ' · 📷 رسید' : ''}</strong>
         </div>
       `;
     } else {
@@ -1022,7 +1022,7 @@ function renderResidentCharges() {
           <strong>${escapeHtmlR(c.dueDate)}</strong>
         </div>`;
       }
-      payButton = `<button class="resident-pay-btn" data-pay-charge-id="${c.id}">💳 پرداخت</button>`;
+      payButton = `<button class="resident-pay-btn" data-pay-charge-id="${c.id}">🧾 اعلام واریز</button>`;
     }
 
       return `
@@ -2309,6 +2309,83 @@ document.addEventListener('DOMContentLoaded', initResidentApp);
 
 let currentPayingChargeId = null;
 
+let _residentPayReceiptData = null;
+
+function _faDigits(v) { return String(v).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]); }
+function _enDigits(v) {
+  return String(v || '').replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+}
+function _todayPersianDateR() {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US-u-ca-persian', { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const g = t => (parts.find(x => x.type === t) || {}).value || '';
+    return _faDigits(`${g('year').replace(/\D/g, '')}/${g('month')}/${g('day')}`);
+  } catch (e) { return ''; }
+}
+function _payRefFor(charge) {
+  const session = getResidentSession() || {};
+  const blk = session.block && session.block !== '—' ? `بلوک ${session.block} ` : '';
+  const num = session.unitNumber != null ? _faDigits(session.unitNumber) : '';
+  return `${blk}واحد ${num} شارژ ${charge.month || ''} ${_faDigits(charge.year || '')}`.replace(/\s+/g, ' ').trim();
+}
+function copyResidentPayValue(text, label) {
+  const done = () => showResidentToast(`${label} کپی شد`, 'success');
+  try {
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, () => _fallbackCopy(text) && done()); return; }
+  } catch (e) {}
+  if (_fallbackCopy(text)) done(); else showResidentToast('کپی نشد؛ دستی انتخاب کنید.', 'warning');
+}
+function _fallbackCopy(text) {
+  try {
+    const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+
+/** فشرده‌سازی عکس رسید (حداکثر ۸۰۰ پیکسل، JPEG) تا همگام‌سازی سبک بماند */
+function _compressReceipt(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type || '')) return reject(new Error('not_image'));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read_failed'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('decode_failed'));
+      img.onload = () => {
+        const max = 800; let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        const k = Math.min(1, max / Math.max(w, h)); w = Math.round(w * k); h = Math.round(h * k);
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+        let q = 0.6, out = cv.toDataURL('image/jpeg', q);
+        while (out.length > 90000 && q > 0.3) { q -= 0.1; out = cv.toDataURL('image/jpeg', q); }
+        resolve(out);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function _renderReceiptPreview() {
+  const box = document.getElementById('residentPayReceiptPreview');
+  const txt = document.getElementById('residentPayReceiptText');
+  if (!box) return;
+  if (_residentPayReceiptData) {
+    box.style.display = 'block';
+    box.innerHTML = `<img src="${_residentPayReceiptData}" alt="رسید" /><button type="button" class="rpay-remove" id="residentPayReceiptRemove">حذف عکس</button>`;
+    if (txt) txt.textContent = 'تغییر عکس رسید';
+    document.getElementById('residentPayReceiptRemove').onclick = () => {
+      _residentPayReceiptData = null;
+      const inp = document.getElementById('residentPayReceipt'); if (inp) inp.value = '';
+      _renderReceiptPreview();
+    };
+  } else {
+    box.style.display = 'none'; box.innerHTML = '';
+    if (txt) txt.textContent = 'انتخاب عکس یا اسکرین‌شات رسید';
+  }
+}
+
 function openResidentPayModal(chargeId) {
   const charges = loadCharges();
   const charge = charges.find(c => c.id === chargeId);
@@ -2318,67 +2395,60 @@ function openResidentPayModal(chargeId) {
   }
 
   currentPayingChargeId = chargeId;
+  _residentPayReceiptData = null;
 
   const subtitle = document.getElementById('residentPaySubtitle');
   if (subtitle) subtitle.textContent = `${charge.month} ${toPersianNumR(charge.year)}`;
+  document.getElementById('residentPayMonth').textContent = `${charge.month} ${toPersianNumR(charge.year)}`;
+  const total = Number(charge.total || 0);
+  document.getElementById('residentPayAmount').innerHTML =
+    `${formatTomanR(total)}<div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px;">${new Intl.NumberFormat('fa-IR').format(total * 10)} ریال</div>`;
+  document.getElementById('residentPayDueDate').textContent = charge.dueDate || '—';
 
-  document.getElementById('residentPayMonth').textContent = 
-    `${charge.month} ${toPersianNumR(charge.year)}`;
-  document.getElementById('residentPayAmount').textContent = 
-    formatTomanR(charge.total || 0);
-  document.getElementById('residentPayDueDate').textContent = 
-    charge.dueDate || '—';
-
-  // ✅ اتصال به تنظیمات مدیر: شماره کارت / شبا برای کارت به کارت
+  // اطلاعات حساب مدیر (از تنظیمات مدیر) با دکمه کپی
   const bankBox = document.getElementById('residentPayBankInfo');
   if (bankBox) {
     let st = {};
     try { st = JSON.parse(localStorage.getItem(_getScopedKey('ham_sakhteman_settings')) || '{}') || {}; } catch (e) { st = {}; }
-    if (st.managerCard || st.managerSheba) {
-      bankBox.style.display = 'block';
-      bankBox.innerHTML =
-        (st.managerCard ? `<div class="resident-pay-row"><span>شماره کارت مدیر</span><strong dir="ltr">${escapeHtmlR(st.managerCard)}</strong></div>` : '') +
-        (st.managerSheba ? `<div class="resident-pay-row"><span>شبا</span><strong dir="ltr" style="font-size:12px;">${escapeHtmlR(st.managerSheba)}</strong></div>` : '');
-    } else {
-      bankBox.style.display = 'none';
-      bankBox.innerHTML = '';
-    }
+    const ref = _payRefFor(charge);
+    const rows = [];
+    const row = (label, value, copyVal, ltr) => rows.push(`
+      <div class="rpay-bank-row">
+        <div class="rpay-bank-txt"><span>${label}</span><strong ${ltr ? 'dir="ltr"' : ''}>${escapeHtmlR(value)}</strong></div>
+        ${copyVal != null ? `<button type="button" class="rpay-copy" data-copy="${escapeHtmlR(copyVal)}" data-label="${escapeHtmlR(label)}">کپی</button>` : ''}
+      </div>`);
+    if (st.managerCard) row('شماره کارت', st.managerCard, _enDigits(st.managerCard).replace(/\D/g, ''), true);
+    if (st.managerSheba) row('شماره شبا', st.managerSheba, 'IR' + _enDigits(st.managerSheba).replace(/[^0-9]/g, ''), true);
+    if (st.managerCardOwner) row('به نام', st.managerCardOwner, null, false);
+    row('مبلغ (ریال)', new Intl.NumberFormat('fa-IR').format(total * 10), String(total * 10), false);
+    row('شناسه واریز (در توضیحات بنویسید)', ref, ref, false);
+    bankBox.innerHTML = (!st.managerCard && !st.managerSheba)
+      ? `<div class="rpay-bank-empty">مدیر هنوز شماره کارت یا شبا را در تنظیمات وارد نکرده است. برای اطلاعات حساب با مدیر تماس بگیرید.</div>` + rows.join('')
+      : rows.join('');
+    bankBox.querySelectorAll('.rpay-copy').forEach(btn => {
+      btn.onclick = () => copyResidentPayValue(btn.dataset.copy, btn.dataset.label);
+    });
   }
 
-  document.getElementById('residentPayMethod').value = 'آنلاین';
-// آپدیت متن دکمه بر اساس روش
-const methodSelect = document.getElementById('residentPayMethod');
-const confirmBtn = document.getElementById('residentPayConfirmBtn');
-const notice = document.querySelector('.resident-pay-notice');
+  const dateEl = document.getElementById('residentPayDate');
+  if (dateEl) dateEl.value = _todayPersianDateR();
+  ['residentPayTracking', 'residentPayCard4'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const fileEl = document.getElementById('residentPayReceipt');
+  if (fileEl) {
+    fileEl.value = '';
+    fileEl.onchange = async () => {
+      const f = fileEl.files && fileEl.files[0];
+      if (!f) return;
+      try {
+        _residentPayReceiptData = await _compressReceipt(f);
+        _renderReceiptPreview();
+      } catch (e) {
+        showResidentToast('این فایل عکس قابل خواندن نیست.', 'error');
+      }
+    };
+  }
+  _renderReceiptPreview();
 
-const trackingWrap = document.getElementById('residentPayTrackingWrap');
-if (methodSelect) {
-  const syncPayUI = () => {
-    const m = methodSelect.value;
-    if (m === 'آنلاین') {
-      if (confirmBtn) confirmBtn.innerHTML = '✅ پرداخت آنلاین';
-      if (trackingWrap) trackingWrap.style.display = 'none';
-      if (notice) {
-        notice.innerHTML = '⚠️ <strong>توجه:</strong> درگاه آزمایشی است و پولی جابه‌جا نمی‌شود؛ پرداخت تا تأیید مدیر «در انتظار تأیید» می‌ماند.';
-        notice.style.background = '#fef3c7';
-        notice.style.color = '#92400e';
-      }
-    } else {
-      if (confirmBtn) confirmBtn.innerHTML = '📩 اعلام پرداخت';
-      if (trackingWrap) trackingWrap.style.display = 'block';
-      if (notice) {
-        notice.innerHTML = '📩 <strong>توجه:</strong> شماره پیگیری واریز را وارد کنید. پس از اعلام، مدیر باید پرداخت را تأیید کند.';
-        notice.style.background = '#dbeafe';
-        notice.style.color = '#1e40af';
-      }
-    }
-  };
-  methodSelect.onchange = syncPayUI;
-  syncPayUI();
-}
-if (document.getElementById('residentPayTracking')) {
-  document.getElementById('residentPayTracking').value = '';
-}
   const modal = document.getElementById('residentPayModal');
   if (modal) modal.classList.add('open');
 }
@@ -2387,6 +2457,7 @@ function closeResidentPayModal() {
   const modal = document.getElementById('residentPayModal');
   if (modal) modal.classList.remove('open');
   currentPayingChargeId = null;
+  _residentPayReceiptData = null;
 }
 
 function confirmResidentPay() {
@@ -2398,56 +2469,42 @@ function confirmResidentPay() {
     showResidentToast('شارژ پیدا نشد.', 'error');
     return;
   }
-
-  const method = document.getElementById('residentPayMethod')?.value || 'آنلاین';
-  const trackingEl = document.getElementById('residentPayTracking');
-  const tracking = (trackingEl?.value || '').trim();
-
   if (charge.paid || charge.pendingApproval) {
     showResidentToast('این شارژ قبلاً پرداخت یا اعلام شده است.', 'warning');
     closeResidentPayModal();
     return;
   }
 
-  // ===== آنلاین =====
-  // ✅ اصلاح حسابداری: درگاه فعلی آزمایشی است و هیچ پولی جابه‌جا نمی‌کند.
-  // قبلاً شارژ بلافاصله «پرداخت‌شده» ثبت می‌شد و هر ساکنی می‌توانست بدون پرداخت بدهی‌اش را صفر کند.
-  // تا اتصال درگاه واقعی (با verify سمت سرور)، پرداخت آنلاین هم منتظر تأیید مدیر می‌ماند.
-  if (method === 'آنلاین') {
-    const now = new Date();
-    charge.payMethod = 'آنلاین';
-    charge.payDescription = 'پرداخت آنلاین (درگاه آزمایشی) — نیاز به تأیید مدیر';
-    charge.trackingCode = tracking || ('ONL-' + Date.now());
-    charge.pendingApproval = true;
-    charge.pendingAt = now.toISOString();
-    charge.paid = false;
-    charge.paidByResident = true;
-    charge.rejectedAt = null;
-    charge.rejectReason = null;
+  const dateEl = document.getElementById('residentPayDate');
+  const trackingEl = document.getElementById('residentPayTracking');
+  const card4El = document.getElementById('residentPayCard4');
+  const dateEn = _enDigits(dateEl?.value || '').trim().replace(/[-.]/g, '/');
+  const tracking = _enDigits(trackingEl?.value || '').trim();
+  const card4 = _enDigits(card4El?.value || '').replace(/\D/g, '');
 
-    saveCharges(charges);
-    notifyManagerAboutPayment(charge, false);
-
-    closeResidentPayModal();
-    showResidentToast('📩 پرداخت ثبت شد و پس از تأیید مدیر تسویه می‌شود.', 'info');
-
-    setTimeout(() => {
-      renderResidentCharges();
-      renderResidentDashboard();
-    }, 300);
+  const m = dateEn.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (!m || +m[2] < 1 || +m[2] > 12 || +m[3] < 1 || +m[3] > 31 || +m[1] < 1390 || +m[1] > 1500) {
+    showResidentToast('تاریخ واریز را به شکل ۱۴۰۵/۰۸/۱۴ وارد کنید.', 'warning');
+    if (dateEl) dateEl.focus();
     return;
   }
-
-  // ===== کارت به کارت / انتقال بانکی: شماره پیگیری الزامی + در انتظار تأیید مدیر =====
-  if (!tracking) {
-    showResidentToast('لطفاً شماره پیگیری / کد رهگیری واریز را وارد کنید.', 'warning');
+  if (!tracking && !_residentPayReceiptData) {
+    showResidentToast('شماره پیگیری را وارد کنید یا عکس رسید را بفرستید.', 'warning');
     if (trackingEl) trackingEl.focus();
     return;
   }
+  if (card4 && card4.length !== 4) {
+    showResidentToast('۴ رقم آخر کارت را کامل وارد کنید.', 'warning');
+    if (card4El) card4El.focus();
+    return;
+  }
 
-  charge.payMethod = method;
-  charge.payDescription = `اعلام پرداخت توسط ساکن - روش: ${method}`;
-  charge.trackingCode = tracking;
+  const declaredDate = _faDigits(`${m[1]}/${String(m[2]).padStart(2, '0')}/${String(m[3]).padStart(2, '0')}`);
+  charge.payMethod = 'واریز بانکی';
+  charge.payDescription = 'اعلام واریز توسط ساکن' + (card4 ? ` — کارت مبدأ ****${card4}` : '');
+  charge.trackingCode = tracking || '';
+  charge.receipt = { date: declaredDate, card4: card4 || '', ref: _payRefFor(charge), amount: Number(charge.total || 0) };
+  charge.receiptImage = _residentPayReceiptData || null;
   charge.pendingApproval = true;
   charge.pendingAt = new Date().toISOString();
   charge.paid = false;
@@ -2455,14 +2512,20 @@ function confirmResidentPay() {
   charge.rejectedAt = null;
   charge.rejectReason = null;
 
-  saveCharges(charges);
+  try {
+    saveCharges(charges);
+  } catch (e) {
+    showResidentToast('ذخیره نشد؛ حافظه دستگاه پر است. عکس کوچک‌تری بفرستید.', 'error');
+    return;
+  }
   notifyManagerAboutPayment(charge, false);
 
   closeResidentPayModal();
-  showResidentToast('📩 پرداخت ثبت شد. پس از تأیید مدیر، شارژ تسویه می‌شود.', 'info');
+  showResidentToast('📩 واریز اعلام شد. پس از تأیید مدیر، شارژ تسویه می‌شود.', 'info');
 
   setTimeout(() => {
     renderResidentCharges();
+    try { renderResidentDashboard(); } catch (e) {}
   }, 300);
 }
 
@@ -2482,7 +2545,7 @@ function notifyManagerAboutPayment(charge, autoApproved) {
     const title = autoApproved ? 'پرداخت آنلاین شارژ' : 'اعلام پرداخت در انتظار تأیید';
     const msg = autoApproved
       ? (`پرداخت آنلاین شارژ ${charge.month} ${charge.year} به مبلغ ${formatTomanR(charge.total)} ثبت و تسویه شد.`)
-      : (`ساکن پرداخت شارژ ${charge.month} ${charge.year} را اعلام کرد. پیگیری: ${charge.trackingCode || '—'} — نیاز به تأیید دارد.`);
+      : (`${_payRefFor(charge)}: واریز ${formatTomanR(charge.total)} در تاریخ ${(charge.receipt && charge.receipt.date) || '—'} اعلام شد${charge.trackingCode ? ' — پیگیری ' + charge.trackingCode : ''}${charge.receiptImage ? ' (با عکس رسید)' : ''}. نیاز به تأیید دارد.`);
 
     notifs.unshift({
       id: Date.now(),

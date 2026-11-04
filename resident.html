@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <title>آپارتمان پلاس | اپلیکیشن ساکنین</title>
-        <link rel="stylesheet" href="css/resident-style.css?v=14">
+        <link rel="stylesheet" href="css/resident-style.css?v=15">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap">
     <!-- این خط را جایگزین لینک قبلی منیفست کنید -->
   <link rel="manifest" href="manifest.json">
@@ -340,15 +340,15 @@
 <!-- Toast Container -->
 <div id="residentToastContainer" class="resident-toast-container"></div>
 <script src="js/sync.js?v=3"></script>
-<script src="js/resident-app.js?v=18"></script>
-  <!-- ============ مودال پرداخت آنلاین ============ -->
+<script src="js/resident-app.js?v=19"></script>
+  <!-- ============ مودال اعلام واریز ============ -->
 <div class="resident-modal-backdrop" id="residentPayModal">
   <div class="resident-modal">
-    
+
     <div class="resident-modal-header">
-      <div class="resident-modal-icon">💳</div>
+      <div class="resident-modal-icon">🧾</div>
       <div>
-        <h2>پرداخت آنلاین شارژ</h2>
+        <h2>اعلام واریز شارژ</h2>
         <p id="residentPaySubtitle">—</p>
       </div>
       <button class="resident-modal-close" id="residentPayCloseBtn">✖</button>
@@ -356,60 +356,54 @@
 
     <div class="resident-modal-body">
 
-      <!-- اطلاعات شارژ -->
+      <div class="rpay-step"><span class="rpay-step-num">۱</span><span>مبلغ را با اپ بانک خودتان به حساب زیر واریز کنید.</span></div>
+
       <div class="resident-pay-info">
-        <div class="resident-pay-row">
-          <span>دوره</span>
-          <strong id="residentPayMonth">—</strong>
-        </div>
-        <div class="resident-pay-row">
-          <span>مبلغ شارژ</span>
-          <strong id="residentPayAmount">—</strong>
-        </div>
-        <div class="resident-pay-row">
-          <span>تاریخ سررسید</span>
-          <strong id="residentPayDueDate">—</strong>
-        </div>
+        <div class="resident-pay-row"><span>دوره</span><strong id="residentPayMonth">—</strong></div>
+        <div class="resident-pay-row"><span>مبلغ قابل پرداخت</span><strong id="residentPayAmount">—</strong></div>
+        <div class="resident-pay-row"><span>تاریخ سررسید</span><strong id="residentPayDueDate">—</strong></div>
       </div>
 
-      <!-- اطلاعات حساب مدیر برای کارت به کارت -->
-      <div id="residentPayBankInfo" class="resident-pay-summary" style="display:none; margin-top:12px;"></div>
+      <div id="residentPayBankInfo" class="rpay-bank"></div>
 
-      <!-- درگاه شبیه‌سازی -->
-      <div class="resident-pay-gateway">
-        <div class="resident-pay-gateway-icon">🏦</div>
-        <h3>درگاه پرداخت آزمایشی</h3>
-        <p>این درگاه فقط برای تست است. با کلیک روی پرداخت، مبلغ کسر نمی‌شود.</p>
+      <div class="rpay-step"><span class="rpay-step-num">۲</span><span>بعد از واریز، اطلاعات رسید را وارد کنید تا مدیر تأیید کند.</span></div>
+
+      <div class="resident-form-group">
+        <label for="residentPayDate">تاریخ واریز <span class="resident-required">*</span></label>
+        <input type="text" id="residentPayDate" class="resident-form-input" inputmode="numeric" placeholder="مثلاً ۱۴۰۵/۰۸/۱۴" />
       </div>
 
-      <!-- روش پرداخت -->
-      <div class="resident-pay-method">
-        <label>روش پرداخت</label>
-        <select id="residentPayMethod" class="resident-form-input">
-          <option value="آنلاین" selected>🌐 آنلاین (درگاه)</option>
-          <option value="کارت به کارت">💳 کارت به کارت</option>
-          <option value="انتقال بانکی">🏦 انتقال بانکی</option>
-        </select>
+      <div class="resident-form-group">
+        <label for="residentPayTracking">شماره پیگیری / مرجع</label>
+        <input type="text" id="residentPayTracking" class="resident-form-input" inputmode="numeric" placeholder="از رسید اپ بانک" dir="ltr" />
       </div>
 
-      <!-- شماره پیگیری برای کارت به کارت / انتقال -->
-      <div class="resident-form-group" id="residentPayTrackingWrap" style="display:none; margin-top:12px;">
-        <label for="residentPayTracking">شماره پیگیری / کد رهگیری واریز <span class="resident-required">*</span></label>
-        <input type="text" id="residentPayTracking" class="resident-form-input"
-               placeholder="مثلاً: 1234567890" dir="ltr" />
+      <div class="resident-form-group">
+        <label for="residentPayCard4">۴ رقم آخر کارت مبدأ <span style="color:#94a3b8;font-weight:500;">(اختیاری)</span></label>
+        <input type="text" id="residentPayCard4" class="resident-form-input" inputmode="numeric" maxlength="4" placeholder="مثلاً ۴۵۶۷" dir="ltr" />
       </div>
 
-      <div class="resident-pay-notice">
-        ⚠️ <strong>توجه:</strong> این درگاه شبیه‌سازی شده است. برای پرداخت واقعی، درگاه زرین‌پال به‌زودی فعال می‌شود.
+      <div class="resident-form-group">
+        <label>عکس رسید</label>
+        <label class="rpay-upload" for="residentPayReceipt" id="residentPayReceiptLabel">
+          <span class="rpay-upload-icon">📷</span>
+          <span id="residentPayReceiptText">انتخاب عکس یا اسکرین‌شات رسید</span>
+        </label>
+        <input type="file" id="residentPayReceipt" accept="image/*" style="display:none;" />
+        <div id="residentPayReceiptPreview" class="rpay-preview" style="display:none;"></div>
+      </div>
+
+      <input type="hidden" id="residentPayMethod" value="واریز بانکی" />
+
+      <div class="resident-pay-notice" style="background:#eef2ff;color:#3730a3;">
+        حداقل یکی از «شماره پیگیری» یا «عکس رسید» لازم است. ارسال عکس، تأیید مدیر را سریع‌تر می‌کند.
       </div>
 
     </div>
 
     <div class="resident-modal-actions">
       <button class="resident-cancel-btn" id="residentPayCancelBtn">انصراف</button>
-      <button class="resident-submit-btn" id="residentPayConfirmBtn" style="flex: 1;">
-        ✅ پرداخت
-      </button>
+      <button class="resident-submit-btn" id="residentPayConfirmBtn" style="flex: 1;">📩 ثبت و ارسال برای مدیر</button>
     </div>
 
   </div>
