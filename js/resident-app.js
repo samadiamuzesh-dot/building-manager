@@ -1959,7 +1959,7 @@ function renderResidentProfile() {
     <button type="button" class="resident-submit-btn" id="profileSaveBtn" style="margin-top:8px;">💾 ذخیره تغییرات</button>
     <div id="profileSaveMsg" style="margin-top:8px;font-size:13px;text-align:center;"></div>
     <button class="resident-submit-btn" id="residentLogoutBtn2" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); margin-top: 20px;">
-      🚪 خروج از حساب
+      <svg class="r-ico" style="width:20px;height:20px;vertical-align:-4px;margin-left:6px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg> خروج از حساب
     </button>`;
 
   container.innerHTML = html;

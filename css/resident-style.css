@@ -1992,3 +1992,31 @@ html, body {
 .resident-role-opt { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 10px; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; font-weight: 700; color: #334155; background: #fff; transition: all .15s; }
 .resident-role-opt input { width: 18px; height: 18px; accent-color: #6d28d9; margin: 0; }
 .resident-role-opt:has(input:checked) { border-color: #7c3aed; background: #f5f3ff; color: #5b21b6; }
+
+/* ============ آیکون‌های خطی شیک (نوار پایین و هدر) ============ */
+.r-ico { width: 22px; height: 22px; display: block; }
+.resident-logout-btn { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 4px 14px rgba(15,23,42,.12); }
+.resident-logout-btn .r-ico { width: 20px; height: 20px; color: #fff; }
+.resident-logout-btn:hover { background: rgba(255,255,255,.28); transform: translateY(-1px); }
+#residentLogoutBtn:hover { background: rgba(239,68,68,.85); border-color: transparent; }
+
+.resident-bottom-nav {
+  left: 10px; right: 10px; bottom: 10px;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  border-radius: 22px; border: 1px solid rgba(91,76,219,.10);
+  background: rgba(255,255,255,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgba(49,46,129,.16); padding: 6px;
+}
+.resident-nav-item { position: relative; gap: 4px; padding: 7px 2px 6px; border-radius: 16px; color: #94a3b8; }
+.resident-nav-item:hover { background: transparent; color: var(--primary); }
+.resident-nav-item.active { background: transparent; color: var(--primary); }
+.resident-nav-icon { display: flex; align-items: center; justify-content: center; width: 44px; height: 30px; border-radius: 12px; transition: all .2s ease; }
+.resident-nav-item.active .resident-nav-icon { background: linear-gradient(135deg, #6d5ce8 0%, #4338ca 100%); color: #fff; box-shadow: 0 6px 14px rgba(67,56,202,.32); }
+.resident-nav-item.active .r-ico { stroke-width: 2.1; }
+.resident-nav-text { color: inherit; }
+.resident-nav-item.active .resident-nav-text { color: var(--primary-dark); font-weight: 800; }
+.resident-nav-item .r-ico { width: 21px; height: 21px; }
+
+.resident-panel, #residentPanel { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)) !important; }
+.resident-role-opt input { flex-shrink: 0; align-self: center; }
+body:has(.resident-bottom-nav) #aptSyncBadge { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
