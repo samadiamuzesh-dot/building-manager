@@ -6,10 +6,13 @@
   <title>آپارتمان پلاس | اپلیکیشن ساکنین</title>
         <link rel="stylesheet" href="css/resident-style.css?v=17">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap">
-    <!-- این خط را جایگزین لینک قبلی منیفست کنید -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#6366f1">
-  <link rel="apple-touch-icon" href="assets/logo.png">
+  <link rel="manifest" href="resident-manifest.json">
+  <meta name="theme-color" content="#5b4cdb">
+  <link rel="icon" href="assets/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="آپارتمان پلاس">
 </head>
 <body>
 
@@ -27,6 +30,8 @@
       <h1>آپارتمان پلاس</h1>
       <p>اپلیکیشن ساکنین</p>
     </div>
+    <a href="app.html" id="residentGetAppLink" style="display:block;text-align:center;margin:-6px 0 14px;font-size:13px;font-weight:800;color:#5b4cdb;text-decoration:none;">📲 نصب اپ روی گوشی</a>
+    <script>if ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true) document.getElementById('residentGetAppLink').style.display = 'none';</script>
 
     <!-- مرحله ۱: کد ساختمان -->
     <div id="residentStep1" class="resident-step">

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>دانلود اپ ساکنین آپارتمان پلاس | نصب روی اندروید و آیفون</title>
+  <meta name="description" content="اپلیکیشن ساکنین آپارتمان پلاس را بدون فروشگاه و رایگان روی گوشی اندروید یا آیفون نصب کنید: شارژ و بدهی واحد، اعلام پرداخت، اطلاعیه، پیام به مدیر و رأی‌گیری.">
+  <link rel="canonical" href="https://samadiamuzesh-dot.github.io/building-manager/app.html">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="fa_IR">
+  <meta property="og:title" content="دانلود اپ ساکنین آپارتمان پلاس">
+  <meta property="og:description" content="شارژ، پرداخت، اطلاعیه و پیام ساختمان روی گوشی شما. نصب رایگان و بدون فروشگاه.">
+  <meta property="og:url" content="https://samadiamuzesh-dot.github.io/building-manager/app.html">
+  <meta property="og:image" content="https://samadiamuzesh-dot.github.io/building-manager/assets/icon-512.png">
+  <link rel="manifest" href="resident-manifest.json">
+  <meta name="theme-color" content="#5b4cdb">
+  <link rel="icon" href="assets/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="آپارتمان پلاس">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="css/landing.css?v=1">
+  <style>
+    .dl-header-cta { display: flex; gap: 8px; }
+    .dl-header-cta .btn-outline { display: none; }
+    @media (min-width: 640px) { .dl-header-cta .btn-outline { display: inline-flex; } }
+
+    .dl-hero { background: var(--grad); color: #fff; padding: calc(var(--header-h) + 40px) 0 56px; position: relative; overflow: hidden; }
+    .dl-hero::after { content: ""; position: absolute; inset: auto -120px -160px auto; width: 420px; height: 420px; border-radius: 50%; background: rgba(255,255,255,.07); }
+    .dl-hero .container { position: relative; z-index: 1; display: grid; gap: 32px; align-items: center; }
+    @media (min-width: 900px) { .dl-hero .container { grid-template-columns: 1.15fr .85fr; } }
+    .dl-app { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+    .dl-app img { width: 64px; height: 64px; border-radius: 16px; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+    .dl-app b { display: block; font-size: 18px; }
+    .dl-app small { opacity: .85; font-size: 13px; }
+    .dl-hero h1 { font-size: clamp(26px, 6vw, 40px); line-height: 1.5; font-weight: 900; margin-bottom: 12px; }
+    .dl-hero p.lead { font-size: 16px; line-height: 2; opacity: .92; max-width: 560px; }
+    .dl-cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+    .dl-cta .btn { min-height: 52px; padding-inline: 22px; font-size: 15.5px; }
+    .dl-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; font-size: 12.5px; }
+    .dl-badges span { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 5px 12px; }
+    .dl-note { margin-top: 14px; font-size: 13px; background: rgba(255,255,255,.14); border-radius: 12px; padding: 10px 14px; display: none; line-height: 1.9; }
+    .dl-note.show { display: block; }
+
+    .dl-qr { background: #fff; color: var(--ink); border-radius: var(--radius-lg); padding: 22px; text-align: center; box-shadow: var(--shadow-lg); max-width: 320px; margin-inline: auto; width: 100%; }
+    .dl-qr img { width: 200px; height: 200px; image-rendering: pixelated; }
+    .dl-qr b { display: block; margin-top: 8px; font-size: 15px; }
+    .dl-qr small { color: var(--muted-2); font-size: 12.5px; line-height: 1.8; display: block; margin-top: 4px; }
+
+    .dl-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 22px; }
+    .dl-tab { border: 1.5px solid #c7d2fe; background: #fff; color: var(--primary-dark); border-radius: 999px; padding: 9px 20px; font: inherit; font-weight: 800; cursor: pointer; }
+    .dl-tab[aria-selected="true"] { background: var(--grad); color: #fff; border-color: transparent; }
+    .dl-steps { display: none; counter-reset: s; list-style: none; max-width: 640px; margin: 0 auto; gap: 12px; }
+    .dl-steps.active { display: grid; }
+    .dl-steps li { counter-increment: s; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px 14px 16px; display: flex; gap: 14px; align-items: flex-start; box-shadow: var(--shadow-sm); line-height: 1.9; font-size: 14.5px; color: var(--ink-2); }
+    .dl-steps li::before { content: counter(s, persian); flex: none; width: 32px; height: 32px; border-radius: 10px; background: var(--primary-light); color: var(--primary-dark); font-weight: 900; display: grid; place-items: center; }
+    .dl-steps li b { color: var(--ink); }
+    .dl-kbd { display: inline-flex; align-items: center; gap: 4px; background: var(--primary-light); color: var(--primary-dark); border-radius: 8px; padding: 0 8px; font-weight: 800; font-size: 13px; }
+
+    .dl-grid { display: grid; gap: 14px; }
+    @media (min-width: 640px) { .dl-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1024px) { .dl-grid { grid-template-columns: repeat(3, 1fr); } }
+    .dl-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-sm); }
+    .dl-card svg { width: 26px; height: 26px; color: var(--primary); }
+    .dl-card h3 { font-size: 16px; margin: 8px 0 4px; }
+    .dl-card p { color: var(--muted); font-size: 14px; line-height: 1.9; }
+
+    .dl-after { max-width: 720px; margin: 0 auto; display: grid; gap: 10px; }
+    .dl-after div { background: var(--grad-soft); border-radius: var(--radius); padding: 14px 16px; line-height: 1.9; font-size: 14.5px; }
+
+    .dl-manager { background: var(--ink); color: #fff; border-radius: var(--radius-lg); padding: 26px; display: grid; gap: 16px; align-items: center; }
+    @media (min-width: 900px) { .dl-manager { grid-template-columns: 1fr auto; } }
+    .dl-manager h2 { font-size: 22px; }
+    .dl-manager p { opacity: .85; line-height: 1.9; margin-top: 6px; font-size: 14.5px; }
+
+    .dl-faq details { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; }
+    .dl-faq summary { font-weight: 800; cursor: pointer; }
+    .dl-faq p { color: var(--muted); line-height: 1.9; margin-top: 8px; font-size: 14.5px; }
+    .dl-installed .when-not-installed { display: none !important; }
+    .when-installed { display: none; }
+    .dl-installed .when-installed { display: inline-flex; }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="logo" viewBox="0 0 512 512">
+        <rect width="512" height="512" rx="110" fill="#5b4cdb"/>
+        <path d="M370 380H142V200c0-8 5-15 12-17l140-33c6-1 12 0 17 3s8 9 8 15v212zM392 165c0-6 4-12 9-15s12-4 18-2l48 11c8 2 13 9 13 17v204h-88V165zM320 80c0-7 5-12 12-12h72c7 0 12 5 12 12v64h-96V80z" fill="#fff"/>
+        <rect x="238" y="300" width="24" height="80" rx="12" fill="#5b4cdb"/>
+      </symbol>
+    </defs>
+    <symbol id="i-download" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></g></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></g></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><circle cx="16.5" cy="14" r="1.2"/></g></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h14v20l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></g></symbol>
+    <symbol id="i-megaphone" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h3l6 5V5L7 10H4a1 1 0 0 0-1 1z"/><path d="M17 9a4 4 0 0 1 0 6M20 6a8 8 0 0 1 0 12"/></g></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></g></symbol>
+    <symbol id="i-vote" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10"/></g></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.5 8 11 4.6-1.5 8-6 8-11V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5m6-7-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <header class="site-header" id="siteHeader">
+    <div class="container header-inner">
+      <a href="home.html" class="brand" aria-label="آپارتمان پلاس - صفحه اصلی">
+        <svg aria-hidden="true"><use href="#logo"/></svg>
+        <span class="brand-name">آپارتمان پلاس<small>مدیریت هوشمند ساختمان</small></span>
+      </a>
+      <div class="dl-header-cta">
+        <a href="home.html" class="btn btn-outline btn-sm">صفحه اصلی</a>
+        <a href="resident.html" class="btn btn-primary btn-sm">ورود ساکنین</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="dl-hero">
+      <div class="container">
+        <div>
+          <div class="dl-app">
+            <img src="assets/icon-192.png" alt="" width="64" height="64">
+            <div><b>آپارتمان پلاس</b><small>اپلیکیشن ساکنین · رایگان</small></div>
+          </div>
+          <h1>اپ ساکنین را روی گوشی‌تان نصب کنید</h1>
+          <p class="lead">شارژ و بدهی واحد، اعلام پرداخت، اطلاعیه‌های ساختمان، پیام به مدیر و رأی‌گیری؛ همه در یک اپ سبک، بدون نیاز به کافه‌بازار یا اپ‌استور.</p>
+          <div class="dl-cta">
+            <button type="button" class="btn btn-light when-not-installed" id="dlInstallBtn"><svg aria-hidden="true"><use href="#i-download"/></svg>نصب اپ روی گوشی</button>
+            <a href="resident.html" class="btn btn-ghost">باز کردن در مرورگر <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+            <a href="resident.html?source=pwa" class="btn btn-light when-installed">اپ نصب شده است؛ باز کنید</a>
+          </div>
+          <div class="dl-note" id="dlNote" role="status"></div>
+          <div class="dl-badges">
+            <span>اندروید</span><span>آیفون (iOS)</span><span>حجم کمتر از ۱ مگابایت</span><span>به‌روزرسانی خودکار</span>
+          </div>
+        </div>
+        <div class="dl-qr" id="dlQr">
+          <img src="assets/app-qr.png" alt="کد QR صفحه نصب اپ ساکنین" width="200" height="200">
+          <b>با دوربین گوشی اسکن کنید</b>
+          <small>این صفحه روی گوشی باز می‌شود و از همان‌جا اپ را نصب کنید.</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="container">
+        <div class="section-head">
+          <span class="kicker">راهنمای نصب</span>
+          <h2>نصب در کمتر از یک دقیقه</h2>
+          <p>گوشی‌تان را انتخاب کنید.</p>
+        </div>
+        <div class="dl-tabs" role="tablist">
+          <button type="button" class="dl-tab" role="tab" data-tab="android" aria-selected="true">اندروید</button>
+          <button type="button" class="dl-tab" role="tab" data-tab="ios" aria-selected="false">آیفون</button>
+        </div>
+        <ol class="dl-steps active" id="steps-android">
+          <li><span>این صفحه را با <b>Chrome</b> باز کنید (یا مرورگر سامسونگ).</span></li>
+          <li><span>دکمه <span class="dl-kbd">نصب اپ روی گوشی</span> را بالای صفحه بزنید و «نصب» را تأیید کنید.</span></li>
+          <li><span>اگر دکمه کار نکرد: منوی <span class="dl-kbd">⋮</span> بالای مرورگر ← <b>«نصب برنامه»</b> یا <b>«افزودن به صفحه اصلی»</b>.</span></li>
+          <li><span>آیکن <b>آپارتمان پلاس</b> روی صفحه گوشی می‌نشیند و مثل یک اپ معمولی باز می‌شود.</span></li>
+        </ol>
+        <ol class="dl-steps" id="steps-ios">
+          <li><span>در <b>Safari</b> روی <a href="resident.html" style="color:var(--primary);font-weight:800;">پنل ساکنین</a> بروید (در کروم آیفون، نصب ممکن نیست).</span></li>
+          <li><span>دکمه <span class="dl-kbd">اشتراک‌گذاری ⬆︎</span> پایین صفحه را بزنید.</span></li>
+          <li><span>کمی پایین بروید و <b>«Add to Home Screen»</b> یا <b>«افزودن به صفحه اصلی»</b> را بزنید.</span></li>
+          <li><span>بالای صفحه <b>«Add / افزودن»</b> را بزنید؛ آیکن آپارتمان پلاس روی صفحه گوشی اضافه می‌شود.</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-head">
+          <span class="kicker">داخل اپ</span>
+          <h2>هرچه ساکن لازم دارد</h2>
+        </div>
+        <div class="dl-grid">
+          <div class="dl-card"><svg aria-hidden="true"><use href="#i-wallet"/></svg><h3>شارژ و بدهی</h3><p>شارژ هر ماه، مانده بدهی و سابقه پرداخت‌های واحدتان را همیشه ببینید.</p></div>
+          <div class="dl-card"><svg aria-hidden="true"><use href="#i-receipt"/></svg><h3>اعلام پرداخت</h3><p>واریز بانکی یا پرداخت نقدی را با تاریخ و رسید ثبت کنید؛ مدیر تأیید می‌کند.</p></div>
+          <div class="dl-card"><svg aria-hidden="true"><use href="#i-megaphone"/></svg><h3>اطلاعیه‌ها</h3><p>اطلاعیه‌های ساختمان یا بلوک شما، با اعلان داخل اپ.</p></div>
+          <div class="dl-card"><svg aria-hidden="true"><use href="#i-chat"/></svg><h3>پیام به مدیر</h3><p>بدون گروه شلوغ؛ مستقیم با مدیر ساختمان در ارتباط باشید.</p></div>
+          <div class="dl-card"><svg aria-hidden="true"><use href="#i-vote"/></svg><h3>رأی‌گیری</h3><p>در تصمیم‌های ساختمان با یک لمس رأی بدهید.</p></div>
+          <div class="dl-card"><svg aria-hidden="true"><use href="#i-shield"/></svg><h3>حریم خصوصی</h3><p>شماره موبایل و کد ملی شما به همسایه‌ها نشان داده نمی‌شود.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <span class="kicker">بعد از نصب</span>
+          <h2>اتصال به ساختمان</h2>
+        </div>
+        <div class="dl-after">
+          <div><b>۱.</b> کد ساختمان را از مدیر بگیرید (مثل <b dir="ltr">S-482193</b>).</div>
+          <div><b>۲.</b> اپ را باز کنید، کد را وارد کنید، واحدتان را انتخاب کنید و با موبایل و یک رمز ثبت‌نام کنید.</div>
+          <div><b>۳.</b> بعد از تأیید مدیر، همه اطلاعات واحد برایتان باز می‌شود. رمز را فراموش کردید؟ مدیر برایتان رمز تازه می‌گذارد.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="container">
+        <div class="dl-manager">
+          <div>
+            <h2>مدیر ساختمان هستید؟</h2>
+            <p>پنل مدیر هم همین‌طور روی گوشی نصب می‌شود: وارد پنل مدیر شوید و از منوی مرورگر «نصب برنامه» یا «افزودن به صفحه اصلی» را بزنید. تا ۴ واحد رایگان است.</p>
+          </div>
+          <div class="dl-cta" style="margin:0">
+            <a href="index.html?signup=1" class="btn btn-light">شروع رایگان</a>
+            <a href="login.html" class="btn btn-ghost">ورود مدیر</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dl-faq">
+      <div class="container" style="max-width:760px">
+        <div class="section-head"><span class="kicker">سوالات</span><h2>سوالات رایج نصب</h2></div>
+        <details><summary>چرا از کافه‌بازار یا اپ‌استور نیست؟</summary><p>آپارتمان پلاس یک «وب‌اپ» (PWA) است: مستقیم از همین سایت نصب می‌شود، فضای کمی می‌گیرد و هر بار که باز می‌کنید آخرین نسخه را دارد.</p></details>
+        <details><summary>دکمه نصب را نمی‌بینم.</summary><p>در اندروید از منوی ⋮ مرورگر «نصب برنامه» را بزنید. در آیفون فقط Safari امکان افزودن به صفحه اصلی دارد. اگر قبلاً نصب کرده‌اید، دکمه دیگر نمایش داده نمی‌شود.</p></details>
+        <details><summary>اطلاعاتم کجا ذخیره می‌شود؟</summary><p>اطلاعات ساختمان بین گوشی شما و مدیر همگام می‌شود؛ اگر گوشی را عوض کنید، با کد ساختمان، موبایل و رمز دوباره وارد می‌شوید.</p></details>
+        <details><summary>چطور اپ را حذف کنم؟</summary><p>مثل هر اپ دیگری: آیکن را نگه دارید و «حذف» یا «Remove App» را بزنید.</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom">
+        <span>© آپارتمان پلاس · <a href="home.html">صفحه اصلی</a> · <a href="resident.html">ورود ساکنین</a> · <a href="login.html">ورود مدیر</a></span>
+        <span class="credit">طراحی و توسعه: <b>الهام صمدی</b></span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+  (function () {
+    var ua = navigator.userAgent || '';
+    var isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var isMobile = isIOS || /android|mobile/i.test(ua);
+    var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    var note = document.getElementById('dlNote');
+    var btn = document.getElementById('dlInstallBtn');
+    var deferred = null;
+
+    if (standalone) document.body.classList.add('dl-installed');
+    if (isMobile) { var q = document.getElementById('dlQr'); if (q) q.style.display = 'none'; }
+
+    function selectTab(name) {
+      document.querySelectorAll('.dl-tab').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.tab === name)); });
+      document.querySelectorAll('.dl-steps').forEach(function (s) { s.classList.toggle('active', s.id === 'steps-' + name); });
+    }
+    document.querySelectorAll('.dl-tab').forEach(function (t) { t.addEventListener('click', function () { selectTab(t.dataset.tab); }); });
+    if (isIOS) selectTab('ios');
+
+    function show(msg) { note.innerHTML = msg; note.classList.add('show'); }
+
+    window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; });
+    window.addEventListener('appinstalled', function () { document.body.classList.add('dl-installed'); show('✅ نصب شد. آیکن آپارتمان پلاس را از صفحه گوشی باز کنید.'); });
+
+    btn.addEventListener('click', function () {
+      if (deferred) {
+        deferred.prompt();
+        deferred.userChoice.then(function (c) { if (c && c.outcome === 'accepted') show('✅ در حال نصب… آیکن آپارتمان پلاس به صفحه گوشی اضافه می‌شود.'); deferred = null; });
+        return;
+      }
+      if (isIOS) {
+        show('در آیفون: در <b>Safari</b> روی «باز کردن در مرورگر» بزنید، بعد دکمه اشتراک‌گذاری ⬆︎ ← «افزودن به صفحه اصلی».');
+        selectTab('ios');
+      } else if (isMobile) {
+        show('از منوی <b>⋮</b> مرورگر، «نصب برنامه» یا «افزودن به صفحه اصلی» را بزنید.');
+        selectTab('android');
+      } else {
+        show('روی کامپیوتر هستید؛ کد QR را با دوربین گوشی اسکن کنید تا این صفحه روی گوشی باز شود.');
+      }
+      document.getElementById('install').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  })();
+  </script>
+</body>
+</html>

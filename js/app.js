@@ -8452,7 +8452,10 @@ function init() {
     UNITS = [];
   } else {
     if (typeof isLoggedIn === 'function' && !isLoggedIn()) {
-      window.location.replace('login.html');
+      // بازدیدکننده تازه از مرورگر → صفحه معرفی؛ اپ نصب‌شده یا لینک مستقیم → ورود
+      const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+      const fromPwa = urlParams.get('source') === 'pwa';
+      window.location.replace(standalone || fromPwa ? 'login.html' : 'home.html');
       return;
     }
 

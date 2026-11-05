@@ -1,27 +1,34 @@
 {
-  "name": "آپارتمان پلاس - مدیریت ساختمان",
-  "short_name": "آپارتمان پلاس",
+  "id": "./index.html",
+  "name": "آپارتمان پلاس | پنل مدیر",
+  "short_name": "مدیر ساختمان",
   "description": "نرم‌افزار هوشمند مدیریت شارژ و حسابداری ساختمان",
-  "start_url": "resident.html",
+  "start_url": "index.html?source=pwa",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f172a",
-  "theme_color": "#6366f1",
+  "background_color": "#f8fafc",
+  "theme_color": "#5b4cdb",
   "lang": "fa",
   "dir": "rtl",
   "icons": [
     {
-      "src": "assets/logo.png",
+      "src": "assets/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "assets/logo.png",
+      "src": "assets/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
