@@ -45,13 +45,16 @@
       const open = jparse(get('apt_sync_open'), null);
       const phone = normPhone((s && s.managerPhone) || (open && open.phone));
       const code = String((s && s.buildingCode) || (open && open.code) || '').toUpperCase();
-      return phone ? { role: 'r', phone, code } : null;
+      const rid = s && s.residentId != null && String(s.buildingCode || '').toUpperCase() === code ? String(s.residentId) : '';
+      return phone ? { role: 'r', phone, code, rid, rPhone: normPhone(s && s.phone) } : null;
     }
     const phone = normPhone(get(P + 'user_phone'));
     if (!phone || get(P + 'logged_out') === 'true') return null;
     return { role: 'm', phone, code: String(jparse(get(P + 'v3_' + phone), {})?.building?.code || '').toUpperCase() };
   }
-  const tokKey = (c) => `apt_sync_token_${c.role}_${c.phone}`;
+  const tokKey = (c) => (c.role === 'r' && c.rid) ? `apt_sync_token_r${c.rid}_${c.phone}` : `apt_sync_token_${c.role}_${c.phone}`;
+  const adoptKey = (c) => `apt_sync_adopt_${c.phone}`;
+  let ridRetryAt = 0, usingGuest = false;
   const snapKey = (c) => `apt_sync_snap_${c.phone}`;
   const revKey = (c) => `apt_sync_rev_${c.phone}`;
   const dirtyKey = (c) => `apt_sync_dirty_${c.role}_${c.phone}`;
@@ -164,7 +167,7 @@
   /* ---------------- توکن ---------------- */
   async function ensureToken(c) {
     let t = get(tokKey(c));
-    if (t) return t;
+    if (t) { usingGuest = false; return t; }
     if (c.role === 'm') {
       const passHash = get(P + 'user_password');
       if (!passHash) throw Object.assign(new Error('no_auth'), { status: 401 });
@@ -182,8 +185,26 @@
       t = j.token;
     } else {
       if (!c.code) throw Object.assign(new Error('no_code'), { status: 401 });
-      const j = await call({ action: 'open', code: c.code });
-      t = j.token;
+      // ساکن واردشده: توکن با هویت خودش (فقط واحد/شارژ/پیام خودش را می‌تواند تغییر دهد)
+      if (c.rid && Date.now() >= ridRetryAt) {
+        const me = jparse(get(P + REG), []).find(r => r && String(r.id) === c.rid);
+        const ph = normPhone((me && me.phone) || c.rPhone);
+        if (me && me.passwordHash && ph) {
+          try {
+            const j = await call({ action: 'resident_login', code: c.code, residentPhone: ph, passHash: me.passwordHash });
+            if (j && j.token) { adoptResidentView(c, j.token); return j.token; }
+          } catch (e) {
+            if (!e.status) throw e;           // آفلاین
+            // 404: ثبت‌نام هنوز به سرور نرسیده (چرخه بعد دوباره)؛ رمز اشتباه/محدودیت: ۲ دقیقه بعد
+            ridRetryAt = e.status === 404 ? 0 : Date.now() + 120000;
+          }
+        }
+      }
+      usingGuest = !!c.rid;
+      const gk = `apt_sync_token_r_${c.phone}`;
+      t = get(gk);
+      if (!t) { const j = await call({ action: 'open', code: c.code }); t = j.token; set(gk, t); }
+      return t;
     }
     set(tokKey(c), t);
     return t;
@@ -219,6 +240,8 @@
   async function pullOnce(c, token) {
     const since = Number(get(revKey(c))) || 0;
     const j = await call({ action: 'pull', token, since });
+    const adopt = get(adoptKey(c)) === '1';
+    if (adopt) del(dirtyKey(c));
     const snap = jparse(get(snapKey(c)), {});
     const dirty = new Set(jparse(get(dirtyKey(c)), []));
     const changedKeys = [];
@@ -228,7 +251,8 @@
       const local = localValue(c, base, false);
       const prev = snap[base] ? snap[base].v : undefined;
       let merged;
-      if (prev === undefined) merged = (local == null) ? rec.v : merge3(since > 0 ? '' : null, local, rec.v, base);
+      if (adopt) merged = rec.v; // نمای تازه سرور (بعد از ورود ساکن): نسخه سرور را بپذیر
+      else if (prev === undefined) merged = (local == null) ? rec.v : merge3(since > 0 ? '' : null, local, rec.v, base);
       else if (local === prev) merged = rec.v;
       else merged = merge3(prev, local, rec.v, base);
       snap[base] = { v: rec.v, r: rec.r };
@@ -238,8 +262,14 @@
     set(snapKey(c), JSON.stringify(snap));
     set(revKey(c), String(Math.max(since, j.rev || 0)));
     set(dirtyKey(c), JSON.stringify([...dirty]));
+    if (adopt) del(adoptKey(c));
     if (changedKeys.length) fire(changedKeys);
     return changedKeys.length;
+  }
+  /** ساکن با هویت خودش (توکن rid) به سرور وصل شود؛ داده‌ها از نو با نمای خودش گرفته شود */
+  function adoptResidentView(c, token) {
+    set(tokKey(c), token);
+    del(revKey(c)); del(snapKey(c)); set(adoptKey(c), '1');
   }
 
   async function pushOnce(c, token, keepalive) {
@@ -294,8 +324,13 @@
         for (let i = 0; i < 3; i++) { const conflicts = await pushOnce(c, token); if (!conflicts) break; }
         await pullOnce(c, token);
         for (let i = 0; i < 2; i++) { const conflicts = await pushOnce(c, token); if (!conflicts) break; }
+        // ثبت‌نام تازه همین الان به سرور رسید: با هویت ساکن دوباره وصل شو
+        if (c.role === 'r' && c.rid && usingGuest) {
+          const t2 = await ensureToken(c);
+          if (t2 !== token) { token = t2; await pullOnce(c, token); for (let i = 0; i < 2; i++) { const cf = await pushOnce(c, token); if (!cf) break; } }
+        }
       } catch (e) {
-        if (e.status === 401) { del(tokKey(c)); }
+        if (e.status === 401) { del(tokKey(c)); if (c.role === 'r') del(`apt_sync_token_r_${c.phone}`); }
         throw e;
       }
       badge('ok', 'آخرین همگام‌سازی: ' + new Date().toLocaleTimeString('fa-IR'));
@@ -363,10 +398,12 @@
         applying = true;
         try {
           const all = jparse(get(P + REG), []);
+          const row = Object.assign({}, j.resident, { passwordHash: passHash }); // رمز تأییدشده توسط سرور
           const i = all.findIndex(r => r && String(r.id) === String(j.resident.id) && String(r.buildingCode || '').toUpperCase() === String(j.resident.buildingCode || '').toUpperCase());
-          if (i >= 0) all[i] = Object.assign({}, all[i], j.resident); else all.push(j.resident);
+          if (i >= 0) all[i] = Object.assign({}, all[i], row); else all.push(row);
           set(P + REG, JSON.stringify(all));
         } finally { applying = false; }
+        if (j.token && j.phone) adoptResidentView({ role: 'r', phone: normPhone(j.phone), code: String(j.code || '').toUpperCase(), rid: String(j.resident.id) }, j.token);
       }
       return j;
     },

@@ -21,15 +21,19 @@
 | `register` | `phone, passHash, code` | `token, phone, code` (اولین بار، توسط sync.js خودکار) |
 | `login` | `phone, passHash` | `token, phone, code` — خطاها: 404 `not_found`، 401 `bad_password`، 429 |
 | `open` | `code` (کد ساختمان) | توکن ساکن `token, phone, code` |
-| `resident_login` | `code, residentPhone, passHash` | `{ok, resident}` |
+| `resident_login` | `code, residentPhone, passHash` | `{ok, resident, token}` — توکن با هویت ساکن (rid) |
 | `pull` | `token, since` | `{keys: {base: {v, r}}, rev}` |
 | `push` | `token, changes: {base: {v, r}}` | `{applied: {base: r}, conflicts: {base: {v, r}}}` |
 | `change_password` | `token, oldHash, newHash` | `{ok}` |
 
 - `base` یکی از: v3, units, charges, expenses, messages, notices, notifications, settings, side_incomes, tickets, votings, plan, registered_residents.
 - `r` نسخه هر کلید است؛ اگر `r` ارسالی با نسخه سرور یکی نباشد، کلید در `conflicts` برمی‌گردد و کلاینت ادغام سه‌طرفه (بر اساس `id` ردیف‌ها) انجام می‌دهد و دوباره می‌فرستد.
-- ساکن فقط روی units, charges, messages, notifications, votings, tickets, registered_residents می‌نویسد؛ نمی‌تواند شارژ را «پرداخت‌شده» کند، شارژ صادر کند یا ثبت‌نام خودش را تأیید کند.
-- رمز ساکنین (`passwordHash`) هیچ‌وقت به کلاینت‌ها برگردانده نمی‌شود.
+- دسترسی ساکن (از نسخه ۱.۱ افزونه):
+  - توکن `open` (فقط کد ساختمان) = «مهمان»: فقط ثبت‌نام تازه (در انتظار تأیید) و پر کردن جای خالی/تأییدنشده همان واحد. پیام، پرداخت و رأی ندارد.
+  - توکن `resident_login` (rid): فقط واحد خودش (بدون مبلغ شارژ/بدهی/شماره واحد)، اعلام پرداخت شارژهای واحد خودش، پیام برای واحد خودش، یک رأی با شماره خودش، ردیف ثبت‌نام خودش.
+  - هیچ ساکنی ردیف/واحد/پیام را حذف نمی‌کند؛ ساکن ردشده دسترسی نوشتن ندارد.
+  - حریم: ساکن موبایل، کد ملی و قبض‌های واحدهای دیگر، پیام‌های دیگران، شماره رأی‌دهندگان دیگر و تیکت‌های مدیر را نمی‌بیند.
+- رمز ساکنین (`passwordHash`) هیچ‌وقت به کلاینت‌ها برگردانده نمی‌شود و روی سرور با bcrypt نگه داشته می‌شود.
 
 ## محدودیت‌های فعلی
 - رمز مدیر در مرورگر با هش ساده ساخته می‌شود؛ سرور آن را با scrypt ذخیره می‌کند و تلاش‌های ورود را محدود می‌کند، ولی برای امنیت کامل باید ورود به سرور منتقل شود.
