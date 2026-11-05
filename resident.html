@@ -57,19 +57,20 @@
 
       <div class="resident-form-group">
         <label for="residentLoginCode">🏢 کد ساختمان</label>
-        <input type="text" id="residentLoginCode" class="resident-form-input" placeholder="مثلاً: M-123456" dir="ltr" />
+        <input type="text" id="residentLoginCode" autocomplete="organization" class="resident-form-input" placeholder="مثلاً: M-123456" dir="ltr" />
       </div>
       <div class="resident-form-group">
         <label for="residentLoginPhone">📱 شماره موبایل</label>
-        <input type="tel" id="residentLoginPhone" class="resident-form-input" placeholder="09xxxxxxxxx" dir="ltr" />
+        <input type="tel" id="residentLoginPhone" name="username" autocomplete="username" class="resident-form-input" placeholder="09xxxxxxxxx" dir="ltr" />
       </div>
       <div class="resident-form-group">
         <label for="residentLoginPassword">🔒 رمز عبور</label>
-        <input type="password" id="residentLoginPassword" class="resident-form-input" dir="ltr" />
+        <input type="password" id="residentLoginPassword" name="password" autocomplete="current-password" class="resident-form-input" dir="ltr" />
         <div class="resident-error-msg" id="residentLoginError"></div>
       </div>
 
       <button class="resident-submit-btn" id="residentLoginBtn">ورود ←</button>
+      <p style="text-align:center;margin-top:12px;font-size:12.5px;color:#64748b;line-height:1.8;">رمز را فراموش کرده‌اید؟ از مدیر ساختمان بخواهید برایتان رمز تازه بگذارد.</p>
       <p style="text-align:center;margin-top:16px;font-size:13px;">
         <a href="#" id="residentBackToRegister" style="color:#5b4cdb;font-weight:800;">→ ثبت‌نام جدید</a>
       </p>
@@ -138,14 +139,14 @@
 
       <div class="resident-form-group">
         <label for="residentPassword">🔒 رمز عبور <span class="resident-required">*</span></label>
-        <input type="password" id="residentPassword" class="resident-form-input"
+        <input type="password" id="residentPassword" autocomplete="new-password" class="resident-form-input"
                placeholder="حداقل ۶ کاراکتر" />
         <div class="resident-error-msg" id="residentPasswordError"></div>
       </div>
 
       <div class="resident-form-group">
         <label for="residentPasswordConfirm">🔒 تکرار رمز عبور <span class="resident-required">*</span></label>
-        <input type="password" id="residentPasswordConfirm" class="resident-form-input"
+        <input type="password" id="residentPasswordConfirm" autocomplete="new-password" class="resident-form-input"
                placeholder="رمز را دوباره وارد کن" />
         <div class="resident-error-msg" id="residentPasswordConfirmError"></div>
       </div>
@@ -341,7 +342,7 @@
 <div id="residentToastContainer" class="resident-toast-container"></div>
 <script src="js/dialogs.js?v=1"></script>
 <script src="js/sync.js?v=4"></script>
-<script src="js/resident-app.js?v=21"></script>
+<script src="js/resident-app.js?v=22"></script>
   <!-- ============ مودال اعلام واریز ============ -->
 <div class="resident-modal-backdrop" id="residentPayModal">
   <div class="resident-modal">

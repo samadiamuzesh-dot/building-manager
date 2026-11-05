@@ -2109,9 +2109,15 @@ function loginResident() {
     loginResident._remoteTried = true;
     if (err) { err.textContent = '⏳ در حال بررسی…'; err.classList.add('show'); }
     const p = _findManagerPhoneByBuildingCode(code) ? Promise.resolve() : window.AptSync.openBuilding(code);
+    let wrongPass = false;
     p.then(() => window.AptSync.residentRemoteLogin(code, phone, hashResidentPassword(pass)))
-      .catch(() => {})
-      .finally(() => { if (err) err.classList.remove('show'); loginResident(); loginResident._remoteTried = false; });
+      .catch((e) => { if (e && e.status === 401) wrongPass = true; })
+      .finally(() => {
+        if (err) err.classList.remove('show');
+        // سرور رمز را رد کرد (مثلاً مدیر رمز تازه گذاشته): رمز قدیمی ذخیره‌شده روی گوشی کافی نیست
+        if (wrongPass) { loginResident._remoteTried = false; return fail('رمز عبور اشتباه است. اگر فراموش کرده‌اید، از مدیر ساختمان بخواهید رمز تازه بگذارد.'); }
+        loginResident(); loginResident._remoteTried = false;
+      });
     return;
   }
 
@@ -2129,7 +2135,7 @@ function loginResident() {
   const ok = r.passwordHash
     ? r.passwordHash === hashResidentPassword(pass)
     : r.password === pass; // سازگاری با ثبت‌نام‌های قدیمی (رمز متنی)
-  if (!ok) return fail('رمز عبور اشتباه است.');
+  if (!ok) return fail('رمز عبور اشتباه است. اگر فراموش کرده‌اید، از مدیر ساختمان بخواهید رمز تازه بگذارد.');
 
   // مهاجرت رمز قدیمی به هش
   if (!r.passwordHash) {

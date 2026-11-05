@@ -2479,7 +2479,71 @@ function openUnitModal(unitId = null) {
     document.getElementById('landlinePhone').value = '';
   }
 
+  renderUnitResidentAccounts(unitId);
   modal.classList.add('open');
+}
+
+/* ============ 🔑 حساب ساکنین واحد (رمز تازه برای ساکنی که رمزش را فراموش کرده) ============ */
+function hashResidentPasswordForManager(str) {
+  // باید دقیقاً با hashResidentPassword در resident-app.js یکی باشد
+  let hash = 0;
+  const salted = 'ap+res:' + String(str);
+  for (let i = 0; i < salted.length; i++) {
+    hash = ((hash << 5) - hash) + salted.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'rh_' + Math.abs(hash).toString(36);
+}
+
+function getUnitRegisteredResidents(unit) {
+  if (!unit) return [];
+  const block = String(unit.block || '—').trim() || '—';
+  return loadRegisteredResidentsForBuilding().mine.filter(r => r && r.status !== 'rejected'
+    && (String(r.block || '—').trim() || '—') === block && Number(r.unitNumber) === Number(unit.number));
+}
+
+function renderUnitResidentAccounts(unitId) {
+  const tenantInput = document.getElementById('tenantPhone');
+  const section = tenantInput ? tenantInput.closest('.form-section') : null;
+  let host = document.getElementById('unitResidentAccounts');
+  if (!host && section && section.parentElement) {
+    host = document.createElement('div');
+    host.id = 'unitResidentAccounts';
+    host.className = 'form-section';
+    section.parentElement.insertBefore(host, section.nextSibling);
+  }
+  if (!host) return;
+  const unit = unitId ? UNITS.find(u => u.id === unitId) : null;
+  const regs = getUnitRegisteredResidents(unit);
+  if (!regs.length) { host.innerHTML = ''; host.style.display = 'none'; return; }
+  host.style.display = '';
+  host.innerHTML = `<div class="form-section-title"><span>🔑 حساب ساکنین در پنل ساکن</span></div>
+    <div style="font-size:12.5px;color:#64748b;margin-bottom:10px;">اگر ساکنی رمز ورودش را فراموش کرده، برایش رمز تازه بگذارید و به خودش بگویید.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">${regs.map(r => {
+      const roleLbl = (r.role === 'tenant' || r.role === 'مستاجر' || r.role === 'ساکن') ? 'مستاجر' : 'مالک';
+      const st = r.status === 'approved' ? '' : ' — در انتظار تأیید';
+      return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;">
+        <div style="font-size:13px;color:#334155;"><strong>${escapeHtml(r.name || '')}</strong> (${roleLbl}${st}) — <span dir="ltr">${escapeHtml(r.phone || '')}</span></div>
+        <button type="button" class="btn btn-secondary" data-reset-resident-pass="${r.id}" style="padding:6px 12px;font-size:13px;">🔑 رمز تازه</button>
+      </div>`;
+    }).join('')}</div>`;
+  host.querySelectorAll('[data-reset-resident-pass]').forEach(b => b.addEventListener('click', () => resetResidentPassword(Number(b.dataset.resetResidentPass), unitId)));
+}
+
+async function resetResidentPassword(residentId, unitId) {
+  const { all } = loadRegisteredResidentsForBuilding();
+  const r = all.find(x => Number(x.id) === Number(residentId));
+  if (!r) return;
+  let pass = await appPrompt(`رمز تازه برای «${r.name || ''}» (حداقل ۶ کاراکتر):`, '');
+  if (pass === null || pass === undefined) return;
+  pass = String(pass).trim();
+  if (pass.length < 6) { await appAlert('رمز باید حداقل ۶ کاراکتر باشد.'); return; }
+  r.passwordHash = hashResidentPasswordForManager(pass);
+  delete r.password;
+  r.passwordResetAt = new Date().toISOString();
+  localStorage.setItem('ham_sakhteman_registered_residents', JSON.stringify(all));
+  await appAlert(`رمز تازه «${r.name || ''}» ثبت شد:\n\n${pass}\n\nاین رمز را به خودش بگویید. با همین شماره موبایل و رمز تازه وارد می‌شود.`);
+  if (unitId) renderUnitResidentAccounts(unitId);
 }
 
 function closeUnitModal() {
