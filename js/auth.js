@@ -58,8 +58,14 @@ function isLoggedIn() {
   if (loggedOut === 'true') {
     return false;
   }
+  if (isBlockManagerSession()) return !!phone;
 
   return !!(phone && password);
+}
+
+/** نشست مدیر بلوک (ورود با کد ساختمان + موبایل + رمزی که مدیر کل داده) */
+function isBlockManagerSession() {
+  try { const s = JSON.parse(localStorage.getItem('ham_sakhteman_block_session') || 'null'); return !!(s && s.managerPhone && s.block); } catch (e) { return false; }
 }
 
 function normalizePhone(phone) {
@@ -128,7 +134,7 @@ function showToastAuth(message, type = 'success') {
 
 function initLoginPage() {
   const hasAuth = !!localStorage.getItem(USER_PHONE_KEY)
-               && !!localStorage.getItem(USER_PASSWORD_KEY);
+               && (!!localStorage.getItem(USER_PASSWORD_KEY) || isBlockManagerSession());
   const loggedOut = localStorage.getItem(LOGGED_OUT_KEY) === 'true';
 
   // فقط وقتی لاگین‌شده و خارج نشده، بره پنل
@@ -181,6 +187,8 @@ function initLoginPage() {
 
 
   document.getElementById('btnLoginSubmit')?.addEventListener('click', handleLoginSubmit);
+  document.getElementById('btnBlockLoginSubmit')?.addEventListener('click', handleBlockLoginSubmit);
+  document.getElementById('blockLoginPassword')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleBlockLoginSubmit(); });
 
   document.getElementById('btnStartSignup')?.addEventListener('click', () => {
     window.location.href = 'index.html?signup=1';
@@ -231,7 +239,7 @@ function handleLoginSubmit() {
 
   // ☁️ دستگاه جدید: حساب روی این مرورگر نیست → از سرور ابری بیاور
   const isRemoteCase = !result.ok && window.AptSync &&
-    (!localStorage.getItem(USER_PHONE_KEY) || normalizePhone(localStorage.getItem(USER_PHONE_KEY)) !== normalizePhone(phone) || result.error.includes('رمز'));
+    (!localStorage.getItem(USER_PHONE_KEY) || !localStorage.getItem(USER_PASSWORD_KEY) || isBlockManagerSession() || normalizePhone(localStorage.getItem(USER_PHONE_KEY)) !== normalizePhone(phone) || result.error.includes('رمز'));
   if (isRemoteCase) {
     const btn = document.getElementById('btnLoginSubmit');
     if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = '⏳ در حال دریافت اطلاعات…'; }
@@ -275,6 +283,40 @@ function handleLoginSubmit() {
   setTimeout(() => {
     window.location.replace('index.html');
   }, 800);
+}
+
+/** ورود مدیر بلوک */
+function handleBlockLoginSubmit() {
+  const codeEl = document.getElementById('blockLoginCode');
+  const phoneEl = document.getElementById('blockLoginPhone');
+  const passEl = document.getElementById('blockLoginPassword');
+  const errEl = document.getElementById('blockLoginError');
+  const btn = document.getElementById('btnBlockLoginSubmit');
+  const code = (codeEl.value || '').trim();
+  const phone = normalizePhone(phoneEl.value || '');
+  const pass = passEl.value || '';
+  [codeEl, phoneEl, passEl].forEach(el => el.classList.remove('input-error'));
+  errEl.classList.remove('show');
+  const fail = (el, msg) => { if (el) el.classList.add('input-error'); errEl.textContent = msg; errEl.classList.add('show'); };
+  if (!code) return fail(codeEl, 'کد ساختمان را وارد کنید (از مدیر ساختمان بگیرید).');
+  if (!/^09\d{9}$/.test(phone)) return fail(phoneEl, 'شماره موبایل معتبر نیست.');
+  if (!pass) return fail(passEl, 'رمز عبور را وارد کنید.');
+  if (!window.AptSync || !window.AptSync.blockLogin) return fail(null, 'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید.');
+  btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = '⏳ در حال ورود…';
+  window.AptSync.blockLogin(code, phone, window.AptSync.hashBlockPassword(pass))
+    .then(() => {
+      showToastAuth('خوش آمدید! پنل مدیر بلوک باز می‌شود…', 'success');
+      setTimeout(() => window.location.replace('index.html'), 700);
+    })
+    .catch((e) => {
+      btn.disabled = false; btn.textContent = btn.dataset.label || '🚀 ورود مدیر بلوک';
+      const st = e && e.status, err = e && e.message;
+      if (st === 401) fail(passEl, 'رمز عبور اشتباه است.');
+      else if (st === 403) fail(phoneEl, 'دسترسی این مدیر بلوک غیرفعال شده است. با مدیر ساختمان تماس بگیرید.');
+      else if (st === 404) fail(err === 'not_found' ? codeEl : phoneEl, err === 'not_found' ? 'ساختمانی با این کد پیدا نشد.' : 'این شماره به‌عنوان مدیر بلوک ثبت نشده است.');
+      else if (st === 429) fail(null, 'تلاش‌های زیاد؛ ۱۵ دقیقه دیگر دوباره امتحان کنید.');
+      else fail(null, 'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید.');
+    });
 }
 
 // ✅ فقط روی صفحه لاگین اجرا بشه (جلوگیری از رفرش بی‌نهایت در index.html)

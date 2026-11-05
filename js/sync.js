@@ -18,9 +18,13 @@
   const API = window.APT_SYNC_URL || DEFAULT_API;
   const P = 'ham_sakhteman_';
   const BASES = ['v3', 'units', 'charges', 'expenses', 'messages', 'notices', 'notifications',
-    'settings', 'side_incomes', 'tickets', 'votings', 'plan'];
+    'settings', 'side_incomes', 'tickets', 'votings', 'plan', 'block_managers'];
   const REG = 'registered_residents';
   const RESIDENT_WRITABLE = ['units', 'charges', 'messages', 'notifications', 'votings', 'tickets', REG];
+  // مدیر بلوک: فقط این کلیدها (سرور هم فقط بلوک خودش را می‌پذیرد)
+  const BLOCK_WRITABLE = ['units', 'charges', 'messages', 'notices', REG];
+  const BLOCK_SESSION = P + 'block_session';
+  const canWrite = (c, base) => c.role === 'm' || (c.role === 'b' ? BLOCK_WRITABLE : RESIDENT_WRITABLE).includes(base);
   const POLL_MS = 12000;
 
   const ls = window.localStorage;
@@ -48,6 +52,10 @@
       const rid = s && s.residentId != null && String(s.buildingCode || '').toUpperCase() === code ? String(s.residentId) : '';
       return phone ? { role: 'r', phone, code, rid, rPhone: normPhone(s && s.phone) } : null;
     }
+    const bs = jparse(get(BLOCK_SESSION), null);
+    if (bs && bs.managerPhone && bs.code && get(P + 'logged_out') !== 'true') {
+      return { role: 'b', phone: normPhone(bs.managerPhone), code: String(bs.code).toUpperCase(), bPhone: normPhone(bs.phone), bHash: bs.passHash || '' };
+    }
     const phone = normPhone(get(P + 'user_phone'));
     if (!phone || get(P + 'logged_out') === 'true') return null;
     return { role: 'm', phone, code: String(jparse(get(P + 'v3_' + phone), {})?.building?.code || '').toUpperCase() };
@@ -69,6 +77,11 @@
       if (!mine.length && get(P + REG) == null) return null;
       return JSON.stringify(forPush ? mine : stripRegs(mine));
     }
+    if (base === 'block_managers' && !forPush) {
+      const v = get(P + base + '_' + c.phone);
+      if (v == null) return v;
+      return JSON.stringify(stripRegs(jparse(v, [])));
+    }
     return get(P + base + '_' + c.phone);
   }
   function writeLocal(c, base, v) {
@@ -80,6 +93,12 @@
         const others = all.filter(r => !(r && String(r.buildingCode || '').toUpperCase() === c.code));
         const incoming = jparse(v, []).map(r => (r && keepHash.has(String(r.id)) && !r.passwordHash) ? Object.assign({}, r, { passwordHash: keepHash.get(String(r.id)) }) : r);
         set(P + REG, JSON.stringify(others.concat(incoming)));
+      } else if (base === 'block_managers' && v != null) {
+        // هش رمز مدیران بلوک فقط روی دستگاه مدیر کل می‌ماند (سرور برنمی‌گرداند)
+        const cur = jparse(get(P + base + '_' + c.phone), []);
+        const keep = new Map((Array.isArray(cur) ? cur : []).filter(r => r && r.passwordHash).map(r => [String(r.id), r.passwordHash]));
+        const inc = jparse(v, []);
+        set(P + base + '_' + c.phone, JSON.stringify(Array.isArray(inc) ? inc.map(r => (r && keep.has(String(r.id)) && !r.passwordHash) ? Object.assign({}, r, { passwordHash: keep.get(String(r.id)) }) : r) : inc));
       } else if (v == null) del(P + base + '_' + c.phone);
       else set(P + base + '_' + c.phone, v);
     } finally { applying = false; }
@@ -95,7 +114,7 @@
   /* ---------------- ادغام سه‌طرفه ---------------- */
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   // واحدها و ثبت‌نام‌ها با id به هم ارجاع دارند؛ id آن‌ها عوض نشود
-  const NO_REID = ['units', REG, 'v3', 'settings', 'plan'];
+  const NO_REID = ['units', REG, 'v3', 'settings', 'plan', 'block_managers'];
   function freshId(l, r) {
     const max = Math.max(0, ...l.concat(r).map(x => Number(x.id) || 0));
     return Math.max(max + 1, Date.now()) + Math.floor(Math.random() * 1000);
@@ -168,6 +187,17 @@
   async function ensureToken(c) {
     let t = get(tokKey(c));
     if (t) { usingGuest = false; return t; }
+    if (c.role === 'b') {
+      if (!c.bHash || !c.bPhone) throw Object.assign(new Error('no_auth'), { status: 401 });
+      try {
+        const j = await call({ action: 'block_login', code: c.code, blockPhone: c.bPhone, passHash: c.bHash });
+        set(tokKey(c), j.token);
+        return j.token;
+      } catch (e) {
+        if (e.status === 401 || e.status === 403 || e.status === 404) blockRevoked(e.status);
+        throw e;
+      }
+    }
     if (c.role === 'm') {
       const passHash = get(P + 'user_password');
       if (!passHash) throw Object.assign(new Error('no_auth'), { status: 401 });
@@ -257,7 +287,7 @@
       else merged = merge3(prev, local, rec.v, base);
       snap[base] = { v: rec.v, r: rec.r };
       if (merged !== local) { writeLocal(c, base, merged); changedKeys.push(fullKey(c, base)); }
-      if (merged !== rec.v && (c.role === 'm' || RESIDENT_WRITABLE.includes(base))) dirty.add(base); else dirty.delete(base);
+      if (merged !== rec.v && canWrite(c, base)) dirty.add(base); else dirty.delete(base);
     });
     set(snapKey(c), JSON.stringify(snap));
     set(revKey(c), String(Math.max(since, j.rev || 0)));
@@ -278,7 +308,7 @@
     const snap = jparse(get(snapKey(c)), {});
     const changes = {}; const sent = {};
     dirty.forEach(base => {
-      if (c.role === 'r' && !RESIDENT_WRITABLE.includes(base)) { dirty.delete(base); return; }
+      if (!canWrite(c, base)) { dirty.delete(base); return; }
       const cmp = localValue(c, base, false);
       if (snap[base] && cmp === snap[base].v) { dirty.delete(base); return; }
       changes[base] = { v: localValue(c, base, true), r: snap[base] ? snap[base].r : 0 };
@@ -359,7 +389,7 @@
       if (k.endsWith(suf)) { const b = k.slice(P.length, -suf.length); if (BASES.includes(b)) base = b; }
     }
     if (!base) return;
-    if (c.role === 'r' && !RESIDENT_WRITABLE.includes(base)) return;
+    if (!canWrite(c, base)) return;
     const d = new Set(jparse(get(dirtyKey(c)), []));
     if (!d.has(base)) { d.add(base); set(dirtyKey(c), JSON.stringify([...d])); }
     schedulePush();
@@ -375,6 +405,9 @@
     async managerRemoteLogin(phone, passHash) {
       phone = normPhone(phone);
       const j = await call({ action: 'login', phone, passHash });
+      // این دستگاه قبلاً با حساب مدیر بلوک باز بوده: نمای محدود بلوک را پاک کن
+      const bs = jparse(get(BLOCK_SESSION), null);
+      if (bs) { wipeLocal(normPhone(bs.managerPhone), String(bs.code || '').toUpperCase()); del(BLOCK_SESSION); }
       const c = { role: 'm', phone, code: j.code || '' };
       set(tokKey(c), j.token);
       del(revKey(c)); del(snapKey(c));
@@ -407,6 +440,34 @@
       }
       return j;
     },
+    /** هش رمز مدیر بلوک (روی سرور دوباره با bcrypt ذخیره می‌شود) */
+    hashBlockPassword(str) {
+      let h = 0; const s = 'ap+blk:' + String(str);
+      for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
+      return 'bh_' + Math.abs(h).toString(36);
+    },
+    /** ورود مدیر بلوک: داده‌های قبلی این ساختمان روی دستگاه پاک و نمای بلوک از سرور گرفته می‌شود */
+    async blockLogin(code, blockPhone, passHash) {
+      code = String(code || '').trim().toUpperCase();
+      const j = await call({ action: 'block_login', code, blockPhone: normPhone(blockPhone), passHash });
+      const phone = normPhone(j.phone);
+      wipeLocal(phone, String(j.code || code).toUpperCase());
+      const m = j.manager || {};
+      set(BLOCK_SESSION, JSON.stringify({ managerPhone: phone, code: String(j.code || code).toUpperCase(), id: m.id, name: m.name || '', phone: normPhone(m.phone || blockPhone), block: m.block || '', passHash, at: new Date().toISOString() }));
+      set(P + 'user_phone', phone);
+      del(P + 'user_password'); del(P + 'logged_out');
+      const c = ctx();
+      set(tokKey(c), j.token);
+      await pullOnce(c, j.token);
+      return j;
+    },
+    /** خروج مدیر بلوک: همه داده‌های بلوک از این دستگاه پاک می‌شود */
+    blockLogout() {
+      const bs = jparse(get(BLOCK_SESSION), null);
+      if (bs) wipeLocal(normPhone(bs.managerPhone), String(bs.code || '').toUpperCase());
+      del(BLOCK_SESSION); del(P + 'user_phone'); del(P + 'user_password'); del(P + 'auth');
+    },
+    wipeLocal: (phone, code) => wipeLocal(normPhone(phone), String(code || '').toUpperCase()),
     async changeManagerPassword(oldHash, newHash) {
       const c = ctx(); if (!c || c.role !== 'm') return;
       let token = get(tokKey(c));
@@ -416,6 +477,24 @@
     forget() { const c = ctx(); if (c) del(tokKey(c)); },
   };
   window.AptSync = AptSync;
+
+  /** پاک کردن داده‌ها و وضعیت همگام‌سازی یک ساختمان از این دستگاه */
+  function wipeLocal(phone, code) {
+    applying = true;
+    try {
+      BASES.forEach(b => del(P + b + '_' + phone));
+      ['m', 'b', 'r'].forEach(r => { del(`apt_sync_token_${r}_${phone}`); del(`apt_sync_dirty_${r}_${phone}`); });
+      del(`apt_sync_snap_${phone}`); del(`apt_sync_rev_${phone}`); del(`apt_sync_adopt_${phone}`);
+      if (code) {
+        const all = jparse(get(P + REG), []);
+        if (Array.isArray(all)) set(P + REG, JSON.stringify(all.filter(r => !(r && String(r.buildingCode || '').toUpperCase() === code))));
+      }
+    } finally { applying = false; }
+  }
+  /** مدیر بلوک غیرفعال/حذف شد یا رمزش عوض شد */
+  function blockRevoked(status) {
+    try { window.dispatchEvent(new CustomEvent('apt-block-revoked', { detail: { status } })); } catch (e) {}
+  }
 
   /* ---------------- چرخه ---------------- */
   function start() {

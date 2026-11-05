@@ -38,6 +38,42 @@ function getUnitsStorageKey() {
   return getAccountStorageKey('ham_sakhteman_units');
 }
 
+/* ============================================================
+   🧩 مدیر بلوک — فقط واحدها، شارژها، اعلام پرداخت‌ها، ثبت‌نام‌ها،
+   اطلاعیه‌ها و پیام‌های بلوک خودش. (سرور هم همین را اجبار می‌کند.)
+   ============================================================ */
+let _blockSessionCache;
+function blockSession() {
+  if (_blockSessionCache === undefined) {
+    try {
+      const s = JSON.parse(localStorage.getItem('ham_sakhteman_block_session') || 'null');
+      _blockSessionCache = (s && s.managerPhone && s.block) ? s : null;
+    } catch (e) { _blockSessionCache = null; }
+  }
+  return _blockSessionCache;
+}
+function isBlockManager() { return !!blockSession(); }
+function myBlockName() { return String(blockSession()?.block || '').trim(); }
+function blockTag() { return 'block:' + (blockSession()?.name || ''); }
+const BLOCK_ALLOWED_PAGES = ['dashboard', 'units', 'charges', 'payments', 'charges-payments', 'notices', 'messages'];
+/** در حالت مدیر بلوک کار ممنوع را متوقف می‌کند (true یعنی متوقف شد) */
+function blockDenied(msg) {
+  if (!isBlockManager()) return false;
+  toastWarning(msg || 'این کار فقط در دسترس مدیر کل ساختمان است.');
+  return true;
+}
+/** «block:علی» → «مدیر بلوک علی» */
+function reviewerLabel(tag) {
+  const t = String(tag || '');
+  return t.indexOf('block:') === 0 ? ('مدیر بلوک ' + (t.slice(6) || '')) : '';
+}
+function hashBlockPasswordLocal(str) {
+  if (window.AptSync && window.AptSync.hashBlockPassword) return window.AptSync.hashBlockPassword(str);
+  let h = 0; const s = 'ap+blk:' + String(str);
+  for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
+  return 'bh_' + Math.abs(h).toString(36);
+}
+
 
 /* ============ ۱) ابزار ============ */
 function formatToman(a) { return new Intl.NumberFormat('fa-IR').format(Number(a) || 0) + ' تومان'; }
@@ -524,6 +560,8 @@ function mergeRegisteredResidentsIntoUnits() {
 }
 
 function saveUnits() {
+  // مدیر بلوک واحدها را ویرایش نمی‌کند (بدهی/واحد تازه فقط در حافظه برای نمایش)
+  if (isBlockManager()) return;
   localStorage.setItem(
     getUnitsStorageKey(),
     JSON.stringify(UNITS)
@@ -559,7 +597,7 @@ function renderBuildingCard() {
 
   const b = data.building;
   if (nameEl) nameEl.textContent = b.name || 'ساختمان من';
-  if (codeEl) codeEl.textContent = b.code || '—';
+  if (codeEl) codeEl.textContent = isBlockManager() ? ('🧩 بلوک ' + myBlockName()) : (b.code || '—');
 }
 /** حداکثر تعداد واحد مجاز بر اساس ساختمان / پلن */
 function getMaxAllowedUnits() {
@@ -618,6 +656,7 @@ const PAGE_INFO = {
 };
 
 function switchPage(pageKey) {
+  if (isBlockManager() && !BLOCK_ALLOWED_PAGES.includes(pageKey)) pageKey = 'dashboard';
   if (isPageLocked(pageKey)) {
     showUpgradeModal(pageKey);
     return;
@@ -650,7 +689,11 @@ function switchPage(pageKey) {
     const t = document.getElementById('pageTitle');
     const s = document.getElementById('pageSubtitle');
     if (t) t.textContent = info.title;
-    if (s) s.textContent = info.subtitle;
+    if (s) s.textContent = isBlockManager() ? info.subtitle.replace('ساختمان', 'بلوک ' + myBlockName()) : info.subtitle;
+    if (isBlockManager() && pageKey === 'charges') {
+      if (t) t.textContent = 'شارژ بلوک';
+      if (s) s.textContent = 'شارژها و اعلام پرداخت‌های بلوک ' + myBlockName();
+    }
   }
 
   if (pageKey === 'dashboard') {
@@ -741,6 +784,15 @@ function buildBlockFilterOptions(building) {
   const select = document.getElementById('blockFilter');
   if (!select) return;
 
+  if (isBlockManager()) {
+    // مدیر بلوک: فقط بلوک خودش؛ انتخاب بلوک پنهان، فیلتر وضعیت می‌ماند
+    currentBlockFilter = myBlockName();
+    select.style.display = 'none';
+    const lbl = document.querySelector('label[for="blockFilter"]'); if (lbl) lbl.style.display = 'none';
+    const sl = document.querySelector('label[for="statusFilter"]'); if (sl) sl.style.marginRight = '0';
+    select.parentElement.style.display = 'flex';
+    return;
+  }
   if (!building || building.type !== 'complex') {
     select.parentElement.style.display = 'none';
     return;
@@ -1023,7 +1075,9 @@ function renderStats() {
   );
 
   // سقف واحدها از ثبت‌نام ساختمان؛ آمار پرداخت فقط روی واحدهای ثبت‌شده
-  const capacityUnits = Number(building.totalUnits) || getExpectedUnitsCount(building) || units.length;
+  const capacityUnits = isBlockManager()
+    ? (getMaxUnitsForBlock(myBlockName()) || units.length)
+    : (Number(building.totalUnits) || getExpectedUnitsCount(building) || units.length);
   const unitsCount = capacityUnits;
   // بدهکار = بدهی مثبت | تسویه‌شده = بدهی صفر و توسط مدیر مشخص شده
   const debtUnits = units.filter(u => Number(u.debt) > 0).length;
@@ -1071,7 +1125,7 @@ function renderStats() {
   if (elIncome)  elIncome.textContent  = formatToman(income);
   if (elDebtors) elDebtors.textContent = formatNumber(debtUnits);
   if (elExpense) elExpense.textContent = formatToman(expense);
-  if (elBlocks)  elBlocks.textContent  = formatNumber(blocksCount);
+  if (elBlocks)  elBlocks.textContent  = formatNumber(isBlockManager() ? allCharges.filter(c => c.pendingApproval && !c.paid).length : blocksCount);
   if (elBalance) elBalance.textContent = (balance < 0 ? '−' : '') + formatToman(Math.abs(balance));
 
   // درصد پرداخت = تسویه‌شده / (تسویه‌شده + بدهکار)
@@ -2008,7 +2062,7 @@ function buildUnitsBlockFilter() {
   const select = document.getElementById('unitsBlockFilter');
   if (!select || !data?.building) return;
 
-  if (data.building.type !== 'complex') {
+  if (data.building.type !== 'complex' || isBlockManager()) {
     select.parentElement.style.display = 'none';
     return;
   }
@@ -2116,9 +2170,27 @@ async function setResidentRegistrationStatus(residentId, status) {
 
   r.status = status;
   r.reviewedAt = new Date().toISOString();
+  r.reviewedBy = isBlockManager() ? blockTag() : 'main';
   localStorage.setItem('ham_sakhteman_registered_residents', JSON.stringify(all));
 
   const block = String(r.block || '—').trim() || '—';
+  if (isBlockManager()) {
+    // مدیر بلوک فقط وضعیت ساکن همان واحد را در داده ذخیره‌شده عوض می‌کند (نه بدهی/مشخصات واحد)
+    let stored = [];
+    try { stored = JSON.parse(localStorage.getItem(getUnitsStorageKey()) || '[]') || []; } catch (e) { stored = []; }
+    const su = stored.find(u => String(u.block || '').trim() === block && Number(u.number) === Number(r.unitNumber));
+    const slot = (r.role === 'tenant' || r.role === 'مستاجر' || r.role === 'ساکن') ? 'tenant' : 'owner';
+    if (su && su[slot] && su[slot].phone === r.phone) {
+      if (status === 'approved') su[slot].approved = true;
+      else su[slot] = { name: null, phone: null, birthDate: null, nationalId: null, type: 'settled', registered: false, approved: false };
+      localStorage.setItem(getUnitsStorageKey(), JSON.stringify(stored));
+    }
+    loadUnits();
+    renderPendingResidentsBanner();
+    renderUnitsPage();
+    toastSuccess(status === 'approved' ? 'ثبت‌نام ساکن تأیید شد.' : 'ثبت‌نام رد شد.');
+    return;
+  }
   const unit = UNITS.find(u => String(u.block || '').trim() === block && Number(u.number) === Number(r.unitNumber));
   if (unit) {
     const isTenant = r.role === 'tenant' || r.role === 'مستاجر' || r.role === 'ساکن';
@@ -2215,8 +2287,8 @@ function renderUnitsPage() {
         <td>${debtDisplay}</td>
         <td>
           <div class="row-actions">
-            <button class="row-action-btn" data-action="view" data-id="${u.id}" title="جزئیات">✏️</button>
-            <button class="row-action-btn danger" data-action="delete" data-id="${u.id}" title="حذف">🗑️</button>
+            ${isBlockManager() ? `<button class="row-action-btn" data-action="view" data-id="${u.id}" title="جزئیات">👁️</button>` : `<button class="row-action-btn" data-action="view" data-id="${u.id}" title="جزئیات">✏️</button>
+            <button class="row-action-btn danger" data-action="delete" data-id="${u.id}" title="حذف">🗑️</button>`}
           </div>
         </td>
       </tr>
@@ -2284,6 +2356,7 @@ function bindUnitsPage() {
       if (action === 'view') {
         openUnitDetail(id);
       } else if (action === 'delete') {
+        if (blockDenied()) return;
         const _uc = (loadCharges() || []).filter(c => Number(c.unitId) === Number(id));
         const _unpaid = _uc.filter(c => !c.paid && !c.pendingApproval);
         let _msg = '⚠️ آیا از حذف این واحد مطمئن هستید؟\n\nاین عمل قابل بازگشت نیست.';
@@ -2344,6 +2417,7 @@ function clearInputError(inputEl) {
 }
 
 function openUnitModal(unitId = null) {
+  if (blockDenied()) return;
   // جلوگیری از باز شدن مودال افزودن وقتی به سقف واحد رسیده‌ایم
   if (!unitId) {
     const maxUnits = getMaxAllowedUnits();
@@ -2531,6 +2605,7 @@ function renderUnitResidentAccounts(unitId) {
 }
 
 async function resetResidentPassword(residentId, unitId) {
+  if (blockDenied()) return;
   const { all } = loadRegisteredResidentsForBuilding();
   const r = all.find(x => Number(x.id) === Number(residentId));
   if (!r) return;
@@ -2553,6 +2628,7 @@ function closeUnitModal() {
 }
 
 function saveUnit() {
+  if (blockDenied()) return;
   // جلوگیری از افزودن واحد بیش از سقف ثبت‌نام / پرداخت
   if (!currentEditUnitId) {
     const maxUnits = getMaxAllowedUnits();
@@ -3345,7 +3421,7 @@ function renderChargesTable(charges) {
         <td colspan="9" style="text-align:center;color:#94a3b8;padding:40px;">
           هنوز شارژی برای این ماه صادر نشده است.
           <br><br>
-          <button class="btn btn-primary" onclick="document.getElementById('btnIssueCharge').click()">
+          <button style="${isBlockManager() ? 'display:none;' : ''}" class="btn btn-primary" onclick="document.getElementById('btnIssueCharge').click()">
             📤 صدور شارژ ${currentChargeMonth} ${toPersianNum(currentChargeYear)}
           </button>
         </td>
@@ -3382,13 +3458,15 @@ function renderChargesTable(charges) {
     let statusBadge;
     if (c.paid) {
       statusBadge = '<span class="badge badge-paid">✅ پرداخت شده</span>';
+      if (reviewerLabel(c.approvedBy)) statusBadge += `<div style="font-size:11px;color:#64748b;margin-top:4px;">تأیید: ${escapeHtml(reviewerLabel(c.approvedBy))}</div>`;
     } else if (c.pendingApproval) {
       statusBadge = '<span class="badge" style="background:#fef3c7;color:#b45309;">⏳ در انتظار تأیید</span>';
     } else {
       statusBadge = '<span class="badge badge-debt">⚠️ پرداخت نشده</span>';
     }
 
-    let actions = `<button class="row-action-btn" data-charge-id="${c.id}" title="${c.paid ? 'مدیریت پرداخت' : 'ثبت پرداخت'}">💳</button>`;
+    let actions = isBlockManager() ? '' : `<button class="row-action-btn" data-charge-id="${c.id}" title="${c.paid ? 'مدیریت پرداخت' : 'ثبت پرداخت'}">💳</button>`;
+    if (!actions && !(c.receiptImage || c.receiptArchived)) actions = '<span style="color:#94a3b8;">—</span>';
     if (c.receiptImage || c.receiptArchived) actions += `<button class="row-action-btn" data-view-receipt="${c.id}" title="مشاهده رسید">🧾</button>`;
     if (c.pendingApproval && !c.paid) {
       actions = `
@@ -3400,7 +3478,7 @@ function renderChargesTable(charges) {
           style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer;">
           ✖ رد
         </button>
-        <button class="row-action-btn" data-charge-id="${c.id}" title="جزئیات">💳</button>
+        ${isBlockManager() ? '' : `<button class="row-action-btn" data-charge-id="${c.id}" title="جزئیات">💳</button>`}
         ${c.receiptImage ? `<button class="row-action-btn" data-view-receipt="${c.id}" title="مشاهده رسید">🧾</button>` : ''}
       `;
     }
@@ -3492,7 +3570,13 @@ function approveResidentPayment(chargeId, skipConfirm) {
   charge.approvedByManager = true;
   charge.approvedAt = now.toISOString();
   if (!charge.payMethod) charge.payMethod = 'واریز بانکی';
-  archiveChargeReceipt(charge);
+  if (isBlockManager()) {
+    // تأیید مدیر بلوک ثبت می‌شود؛ رسید روی سرور می‌ماند تا مدیر کل هم ببیند
+    charge.approvedBy = blockTag();
+  } else {
+    charge.approvedBy = 'main';
+    archiveChargeReceipt(charge);
+  }
 
   saveCharges(charges);
   if (typeof updateUnitsDebtFromCharges === 'function') updateUnitsDebtFromCharges();
@@ -3617,6 +3701,7 @@ function rejectResidentPayment(chargeId, givenReason) {
   charge.rejectedAt = new Date().toISOString();
   charge.rejectReason = reason.trim() || 'رد شده توسط مدیر';
   charge.lastRejectedTracking = tracking || null;
+  charge.rejectedBy = isBlockManager() ? blockTag() : 'main';
 
   saveCharges(charges);
   updateUnitsDebtFromCharges();
@@ -3629,6 +3714,7 @@ function rejectResidentPayment(chargeId, givenReason) {
    صدور شارژ
    ============================================================ */
 function openIssueChargeModal() {
+  if (blockDenied()) return;
   const modal = document.getElementById('issueChargeModal');
 
   fillYearMonthDropdowns('issueYear', 'issueMonth');
@@ -3869,6 +3955,7 @@ function updateIssuePreview() {
    ✅ صدور شارژ — تابع اصلی (اضافه‌شده)
    ============================================================ */
 async function issueChargeConfirm() {
+  if (blockDenied()) return;
   const month = document.getElementById('issueMonth')?.value;
   const year = document.getElementById('issueYear')?.value;
   const blockFilter = document.getElementById('issueBlockSelect')?.value || 'all';
@@ -4050,6 +4137,12 @@ function bindIssueChargeModal() {
 let currentPayChargeId = null;
 
 function openPayChargeModal(chargeId) {
+  if (isBlockManager()) {
+    const ch = (loadCharges() || []).find(c => Number(c.id) === Number(chargeId));
+    if (ch && ch.pendingApproval && !ch.paid) { openPaymentReview(ch.id); return; }
+    blockDenied('ثبت یا لغو پرداخت دستی فقط با مدیر کل است؛ مدیر بلوک اعلام پرداخت ساکنین را بررسی می‌کند.');
+    return;
+  }
   const charges = loadCharges();
   const charge = charges.find(c => c.id === chargeId);
   if (!charge) {
@@ -4117,6 +4210,7 @@ function closePayChargeModal() {
 }
 
 async function confirmPayCharge() {
+  if (blockDenied()) return;
   if (!currentPayChargeId) return;
 
   const charges = loadCharges();
@@ -4471,6 +4565,7 @@ function renderSideIncomesPage() {
 }
 
 function openSideIncomeModal(incomeId = null) {
+  if (blockDenied()) return;
   currentEditSideIncomeId = incomeId;
 
   const modal = document.getElementById('sideIncomeModal');
@@ -4627,6 +4722,7 @@ function closeSideIncomeModal() {
 }
 
 function saveSideIncome() {
+  if (blockDenied()) return;
   const title = document.getElementById('sideIncomeTitle').value.trim();
   const category = document.getElementById('sideIncomeCategory').value;
   const amount = parseInt(document.getElementById('sideIncomeAmount').value) || 0;
@@ -4687,6 +4783,7 @@ function saveSideIncome() {
   toastSuccess(isEdit ? 'درآمد ویرایش شد.' : 'درآمد جدید ثبت شد.');
 }
 async function deleteSideIncome(incomeId) {
+  if (blockDenied()) return;
   if (!(await appConfirm('⚠️ آیا از حذف این درآمد مطمئن هستید؟'))) return;
 
   let incomes = loadSideIncomes();
@@ -4944,7 +5041,7 @@ function renderPaymentsPage() {
         <td><span class="badge badge-paid">${payMethod}</span></td>
         <td style="color:#64748b; font-size:12.5px;">${description}</td>
         <td>
-          <button class="row-action-btn danger" data-payment-id="${c.id}" title="لغو پرداخت">🔓</button>
+          ${isBlockManager() ? (reviewerLabel(c.approvedBy) ? `<span style="font-size:11px;color:#64748b;">${escapeHtml(reviewerLabel(c.approvedBy))}</span>` : '—') : `<button class="row-action-btn danger" data-payment-id="${c.id}" title="لغو پرداخت">🔓</button>${reviewerLabel(c.approvedBy) ? `<div style="font-size:10.5px;color:#64748b;margin-top:3px;">${escapeHtml(reviewerLabel(c.approvedBy))}</div>` : ''}`}
         </td>
       </tr>
     `;
@@ -5032,6 +5129,7 @@ function updatePaymentsSortIcons() {
 }
 
 async function cancelPayment(chargeId) {
+  if (blockDenied()) return;
   if (!(await appConfirm('⚠️ آیا از لغو این پرداخت مطمئن هستید؟'))) return;
 
   const charges = loadCharges();
@@ -5129,6 +5227,7 @@ function exportPaymentsToExcel() {
 let newPaySelectedCharges = [];
 
 function openNewPaymentModal() {
+  if (blockDenied()) return;
   const modal = document.getElementById('newPaymentModal');
 
   const blockSelect = document.getElementById('newPayBlock');
@@ -5317,6 +5416,7 @@ function newPayDeselectAll() {
 }
 
 async function confirmNewPayment() {
+  if (blockDenied()) return;
   const payDate = document.getElementById('newPayDate')?.value.trim();
   const payMethod = document.getElementById('newPayMethod')?.value || 'نقدی';
   const payDescription = document.getElementById('newPayDescription')?.value.trim() || '';
@@ -5523,6 +5623,7 @@ function renderExpensesPage() {
 }
 
 function openExpenseModal(expenseId = null) {
+  if (blockDenied()) return;
   currentEditExpenseId = expenseId;
 
   const modal = document.getElementById('expenseModal');
@@ -5591,6 +5692,7 @@ function closeExpenseModal() {
 }
 
 function saveExpense() {
+  if (blockDenied()) return;
   const title = document.getElementById('expenseTitle').value.trim();
   const category = document.getElementById('expenseCategory').value;
   const amount = parseInt(document.getElementById('expenseAmount').value) || 0;
@@ -5640,6 +5742,7 @@ function saveExpense() {
 }
 
 async function deleteExpense(expenseId) {
+  if (blockDenied()) return;
   if (!(await appConfirm('⚠️ آیا از حذف این هزینه مطمئن هستید؟'))) return;
 
   let expenses = loadExpenses();
@@ -5905,7 +6008,8 @@ function renderNoticesPage() {
       ? (n.body || '').substring(0, 60) + '...'
       : (n.body || '—');
 
-    const targetLabel = getNoticeTargetLabel(n);
+    let targetLabel = getNoticeTargetLabel(n);
+    if (n.createdBy && reviewerLabel(n.createdBy)) targetLabel += `<div style="font-size:11px;color:#64748b;margin-top:3px;">✍️ ${escapeHtml(reviewerLabel(n.createdBy))}</div>`;
 
     return `
       <tr>
@@ -5980,6 +6084,17 @@ function openNoticeModal() {
 
   noticeSelectedUnits = [];
   noticeImageData = null;
+
+  if (isBlockManager()) {
+    // مدیر بلوک: فقط بلوک خودش یا واحدهای همان بلوک
+    const tt = document.getElementById('noticeTargetType');
+    tt.querySelector('option[value="all"]')?.remove();
+    tt.value = 'block';
+    if (blockSelect) blockSelect.innerHTML = `<option value="${escapeHtml(myBlockName())}">${escapeHtml(myBlockName())}</option>`;
+    if (blockSelect) blockSelect.value = myBlockName();
+    if (unitsBlockSelect) unitsBlockSelect.innerHTML = `<option value="${escapeHtml(myBlockName())}">${escapeHtml(myBlockName())}</option>`;
+    document.getElementById('noticeBlockSection').style.display = '';
+  }
 
   modal.classList.add('open');
 }
@@ -6120,8 +6235,12 @@ function noticeDeselectAllUnits() {
 function saveNotice() {
   const title = document.getElementById('noticeTitle').value.trim();
   const body = document.getElementById('noticeBody').value.trim();
-  const targetType = document.getElementById('noticeTargetType').value;
-  const targetBlock = document.getElementById('noticeBlockSelect').value;
+  let targetType = document.getElementById('noticeTargetType').value;
+  let targetBlock = document.getElementById('noticeBlockSelect').value;
+  if (isBlockManager()) {
+    if (targetType !== 'units') targetType = 'block';
+    targetBlock = myBlockName();
+  }
 
   if (!title) { toastWarning('لطفاً عنوان اطلاعیه را وارد کنید.'); return; }
   if (!body) { toastWarning('لطفاً متن اطلاعیه را وارد کنید.'); return; }
@@ -6157,6 +6276,7 @@ function saveNotice() {
     month: getTodayPersianMonth(),
     year: String(getTodayPersianYear()),
     createdAt: new Date().toISOString(),
+    ...(isBlockManager() ? { createdBy: blockTag() } : {}),
   });
 
   saveNotices(notices);
@@ -6167,6 +6287,10 @@ function saveNotice() {
 }
 
 async function deleteNotice(noticeId) {
+  if (isBlockManager()) {
+    const n = loadNotices().find(x => x.id === noticeId);
+    if (!n || n.createdBy !== blockTag()) { blockDenied('مدیر بلوک فقط اطلاعیه‌هایی را که خودش فرستاده حذف می‌کند.'); return; }
+  }
   if (!(await appConfirm('⚠️ آیا از حذف این اطلاعیه مطمئن هستید؟'))) return;
 
   let notices = loadNotices();
@@ -6629,6 +6753,7 @@ function saveMessage() {
       date: persianDate,
       time: persianTime,
       createdAt: now.toISOString(),
+      ...(isBlockManager() ? { sentBy: blockTag() } : {}),
     });
   });
 
@@ -6726,7 +6851,7 @@ function renderConversationMessages(msgs) {
         }">
           <div style="font-size:13.5px; line-height:1.7; word-wrap:break-word;">${m.body || ''}</div>
           <div style="font-size:10.5px; margin-top:6px; opacity:0.7; text-align:left;">
-            ${m.time || ''} — ${m.date || ''}
+            ${m.sentBy && reviewerLabel(m.sentBy) ? escapeHtml(reviewerLabel(m.sentBy)) + ' · ' : ''}${m.time || ''} — ${m.date || ''}
           </div>
         </div>
       </div>
@@ -6767,6 +6892,7 @@ function sendConversationReply() {
     date: persianDate,
     time: persianTime,
     createdAt: now.toISOString(),
+    ...(isBlockManager() ? { sentBy: blockTag() } : {}),
   });
 
   saveMessages(messages);
@@ -6989,6 +7115,7 @@ function renderVotingPage() {
 }
 
 function openVotingModal() {
+  if (blockDenied()) return;
   const modal = document.getElementById('votingModal');
 
   document.getElementById('votingTitle').value = '';
@@ -7005,6 +7132,7 @@ function openVotingModal() {
 }
 
 function editVoting(votingId) {
+  if (blockDenied()) return;
   const votings = loadVotings();
   const voting = votings.find(v => v.id === votingId);
   if (!voting) return;
@@ -7106,6 +7234,7 @@ function renderVotingCandidates() {
 }
 
 function saveVoting() {
+  if (blockDenied()) return;
   const title = document.getElementById('votingTitle').value.trim();
   const description = document.getElementById('votingDescription').value.trim();
   const startDate = document.getElementById('votingStartDate').value.trim();
@@ -7342,6 +7471,7 @@ function closeVotingResults() {
 }
 
 async function deleteVoting(votingId) {
+  if (blockDenied()) return;
   if (!(await appConfirm('⚠️ آیا از حذف این رأی‌گیری مطمئن هستید؟'))) return;
 
   let votings = loadVotings();
@@ -8117,10 +8247,13 @@ function showSettingsMain() {
   if (el) el.style.display = 'block';
 
   ['settingsBuilding', 'settingsManager', 'settingsPayment', 'settingsFinancial',
-   'settingsAppearance', 'settingsData', 'settingsAbout'].forEach(id => {
+   'settingsAppearance', 'settingsData', 'settingsAbout', 'settingsBlockManagers'].forEach(id => {
     const e = document.getElementById(id);
     if (e) e.style.display = 'none';
   });
+  // کارت «مدیران بلوک» فقط برای مجتمع‌های بلوک‌دار
+  const bmCard = document.querySelector('[data-settings-page="blockManagers"]');
+  if (bmCard) bmCard.style.display = (loadData()?.building?.type === 'complex' && !isBlockManager()) ? '' : 'none';
 }
 
 function showSettingsSubpage(pageKey) {
@@ -8135,6 +8268,7 @@ function showSettingsSubpage(pageKey) {
     appearance: 'settingsAppearance',
     data: 'settingsData',
     about: 'settingsAbout',
+    blockManagers: 'settingsBlockManagers',
   };
 
   Object.values(map).forEach(id => {
@@ -8151,6 +8285,198 @@ function showSettingsSubpage(pageKey) {
   if (pageKey === 'financial') fillFinancialForm();
   if (pageKey === 'appearance') fillAppearanceForm();
   if (pageKey === 'about') fillAboutForm();
+  if (pageKey === 'blockManagers') renderBlockManagersSettings();
+}
+
+/* ============================================================
+   🧩 مدیران بلوک (فقط مدیر کل) — افزودن، ویرایش، رمز تازه، غیرفعال/حذف
+   ============================================================ */
+function getBlockManagersKey() { return getAccountStorageKey('ham_sakhteman_block_managers'); }
+function loadBlockManagers() {
+  try { const v = JSON.parse(localStorage.getItem(getBlockManagersKey()) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+}
+function saveBlockManagers(list) { localStorage.setItem(getBlockManagersKey(), JSON.stringify(list)); }
+function randomBlockPassword() {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let out = '';
+  const rnd = (window.crypto && crypto.getRandomValues) ? crypto.getRandomValues(new Uint32Array(8)) : Array.from({ length: 8 }, () => Math.floor(Math.random() * 1e9));
+  for (let i = 0; i < 8; i++) out += chars[rnd[i] % chars.length];
+  return out;
+}
+
+function renderBlockManagersSettings() {
+  const host = document.getElementById('blockManagersList');
+  if (!host) return;
+  const data = loadData();
+  const blocks = (data?.building?.blocks || []).map(b => String(b.name).trim());
+  const list = loadBlockManagers();
+  if (!list.length) {
+    host.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:28px 10px;font-size:13.5px;line-height:1.9;">
+      هنوز مدیر بلوکی تعریف نشده است.<br><span style="font-size:12.5px;">مدیر بلوک فقط واحدها و شارژهای بلوک خودش را می‌بیند، اعلام پرداخت‌ها و ثبت‌نام‌های همان بلوک را بررسی می‌کند و به همان بلوک اطلاعیه و پیام می‌فرستد. همه پرداخت‌ها همچنان به کارت شما واریز می‌شود.</span></div>`;
+    return;
+  }
+  const byBlock = {};
+  list.forEach(m => { (byBlock[m.block] = byBlock[m.block] || []).push(m); });
+  const order = blocks.concat(Object.keys(byBlock).filter(b => !blocks.includes(b)));
+  host.innerHTML = order.filter(b => byBlock[b]).map(b => `
+    <div style="margin-bottom:14px;">
+      <div style="font-weight:800;color:#4338ca;margin-bottom:8px;">🏢 بلوک ${escapeHtml(b)}${blocks.includes(b) ? '' : ' <span style="color:#b91c1c;font-size:12px;">(این بلوک دیگر در ساختمان نیست)</span>'}</div>
+      ${byBlock[b].map(m => `
+        <div class="bm-row" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:${m.active === false ? '#f8fafc' : '#fff'};border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin-bottom:8px;${m.active === false ? 'opacity:.7;' : ''}">
+          <div style="font-size:13px;color:#334155;min-width:0;">
+            <strong>${escapeHtml(m.name || '')}</strong> — <span dir="ltr">${escapeHtml(m.phone || '')}</span>
+            ${m.active === false ? '<span class="badge" style="background:#fee2e2;color:#b91c1c;margin-right:6px;">غیرفعال</span>' : '<span class="badge badge-paid" style="margin-right:6px;">فعال</span>'}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary" data-bm-edit="${m.id}" style="padding:6px 10px;font-size:12.5px;">✏️ ویرایش</button>
+            <button type="button" class="btn btn-secondary" data-bm-reset="${m.id}" style="padding:6px 10px;font-size:12.5px;">🔑 رمز تازه</button>
+            <button type="button" class="btn btn-secondary" data-bm-toggle="${m.id}" style="padding:6px 10px;font-size:12.5px;">${m.active === false ? '▶️ فعال' : '⏸ غیرفعال'}</button>
+            <button type="button" class="btn btn-danger" data-bm-delete="${m.id}" style="padding:6px 10px;font-size:12.5px;">🗑️</button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+  host.querySelectorAll('[data-bm-edit]').forEach(b => b.addEventListener('click', () => openBlockManagerForm(Number(b.dataset.bmEdit))));
+  host.querySelectorAll('[data-bm-reset]').forEach(b => b.addEventListener('click', () => resetBlockManagerPassword(Number(b.dataset.bmReset))));
+  host.querySelectorAll('[data-bm-toggle]').forEach(b => b.addEventListener('click', () => toggleBlockManager(Number(b.dataset.bmToggle))));
+  host.querySelectorAll('[data-bm-delete]').forEach(b => b.addEventListener('click', () => deleteBlockManager(Number(b.dataset.bmDelete))));
+}
+
+function showBlockManagerCredentials(m, pass, title) {
+  const code = loadData()?.building?.code || '—';
+  return appAlert(`${title}\n\nکد ساختمان: ${code}\nموبایل: ${m.phone}\nرمز: ${pass}\n\nاین رمز فقط همین یک بار نمایش داده می‌شود؛ آن را به ${m.name} بدهید. ورود از صفحه ورود ← «مدیر بلوک».`, { okText: 'یادداشت کردم' });
+}
+
+function openBlockManagerForm(editId) {
+  if (blockDenied()) return;
+  const data = loadData();
+  const blocks = (data?.building?.blocks || []).map(b => String(b.name).trim()).filter(Boolean);
+  if (!blocks.length) { toastWarning('این ساختمان بلوک ندارد.'); return; }
+  const list = loadBlockManagers();
+  const m = editId ? list.find(x => Number(x.id) === Number(editId)) : null;
+  const pass0 = m ? '' : randomBlockPassword();
+  const ov = document.createElement('div');
+  ov.className = 'app-dialog-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = `<div style="background:#fff;border-radius:18px;max-width:420px;width:100%;max-height:92vh;overflow:auto;padding:18px;direction:rtl;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><strong style="font-size:16px;">🧩 ${m ? 'ویرایش مدیر بلوک' : 'مدیر بلوک تازه'}</strong><button type="button" data-close style="border:none;background:#f1f5f9;border-radius:10px;padding:6px 12px;cursor:pointer;font-family:inherit;">✖</button></div>
+    <div class="form-group"><label>نام و نام خانوادگی</label><input type="text" data-f="name" class="form-input" value="${escapeHtml(m?.name || '')}" placeholder="مثلاً: رضا محمدی"></div>
+    <div class="form-group"><label>شماره موبایل (برای ورود)</label><input type="tel" data-f="phone" class="form-input" dir="ltr" maxlength="11" value="${escapeHtml(m?.phone || '')}" placeholder="09121234567"></div>
+    <div class="form-group"><label>بلوک</label><select data-f="block" class="form-input">${blocks.map(b => `<option value="${escapeHtml(b)}" ${m && m.block === b ? 'selected' : ''}>${escapeHtml(b)}</option>`).join('')}</select></div>
+    ${m ? '' : `<div class="form-group"><label>رمز ورود (قابل تغییر، حداقل ۶ کاراکتر)</label><input type="text" data-f="pass" class="form-input" dir="ltr" value="${pass0}"></div>`}
+    <div data-err style="color:#ef4444;font-size:12.5px;font-weight:600;min-height:18px;margin-bottom:6px;"></div>
+    <button type="button" data-save class="btn btn-primary" style="width:100%;padding:11px;">💾 ذخیره</button>
+  </div>`;
+  const f = k => ov.querySelector(`[data-f="${k}"]`);
+  ov.addEventListener('click', async (e) => {
+    if (e.target === ov || e.target.closest('[data-close]')) { ov.remove(); return; }
+    if (!e.target.closest('[data-save]')) return;
+    const err = ov.querySelector('[data-err]');
+    const name = f('name').value.trim();
+    const phone = normalizePhone(f('phone').value);
+    const block = f('block').value;
+    const pass = m ? '' : String(f('pass').value || '').trim();
+    if (!name) { err.textContent = 'نام را وارد کنید.'; return; }
+    if (!isValidIranMobile(phone)) { err.textContent = 'شماره موبایل معتبر نیست.'; return; }
+    if (!m && pass.length < 6) { err.textContent = 'رمز باید حداقل ۶ کاراکتر باشد.'; return; }
+    const cur = loadBlockManagers();
+    if (cur.some(x => normalizePhone(x.phone) === phone && Number(x.id) !== Number(editId))) { err.textContent = 'این شماره قبلاً به‌عنوان مدیر بلوک ثبت شده است.'; return; }
+    const now = new Date().toISOString();
+    if (m) {
+      const row = cur.find(x => Number(x.id) === Number(editId));
+      if (!row) { ov.remove(); return; }
+      Object.assign(row, { name, phone, block, updatedAt: now });
+      saveBlockManagers(cur);
+      ov.remove();
+      renderBlockManagersSettings();
+      toastSuccess('اطلاعات مدیر بلوک ذخیره شد.');
+    } else {
+      const row = { id: Math.max(Date.now(), ...cur.map(x => Number(x.id) || 0)) + 1, name, phone, block, active: true,
+        passwordHash: hashBlockPasswordLocal(pass), passSetAt: now, createdAt: now };
+      cur.push(row);
+      saveBlockManagers(cur);
+      ov.remove();
+      renderBlockManagersSettings();
+      await showBlockManagerCredentials(row, pass, `✅ مدیر بلوک «${name}» برای بلوک ${block} ساخته شد.`);
+    }
+  });
+  document.body.appendChild(ov);
+  setTimeout(() => f('name')?.focus(), 30);
+}
+
+async function resetBlockManagerPassword(id) {
+  const list = loadBlockManagers();
+  const m = list.find(x => Number(x.id) === Number(id));
+  if (!m) return;
+  if (!(await appConfirm(`برای «${m.name}» رمز تازه ساخته شود؟\n\nرمز قبلی دیگر کار نمی‌کند و او از پنل خارج می‌شود.`))) return;
+  const pass = randomBlockPassword();
+  m.passwordHash = hashBlockPasswordLocal(pass);
+  m.passSetAt = new Date().toISOString();
+  saveBlockManagers(list);
+  renderBlockManagersSettings();
+  await showBlockManagerCredentials(m, pass, `🔑 رمز تازه «${m.name}»`);
+}
+
+async function toggleBlockManager(id) {
+  const list = loadBlockManagers();
+  const m = list.find(x => Number(x.id) === Number(id));
+  if (!m) return;
+  const disable = m.active !== false;
+  if (disable && !(await appConfirm(`دسترسی «${m.name}» غیرفعال شود؟\n\nتا وقتی دوباره فعالش نکنید نمی‌تواند وارد شود.`))) return;
+  m.active = !disable;
+  m.updatedAt = new Date().toISOString();
+  saveBlockManagers(list);
+  renderBlockManagersSettings();
+  toastSuccess(disable ? 'مدیر بلوک غیرفعال شد.' : 'مدیر بلوک دوباره فعال شد.');
+}
+
+async function deleteBlockManager(id) {
+  const list = loadBlockManagers();
+  const m = list.find(x => Number(x.id) === Number(id));
+  if (!m) return;
+  if (!(await appConfirm(`مدیر بلوک «${m.name}» حذف شود؟\n\nتأییدهایی که قبلاً انجام داده در سوابق می‌ماند.`))) return;
+  saveBlockManagers(list.filter(x => Number(x.id) !== Number(id)));
+  renderBlockManagersSettings();
+  toastSuccess('مدیر بلوک حذف شد.');
+}
+
+/** خروج مدیر بلوک: داده‌های بلوک از دستگاه پاک می‌شود */
+function blockManagerLogout(message) {
+  try { if (window.AptSync && window.AptSync.blockLogout) window.AptSync.blockLogout(); else localStorage.removeItem('ham_sakhteman_block_session'); } catch (e) {}
+  localStorage.removeItem('ham_sakhteman_block_session');
+  if (message) { try { sessionStorage.setItem('apt_login_notice', message); } catch (e) {} }
+  window.location.href = 'login.html';
+}
+
+/** ظاهر پنل در حالت مدیر بلوک: منوها و دکمه‌های ممنوع پنهان */
+function applyBlockManagerMode() {
+  if (!isBlockManager()) return;
+  document.body.classList.add('block-mode');
+  document.documentElement.classList.add('block-mode');
+  const hide = el => { if (el) el.style.setProperty('display', 'none', 'important'); };
+  document.querySelectorAll('#menu li[data-page]').forEach(li => {
+    if (!BLOCK_ALLOWED_PAGES.includes(li.dataset.page)) hide(li);
+  });
+  ['upgradeBox', 'btnIssueCharge', 'btnAddUnit', 'btnAddPayment', 'detailEditBtn'].forEach(id => hide(document.getElementById(id)));
+  document.querySelectorAll('[data-profile-action="profile"], [data-profile-action="settings"], [data-profile-action="backup"]').forEach(hide);
+  ['statBalance', 'statExpense'].forEach(id => hide(document.getElementById(id)?.closest('.stat-card')));
+  // کارت «تعداد بلوک‌ها» برای مدیر بلوک = اعلام پرداخت‌های در انتظار بررسی
+  const blkCard = document.getElementById('statBlocks')?.closest('.stat-card');
+  if (blkCard) { const l = blkCard.querySelector('.stat-label'); if (l) l.textContent = 'پرداخت در انتظار تأیید'; const ic = blkCard.querySelector('.stat-icon'); if (ic) ic.textContent = '⏳'; }
+  const chNav = document.querySelector('#menu li[data-page="charges"] .nav-text'); if (chNav) chNav.textContent = 'شارژ و تأیید پرداخت';
+  const incLbl = document.getElementById('statIncome')?.parentElement?.querySelector('.stat-label');
+  if (incLbl) incLbl.textContent = 'دریافتی این ماه (شارژ بلوک)';
+  // پیام: «همه ساکنین» = همه واحدهای همین بلوک؛ انتخاب بلوک دیگر ندارد
+  const mt = document.getElementById('messageTargetType');
+  if (mt) { mt.querySelector('option[value="block"]')?.remove(); const all = mt.querySelector('option[value="all"]'); if (all) all.textContent = '🌐 همه ساکنین بلوک ' + myBlockName(); }
+  currentBlockFilter = myBlockName();
+  const sub = document.getElementById('pageSubtitle');
+  if (sub) sub.dataset.block = myBlockName();
+  window.addEventListener('apt-block-revoked', async () => {
+    if (window._blockRevokedShown) return;
+    window._blockRevokedShown = true;
+    await appAlert('دسترسی شما به پنل مدیر بلوک غیرفعال شده یا رمزتان عوض شده است.\n\nبرای ادامه با مدیر ساختمان تماس بگیرید.');
+    blockManagerLogout();
+  });
 }
 
 function fillBuildingForm() {
@@ -8163,6 +8489,7 @@ function fillBuildingForm() {
 }
 
 function saveBuildingSettings() {
+  if (blockDenied()) return;
   const data = loadData();
   if (!data?.building) return;
 
@@ -8190,6 +8517,7 @@ function fillManagerForm() {
 }
 
 function saveManagerSettings() {
+  if (blockDenied()) return;
   const data = loadData() || { building: {}, manager: {} };
 
   const name = document.getElementById('setManagerName').value.trim();
@@ -8218,6 +8546,7 @@ function fillPaymentForm() {
 }
 
 function savePaymentSettings() {
+  if (blockDenied()) return;
   const settings = loadSettings();
 
   settings.managerCard = document.getElementById('setManagerCard').value.trim();
@@ -8241,6 +8570,7 @@ function fillFinancialForm() {
 }
 
 function saveFinancialSettings() {
+  if (blockDenied()) return;
   const settings = loadSettings();
 
   // ✅ خالی = خالی (قبلاً بی‌صدا ۵۰۰٬۰۰۰ و ۱۰ ذخیره می‌شد)
@@ -8314,6 +8644,7 @@ function getAccountDataKeys() {
 }
 
 function downloadBackup() {
+  if (blockDenied()) return;
   // ✅ اصلاح: داده‌ها با کلید per-account ذخیره می‌شوند؛ نسخه قبلی کلیدهای بدون scope را
   // می‌خواند و فایل پشتیبان عملاً خالی بود.
   const keys = getAccountDataKeys();
@@ -8342,6 +8673,7 @@ function downloadBackup() {
 }
 
 function uploadBackup(file) {
+  if (blockDenied()) return;
   if (!file) return;
 
   const reader = new FileReader();
@@ -8380,6 +8712,7 @@ function uploadBackup(file) {
 }
 
 async function resetAllData() {
+  if (blockDenied()) return;
   if (!(await appConfirm('⚠️ هشدار: تمام داده‌های این ساختمان پاک می‌شوند!\n\nآیا مطمئن هستید؟'))) return;
   if (!(await appConfirm('⚠️ آیا واقعاً مطمئن هستید؟ این کار قابل بازگشت نیست.'))) return;
 
@@ -8555,6 +8888,8 @@ function init() {
   bindProfilePage();
   bindUpgradeModal();
   initNotificationsAndProfile();
+  document.getElementById('btnAddBlockManager')?.addEventListener('click', () => openBlockManagerForm(null));
+  applyBlockManagerMode();
 
   updateSidebarLockStates();
 
@@ -8869,6 +9204,17 @@ function renderProfile() {
   if (elAvatarLg) elAvatarLg.textContent = initial;
   if (elMenuName) elMenuName.textContent = managerName;
   if (elMenuPhone) elMenuPhone.textContent = managerPhone;
+  if (isBlockManager()) {
+    const bs = blockSession();
+    const nm = bs.name || 'مدیر بلوک';
+    const ini = nm.charAt(0) || 'ب';
+    if (elAvatar) elAvatar.textContent = ini;
+    if (elAvatarLg) elAvatarLg.textContent = ini;
+    if (elName) elName.textContent = nm;
+    if (elRole) elRole.textContent = 'مدیر بلوک ' + myBlockName();
+    if (elMenuName) elMenuName.textContent = nm + ' — مدیر بلوک ' + myBlockName();
+    if (elMenuPhone) elMenuPhone.textContent = bs.phone || '—';
+  }
 
   const settings = loadSettings();
   const themeIcon = document.getElementById('themeIcon');
@@ -8941,6 +9287,11 @@ function bindProfile() {
 }
 
 async function handleLogout() {
+  if (isBlockManager()) {
+    if (!(await appConfirm('⚠️ از پنل مدیر بلوک خارج می‌شوید؟\n\nاطلاعات بلوک از این دستگاه پاک می‌شود و دوباره از سرور گرفته می‌شود.'))) return;
+    blockManagerLogout();
+    return;
+  }
   if (!(await appConfirm('⚠️ آیا از خروج از پنل مطمئن هستید؟\n\nداده‌ها پاک نمی‌شوند.'))) {
     return;
   }
@@ -9147,6 +9498,7 @@ function fillProfileBuildingInfo(data) {
 }
 
 function saveProfileInfo() {
+  if (blockDenied()) return;
   const fullName = document.getElementById('profileFullName')?.value.trim();
   const phone = document.getElementById('profilePhone')?.value.trim();
   const email = document.getElementById('profileEmail')?.value.trim();
@@ -9240,6 +9592,7 @@ function bindPasswordStrength() {
 }
 
 function changePassword() {
+  if (blockDenied()) return;
   const currentPass = document.getElementById('currentPassword')?.value || '';
   const newPass = document.getElementById('newPassword')?.value || '';
   const confirmPass = document.getElementById('confirmPassword')?.value || '';
@@ -9390,6 +9743,7 @@ function renderProfileActivity() {
 }
 
 async function deleteAccount() {
+  if (blockDenied()) return;
   if (!(await appConfirm('⚠️ هشدار: تمام اطلاعات برای همیشه پاک می‌شوند!'))) return;
   if (!(await appConfirm('⚠️ آیا واقعاً مطمئن هستید؟ این کار قابل بازگشت نیست.'))) return;
 

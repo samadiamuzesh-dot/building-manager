@@ -70,7 +70,8 @@
 
     .login-tab {
       flex: 1;
-      padding: 11px 14px;
+      padding: 11px 6px;
+      white-space: nowrap;
       border: none;
       background: transparent;
       border-radius: 9px;
@@ -225,6 +226,7 @@
       <!-- تب‌ها -->
       <div class="login-tabs">
         <button class="login-tab active" data-login-tab="login">🔑 ورود</button>
+        <button class="login-tab" data-login-tab="block">🧩 مدیر بلوک</button>
         <button class="login-tab" data-login-tab="signup">✨ ثبت‌نام</button>
       </div>
 
@@ -257,6 +259,28 @@
         </p>
       </div>
 
+      <!-- تب ورود مدیر بلوک -->
+      <div class="login-tab-content" data-login-tab-content="block">
+        <p style="font-size:12.5px;color:#64748b;line-height:1.8;margin:-6px 0 14px;">مدیر بلوک با کد ساختمان، شماره موبایل و رمزی که مدیر ساختمان برایش ساخته وارد می‌شود.</p>
+        <div class="form-group">
+          <label for="blockLoginCode">🏢 کد ساختمان</label>
+          <input type="text" id="blockLoginCode" class="form-input" placeholder="مثلاً C-123456" dir="ltr" autocomplete="organization" />
+        </div>
+        <div class="form-group">
+          <label for="blockLoginPhone">📱 شماره موبایل</label>
+          <input type="tel" id="blockLoginPhone" class="form-input" placeholder="۰۹۱۲۱۲۳۴۵۶۷" maxlength="11" dir="ltr" autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label for="blockLoginPassword">🔒 رمز عبور</label>
+          <div class="show-pass-wrapper">
+            <input type="password" id="blockLoginPassword" class="form-input" placeholder="••••••••" style="padding-left: 40px;" autocomplete="current-password" />
+            <button type="button" class="show-pass-btn" data-toggle-pass="blockLoginPassword">👁️</button>
+          </div>
+        </div>
+        <div class="login-error-msg" id="blockLoginError" style="margin:-4px 0 8px;"></div>
+        <button class="login-submit-btn" id="btnBlockLoginSubmit">🚀 ورود مدیر بلوک</button>
+      </div>
+
       <!-- تب ثبت‌نام (فقط متن راهنما) -->
       <div class="login-tab-content" data-login-tab-content="signup">
         <div style="text-align: center; padding: 20px 0;">
@@ -286,8 +310,8 @@
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="js/sync.js?v=3"></script>
+  <script src="js/sync.js?v=5"></script>
   <script src="js/plans.js?v=3"></script>
-  <script src="js/auth.js?v=3"></script>
+  <script src="js/auth.js?v=4"></script>
 </body>
 </html>

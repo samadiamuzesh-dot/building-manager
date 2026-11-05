@@ -13,8 +13,15 @@ class Apt_Sync_Error extends Exception {
 if (!class_exists('Apt_Sync_Core')) {
 class Apt_Sync_Core {
 	const BASES = array('v3', 'units', 'charges', 'expenses', 'messages', 'notices', 'notifications',
-		'settings', 'side_incomes', 'tickets', 'votings', 'plan', 'registered_residents');
+		'settings', 'side_incomes', 'tickets', 'votings', 'plan', 'registered_residents', 'block_managers');
 	const RESIDENT_WRITABLE = array('units', 'charges', 'messages', 'notifications', 'votings', 'tickets', 'registered_residents');
+	/** مدیر بلوک (نسخه ۱.۲) فقط این کلیدها را می‌نویسد، آن هم فقط برای بلوک خودش */
+	const BLOCK_WRITABLE = array('units', 'charges', 'messages', 'notices', 'registered_residents');
+	/** فیلدهایی که مدیر بلوک هنگام تأیید/رد اعلام پرداخت تغییر می‌دهد (مبلغ هرگز) */
+	const BLOCK_REVIEW_FIELDS = array('paid', 'paidDate', 'paidAt', 'pendingApproval', 'pendingAt', 'payMethod', 'payDescription', 'trackingCode',
+		'paidByResident', 'receipt', 'receiptImage', 'receiptArchived', 'residentNote', 'rejectReason', 'rejectedAt', 'lastRejectedTracking',
+		'approvedByManager', 'approvedAt');
+	const SECRET_BASES = array('registered_residents', 'block_managers');
 	const TOKEN_TTL = 5184000000; // ۶۰ روز (میلی‌ثانیه)
 	const PAY_FIELDS = array('pendingApproval', 'pendingAt', 'payMethod', 'payDescription', 'trackingCode', 'paidByResident',
 		'receipt', 'receiptImage', 'residentNote', 'rejectReason', 'rejectedAt');
@@ -86,7 +93,7 @@ class Apt_Sync_Core {
 	public static function filterOut($base, $v, $id) {
 		if ($v === null) return null;
 		$list = json_decode((string) $v, true);
-		if (in_array($base, array('tickets'), true)) return '[]';
+		if (in_array($base, array('tickets', 'block_managers'), true)) return '[]';
 		if (!self::isList($list)) return $v;
 		$own = array_flip($id['unitIds']);
 		$out = array();
@@ -313,14 +320,14 @@ class Apt_Sync_Core {
 	private static function regApproved($id) { return !empty($id['approved']); }
 
 	public static function stripSecrets($base, $v) {
-		if ($base !== 'registered_residents' || $v === null) return $v;
+		if (!in_array($base, self::SECRET_BASES, true) || $v === null) return $v;
 		$list = json_decode((string) $v, true);
 		if (!self::isList($list)) return $v;
 		foreach ($list as &$r) if (is_array($r)) { unset($r['password'], $r['passwordHash']); }
 		return self::enc($list);
 	}
 	public static function keepSecrets($base, $incoming, $current) {
-		if ($base !== 'registered_residents' || $incoming === null) return $incoming;
+		if (!in_array($base, self::SECRET_BASES, true) || $incoming === null) return $incoming;
 		$inc = json_decode((string) $incoming, true);
 		if (!self::isList($inc)) return $incoming;
 		$byId = self::byIdMap(self::jlist($current));
@@ -347,6 +354,231 @@ class Apt_Sync_Core {
 		}
 		if ($h & 0x80000000) $h -= 0x100000000;
 		return 'rh_' . base_convert((string) abs($h), 10, 36);
+	}
+
+	/* ---------- مدیر بلوک (نسخه ۱.۲) ----------
+	 * مدیر کل در کلید block_managers ردیف {id, name, phone, block, passwordHash, active} می‌سازد.
+	 * مدیر بلوک با کد ساختمان + موبایل + رمز وارد می‌شود و توکن ro=b می‌گیرد که فقط به بلوک خودش دسترسی دارد.
+	 */
+	private static function passVer($hash) { return substr(hash('sha256', (string) $hash), 0, 12); }
+	private static function bmActive($m) { return is_array($m) && (!array_key_exists('active', $m) || $m['active'] !== false); }
+
+	/** هویت مدیر بلوک از توکن + داده فعلی؛ null یعنی دسترسی ندارد */
+	public static function bident($t, $all) {
+		if (empty($t['bid'])) return null;
+		$list = isset($all['block_managers']) ? self::jlist($all['block_managers']['v']) : array();
+		$me = null;
+		foreach ($list as $m) if (is_array($m) && isset($m['id']) && (string) $m['id'] === (string) $t['bid']) { $me = $m; break; }
+		if (!$me || !self::bmActive($me)) return null;
+		if (!isset($t['pv']) || self::passVer(isset($me['passwordHash']) ? $me['passwordHash'] : '') !== $t['pv']) return null;
+		$block = self::blockKey(isset($me['block']) ? $me['block'] : '');
+		if ($block === '—') return null;
+		$ids = array();
+		$units = isset($all['units']) ? self::jlist($all['units']['v']) : array();
+		foreach ($units as $u) if (is_array($u) && isset($u['id']) && self::blockKey(isset($u['block']) ? $u['block'] : '') === $block) $ids[] = (string) $u['id'];
+		return array('bid' => (string) $me['id'], 'name' => (string) (isset($me['name']) ? $me['name'] : ''), 'block' => $block, 'unitIds' => $ids,
+			'tag' => 'block:' . (string) (isset($me['name']) ? $me['name'] : $me['id']));
+	}
+
+	private static function noticeInBlock($n, $bi) {
+		if (!is_array($n)) return false;
+		$tt = isset($n['targetType']) ? $n['targetType'] : 'all';
+		if ($tt === 'block') return self::blockKey(isset($n['targetBlock']) ? $n['targetBlock'] : '') === $bi['block'];
+		if ($tt === 'units') {
+			$own = array_flip($bi['unitIds']); $tu = isset($n['targetUnits']) && is_array($n['targetUnits']) ? $n['targetUnits'] : array();
+			if (!$tu) return false;
+			foreach ($tu as $x) if (!isset($own[(string) $x])) return false;
+			return true;
+		}
+		return false;
+	}
+
+	/** آنچه مدیر بلوک از سرور می‌بیند: فقط بلوک خودش، بدون هزینه/درآمد/کارت */
+	public static function blockFilterOut($base, $v, $bi) {
+		if ($v === null) return null;
+		if (in_array($base, array('expenses', 'side_incomes', 'tickets', 'votings', 'notifications'), true)) return '[]';
+		$list = json_decode((string) $v, true);
+		if ($base === 'settings') {
+			if (!is_array($list) || self::isList($list)) return $v;
+			foreach (array_keys($list) as $k) if (preg_match('/card|sheba|iban|account/i', $k)) unset($list[$k]);
+			return self::enc((object) $list);
+		}
+		if (!self::isList($list)) return $v;
+		$own = array_flip($bi['unitIds']);
+		$out = array();
+		switch ($base) {
+			case 'units':
+				foreach ($list as $u) if (is_array($u) && isset($u['id']) && isset($own[(string) $u['id']])) $out[] = $u;
+				break;
+			case 'charges':
+			case 'messages':
+				foreach ($list as $c) if (is_array($c) && isset($c['unitId']) && isset($own[(string) $c['unitId']])) $out[] = $c;
+				break;
+			case 'registered_residents':
+				foreach ($list as $r) if (is_array($r) && self::blockKey(isset($r['block']) ? $r['block'] : '') === $bi['block']) $out[] = $r;
+				break;
+			case 'notices':
+				foreach ($list as $n) {
+					if (!is_array($n)) continue;
+					$tt = isset($n['targetType']) ? $n['targetType'] : 'all';
+					if ($tt === 'all' || self::noticeInBlock($n, $bi)) { $out[] = $n; continue; }
+					if ($tt === 'units' && isset($n['targetUnits']) && is_array($n['targetUnits'])) {
+						foreach ($n['targetUnits'] as $x) if (isset($own[(string) $x])) { $out[] = $n; break; }
+					}
+				}
+				break;
+			case 'block_managers':
+				foreach ($list as $m) if (is_array($m) && isset($m['id']) && (string) $m['id'] === $bi['bid']) $out[] = $m;
+				break;
+			default: return $v;
+		}
+		return self::enc($out);
+	}
+
+	/** محدودکردن نوشتن مدیر بلوک روی سرور */
+	public static function blockGuard($base, $incoming, $current, $bi) {
+		if ($incoming === null) return $current;
+		$inc = json_decode((string) $incoming, true);
+		if (!self::isList($inc)) return $current;
+		$curList = self::jlist($current);
+		$byId = self::byIdMap($curList);
+		$own = array_flip($bi['unitIds']);
+		$repl = array(); $add = array(); $drop = array();
+		$now = gmdate('Y-m-d\TH:i:s\Z');
+		switch ($base) {
+			case 'charges':
+				foreach ($inc as $c) {
+					if (!is_array($c) || !isset($c['id'])) continue;
+					$k = (string) $c['id'];
+					if (!isset($byId[$k])) continue; // صدور شارژ ممنوع
+					$o = $byId[$k];
+					if (!isset($own[(string) (isset($o['unitId']) ? $o['unitId'] : '')])) continue;
+					if (!empty($o['paid']) || empty($o['pendingApproval'])) continue; // فقط بررسی اعلام پرداخت
+					$n = $o;
+					foreach (self::BLOCK_REVIEW_FIELDS as $f) { if (array_key_exists($f, $c)) $n[$f] = $c[$f]; }
+					if (!empty($c['paid'])) {
+						$n['paid'] = true; $n['pendingApproval'] = false; $n['approvedByManager'] = true;
+						$n['approvedBy'] = $bi['tag']; if (empty($n['approvedAt'])) $n['approvedAt'] = $now;
+					} elseif (empty($c['pendingApproval'])) {
+						$n['paid'] = false; $n['pendingApproval'] = false; $n['rejectedBy'] = $bi['tag'];
+						if (empty($n['rejectedAt'])) $n['rejectedAt'] = $now;
+					} else continue;
+					$repl[$k] = $n;
+				}
+				break;
+			case 'units':
+				// فقط تأیید/پاک کردن ساکن (owner/tenant) در واحدهای همین بلوک؛ مبلغ شارژ، بدهی و مشخصات واحد نه
+				foreach ($inc as $u) {
+					if (!is_array($u) || !isset($u['id'])) continue;
+					$k = (string) $u['id'];
+					if (!isset($byId[$k]) || !isset($own[$k])) continue;
+					$o = $byId[$k]; $n = $o; $ch = false;
+					foreach (array('owner', 'tenant') as $slot) {
+						if (!isset($u[$slot]) || !is_array($u[$slot])) continue;
+						$os = isset($o[$slot]) && is_array($o[$slot]) ? $o[$slot] : array();
+						$ns = $u[$slot];
+						$samePerson = self::normPhone(isset($os['phone']) ? $os['phone'] : '') === self::normPhone(isset($ns['phone']) ? $ns['phone'] : '')
+							&& (string) (isset($os['name']) ? $os['name'] : '') === (string) (isset($ns['name']) ? $ns['name'] : '');
+						$cleared = empty($ns['name']) && empty($ns['phone']);
+						if ($samePerson && !empty($os['phone'])) {
+							$ap = !empty($ns['approved']);
+							if ($ap !== !empty($os['approved'])) { $n[$slot]['approved'] = $ap; $ch = true; }
+						} elseif ($cleared && (!empty($os['name']) || !empty($os['phone']))) {
+							$n[$slot] = array('name' => null, 'phone' => null, 'birthDate' => null, 'nationalId' => null, 'type' => 'settled', 'registered' => false, 'approved' => false);
+							$ch = true;
+						}
+					}
+					if ($ch) $repl[$k] = $n;
+				}
+				break;
+			case 'registered_residents':
+				foreach ($inc as $r) {
+					if (!is_array($r) || !isset($r['id'])) continue;
+					$k = (string) $r['id'];
+					if (!isset($byId[$k])) continue;
+					$o = $byId[$k];
+					if (self::blockKey(isset($o['block']) ? $o['block'] : '') !== $bi['block']) continue;
+					if ((isset($o['status']) ? $o['status'] : '') !== 'pending') continue;
+					$st = isset($r['status']) ? $r['status'] : '';
+					if ($st !== 'approved' && $st !== 'rejected') continue;
+					$o['status'] = $st; $o['reviewedAt'] = isset($r['reviewedAt']) ? (string) $r['reviewedAt'] : $now; $o['reviewedBy'] = $bi['tag'];
+					$repl[$k] = $o;
+				}
+				break;
+			case 'messages':
+				foreach ($inc as $m) {
+					if (!is_array($m) || !isset($m['id'])) continue;
+					$k = (string) $m['id'];
+					if (isset($byId[$k])) {
+						$o = $byId[$k];
+						if (!isset($own[(string) (isset($o['unitId']) ? $o['unitId'] : '')])) continue;
+						$dir = isset($o['direction']) ? $o['direction'] : '';
+						if ($dir === 'received' && array_key_exists('read', $m) && (bool) $m['read'] !== !empty($o['read'])) { $o['read'] = (bool) $m['read']; $repl[$k] = $o; }
+					} elseif (isset($m['unitId']) && isset($own[(string) $m['unitId']]) && (isset($m['direction']) ? $m['direction'] : '') === 'sent' && count($add) < 200) {
+						if (isset($m['body'])) $m['body'] = mb_substr((string) $m['body'], 0, 4000);
+						$m['sentBy'] = $bi['tag'];
+						$add[] = $m;
+					}
+				}
+				break;
+			case 'notices':
+				$incIds = array();
+				foreach ($inc as $n) {
+					if (!is_array($n) || !isset($n['id'])) continue;
+					$k = (string) $n['id']; $incIds[$k] = 1;
+					if (isset($byId[$k])) {
+						$o = $byId[$k];
+						if ((isset($o['_by']) ? $o['_by'] : '') !== 'b:' . $bi['bid'] || !self::noticeInBlock($n, $bi)) continue;
+						$n['_by'] = $o['_by']; $n['createdBy'] = $bi['tag'];
+						if ($n !== $o) $repl[$k] = $n;
+					} elseif (self::noticeInBlock($n, $bi) && count($add) < 20) {
+						$n['_by'] = 'b:' . $bi['bid']; $n['createdBy'] = $bi['tag'];
+						foreach (array('title', 'body') as $f) if (isset($n[$f])) $n[$f] = mb_substr((string) $n[$f], 0, $f === 'title' ? 300 : 8000);
+						$add[] = $n;
+					}
+				}
+				// حذف: فقط اطلاعیه‌هایی که خود همین مدیر بلوک فرستاده
+				foreach ($curList as $o) if (is_array($o) && isset($o['id']) && !isset($incIds[(string) $o['id']]) && (isset($o['_by']) ? $o['_by'] : '') === 'b:' . $bi['bid']) $drop[(string) $o['id']] = 1;
+				break;
+			default:
+				return $current;
+		}
+		if (!$repl && !$add && !$drop) return $current;
+		$out = array();
+		foreach ($curList as $x) {
+			$k = is_array($x) && isset($x['id']) ? (string) $x['id'] : null;
+			if ($k !== null && isset($drop[$k])) continue;
+			$out[] = ($k !== null && isset($repl[$k])) ? $repl[$k] : $x;
+		}
+		foreach ($add as $x) $out[] = $x;
+		return self::enc($out);
+	}
+
+	private function blockLogin($b) {
+		$code = self::normCode(isset($b['code']) ? $b['code'] : '');
+		$bp = self::normPhone(isset($b['blockPhone']) ? $b['blockPhone'] : '');
+		$pass = (string) (isset($b['passHash']) ? $b['passHash'] : '');
+		if ($code === '' || strlen($bp) < 10 || $pass === '') throw new Apt_Sync_Error(400, 'bad_request');
+		$this->rateLimit('b:' . $code . ':' . $bp, 20, 900);
+		$phone = $this->s->codeOwner($code);
+		if (!$phone) throw new Apt_Sync_Error(404, 'not_found');
+		$rec = $this->s->getKey($phone, 'block_managers');
+		$found = null; $disabled = false;
+		foreach (($rec ? self::jlist($rec['v']) : array()) as $m) {
+			if (!is_array($m) || self::normPhone(isset($m['phone']) ? $m['phone'] : '') !== $bp) continue;
+			$h = isset($m['passwordHash']) ? (string) $m['passwordHash'] : '';
+			if ($h === '' || !(self::isBcrypt($h) ? password_verify($pass, $h) : hash_equals($h, $pass))) continue;
+			if (!self::bmActive($m)) { $disabled = true; continue; }
+			$found = $m; break;
+		}
+		if (!$found) {
+			if ($disabled) throw new Apt_Sync_Error(403, 'disabled');
+			$any = false; foreach (($rec ? self::jlist($rec['v']) : array()) as $m) if (is_array($m) && self::normPhone(isset($m['phone']) ? $m['phone'] : '') === $bp) $any = true;
+			throw new Apt_Sync_Error($any ? 401 : 404, $any ? 'bad_password' : 'block_manager_not_found');
+		}
+		$tok = $this->sign(array('p' => $phone, 'ro' => 'b', 'c' => $code, 'bid' => (string) $found['id'], 'pv' => self::passVer($found['passwordHash']), 'e' => self::now() + self::TOKEN_TTL));
+		unset($found['passwordHash'], $found['password']);
+		return array('ok' => true, 'token' => $tok, 'phone' => $phone, 'code' => $code, 'manager' => $found);
 	}
 
 	/* ---------- actions ---------- */
@@ -399,10 +631,11 @@ class Apt_Sync_Core {
 	private function auth($b) {
 		$t = $this->verify(isset($b['token']) ? $b['token'] : '');
 		if (!$t) throw new Apt_Sync_Error(401, 'bad_token');
-		if ($t['ro'] === 'r') {
+		if ($t['ro'] === 'r' || $t['ro'] === 'b') {
 			$meta = $this->s->getMeta($t['p']);
 			if (!$meta || self::normCode($meta['code']) !== self::normCode($t['c'])) throw new Apt_Sync_Error(401, 'bad_token');
 		}
+		if ($t['ro'] === 'b' && !self::bident($t, $this->s->getAll($t['p']))) throw new Apt_Sync_Error(401, 'bad_token'); // غیرفعال/حذف/رمز عوض شد
 		return $t;
 	}
 	private function pull($b) {
@@ -410,7 +643,7 @@ class Apt_Sync_Core {
 		$since = isset($b['since']) ? (int) $b['since'] : 0;
 		$keys = new stdClass(); $rev = 0;
 		$all = $this->s->getAll($t['p']);
-		$id = $t['ro'] === 'r' ? self::ident($t, $all) : null;
+		$id = $t['ro'] === 'r' ? self::ident($t, $all) : ($t['ro'] === 'b' ? self::bident($t, $all) : null);
 		foreach ($all as $base => $rec) {
 			$rev = max($rev, (int) $rec['r']);
 			if ((int) $rec['r'] > $since) $keys->$base = array('v' => $this->outVal($t, $id, $base, $rec['v']), 'r' => (int) $rec['r']);
@@ -419,6 +652,7 @@ class Apt_Sync_Core {
 	}
 	private function outVal($t, $id, $base, $v) {
 		$v = self::stripSecrets($base, $v);
+		if ($t['ro'] === 'b') return self::blockFilterOut($base, $v, $id);
 		return ($t['ro'] === 'r') ? self::filterOut($base, $v, $id) : $v;
 	}
 	private function push($b) {
@@ -440,10 +674,14 @@ class Apt_Sync_Core {
 					$newRegs = self::newRegs($rc['v'], $rh ? $rh['v'] : null, $t['c']);
 				// ثبت‌نام اول پردازش شود
 				if ($rc) { $changes = array('registered_residents' => $rc) + $changes; }
+			} elseif ($t['ro'] === 'b') {
+				$id = self::bident($t, $cur);
+				if (!$id) throw new Apt_Sync_Error(401, 'bad_token');
 			}
 			foreach ($changes as $base => $ch) {
 				if (!in_array($base, self::BASES, true)) continue;
 				if ($t['ro'] === 'r' && !in_array($base, self::RESIDENT_WRITABLE, true)) continue;
+				if ($t['ro'] === 'b' && !in_array($base, self::BLOCK_WRITABLE, true)) continue;
 				if (!is_array($ch)) continue;
 				$have = isset($cur[$base]) ? $cur[$base] : null;
 				$haveRev = $have ? (int) $have['r'] : 0;
@@ -451,12 +689,13 @@ class Apt_Sync_Core {
 					$conflicts->$base = array('v' => $have ? $this->outVal($t, $id, $base, $have['v']) : null, 'r' => $haveRev);
 					continue;
 				}
-				if ($t['ro'] === 'r') {
+				if ($t['ro'] === 'r' || $t['ro'] === 'b') {
 					$inV = (!array_key_exists('v', $ch) || $ch['v'] === null) ? null : (string) $ch['v'];
-					$v = self::residentGuard($base, $inV, $have ? $have['v'] : null, $id, $newRegs, $t['c']);
+					$v = $t['ro'] === 'b' ? self::blockGuard($base, $inV, $have ? $have['v'] : null, $id)
+						: self::residentGuard($base, $inV, $have ? $have['v'] : null, $id, $newRegs, $t['c']);
 					if ($have && $v === $have['v']) {
 						// تغییری پذیرفته نشد: اگر نسخه دستگاه با سرور فرق دارد، نسخه را بالا ببر تا دستگاه نسخه درست را بگیرد
-						if ($inV !== null && $inV !== $this->outVal($t, $id, $base, $have['v'])) { $rev++; $this->s->putKey($t['p'], $base, $have['v'], $rev, 'r'); $cur[$base] = array('v' => $have['v'], 'r' => $rev); $applied->$base = $rev; }
+						if ($inV !== null && $inV !== $this->outVal($t, $id, $base, $have['v'])) { $rev++; $this->s->putKey($t['p'], $base, $have['v'], $rev, $t['ro']); $cur[$base] = array('v' => $have['v'], 'r' => $rev); $applied->$base = $rev; }
 						else $applied->$base = $haveRev;
 						continue;
 					}
@@ -506,6 +745,7 @@ class Apt_Sync_Core {
 				case 'register': $out = $this->managerAuth($body, true); break;
 				case 'open': $out = $this->residentOpen($body); break;
 				case 'resident_login': $out = $this->residentLogin($body); break;
+				case 'block_login': $out = $this->blockLogin($body); break;
 				case 'pull': $out = $this->pull($body); break;
 				case 'push': $out = $this->push($body); break;
 				case 'change_password': $out = $this->changePassword($body); break;

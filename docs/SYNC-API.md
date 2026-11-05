@@ -22,17 +22,22 @@
 | `login` | `phone, passHash` | `token, phone, code` — خطاها: 404 `not_found`، 401 `bad_password`، 429 |
 | `open` | `code` (کد ساختمان) | توکن ساکن `token, phone, code` |
 | `resident_login` | `code, residentPhone, passHash` | `{ok, resident, token}` — توکن با هویت ساکن (rid) |
+| `block_login` | `code, blockPhone, passHash` | `{ok, token, phone, code, manager}` — توکن مدیر بلوک (bid)؛ خطاها: 404، 401 `bad_password`، 403 `disabled`، 429 |
 | `pull` | `token, since` | `{keys: {base: {v, r}}, rev}` |
 | `push` | `token, changes: {base: {v, r}}` | `{applied: {base: r}, conflicts: {base: {v, r}}}` |
 | `change_password` | `token, oldHash, newHash` | `{ok}` |
 
-- `base` یکی از: v3, units, charges, expenses, messages, notices, notifications, settings, side_incomes, tickets, votings, plan, registered_residents.
+- `base` یکی از: v3, units, charges, expenses, messages, notices, notifications, settings, side_incomes, tickets, votings, plan, registered_residents, block_managers.
 - `r` نسخه هر کلید است؛ اگر `r` ارسالی با نسخه سرور یکی نباشد، کلید در `conflicts` برمی‌گردد و کلاینت ادغام سه‌طرفه (بر اساس `id` ردیف‌ها) انجام می‌دهد و دوباره می‌فرستد.
 - دسترسی ساکن (از نسخه ۱.۱ افزونه):
   - توکن `open` (فقط کد ساختمان) = «مهمان»: فقط ثبت‌نام تازه (در انتظار تأیید) و پر کردن جای خالی/تأییدنشده همان واحد. پیام، پرداخت و رأی ندارد.
   - توکن `resident_login` (rid): فقط واحد خودش (بدون مبلغ شارژ/بدهی/شماره واحد)، اعلام پرداخت شارژهای واحد خودش، پیام برای واحد خودش، یک رأی با شماره خودش، ردیف ثبت‌نام خودش.
   - هیچ ساکنی ردیف/واحد/پیام را حذف نمی‌کند؛ ساکن ردشده دسترسی نوشتن ندارد.
   - حریم: ساکن موبایل، کد ملی و قبض‌های واحدهای دیگر، پیام‌های دیگران، شماره رأی‌دهندگان دیگر و تیکت‌های مدیر را نمی‌بیند.
+- مدیر بلوک (از نسخه ۱.۲ افزونه): مدیر کل در کلید `block_managers` ردیف `{id, name, phone, block, passwordHash, active}` می‌سازد (هش کلاینت `bh_…`، روی سرور bcrypt).
+  - دیدن: فقط واحدها، شارژها، پیام‌ها و ثبت‌نام‌های بلوک خودش؛ اطلاعیه‌های «همه» و بلوک خودش؛ تنظیمات بدون کارت/شبا؛ هزینه، درآمد جانبی، رأی‌گیری، تیکت و اعلان خالی.
+  - نوشتن: فقط تأیید/رد اعلام پرداخت شارژهای بلوک خودش (مبلغ هرگز؛ `approvedBy`/`rejectedBy` = `block:<نام>` را سرور می‌گذارد)، تأیید/رد ثبت‌نام‌های در انتظار بلوک خودش (`reviewedBy`)، تأیید/پاک کردن ساکن در واحد همان بلوک، اطلاعیه با مخاطب بلوک خودش (و حذف اطلاعیه‌های خودش)، پیام به واحدهای بلوک خودش (`sentBy`).
+  - غیرفعال کردن، حذف یا رمز تازه، توکن مدیر بلوک را فوراً باطل می‌کند. ساکنین فهرست مدیران بلوک را نمی‌بینند.
 - رمز ساکنین (`passwordHash`) هیچ‌وقت به کلاینت‌ها برگردانده نمی‌شود و روی سرور با bcrypt نگه داشته می‌شود.
 
 ## محدودیت‌های فعلی

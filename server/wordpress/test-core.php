@@ -164,4 +164,120 @@ for ($i = 0; $i < 35; $i++) list($s,) = call(array('action' => 'login', 'phone' 
 ok('rate limit', $s == 429);
 list($s, $pl) = call(array('action' => 'pull', 'token' => $mt, 'since' => 999));
 ok('empty keys is object', json_encode($core->handle(array('action' => 'pull', 'token' => $mt, 'since' => 999))[1]) === '{"keys":{},"rev":' . max(array_map(function ($x) { return $x['r']; }, $S->k['09121112233'])) . '}');
+
+// ===== مدیر بلوک (۱.۲) =====
+$BP = '09127778899';
+list($s, $bm0) = call(array('action' => 'register', 'phone' => $BP, 'passHash' => 'MP', 'code' => 'C-700700'));
+$bmt = $bm0['token'];
+$bget = function ($b) use (&$S, $BP) { return json_decode($S->k[$BP][$b]['v'], true); };
+$brev = function ($b) use (&$S, $BP) { return isset($S->k[$BP][$b]) ? $S->k[$BP][$b]['r'] : 0; };
+$bpush = function ($tok, $base, $val) use ($brev) { return call(array('action' => 'push', 'token' => $tok, 'changes' => array($base => array('v' => json_encode($val), 'r' => $brev($base))))); };
+$bu = array(
+	array('id' => 1, 'block' => 'A', 'number' => 1, 'chargeAmount' => 100, 'owner' => array('name' => 'A1', 'phone' => '09351000001', 'approved' => true)),
+	array('id' => 2, 'block' => 'A', 'number' => 2, 'chargeAmount' => 100, 'owner' => array('name' => 'A2', 'phone' => '09351000002', 'approved' => false, 'registered' => true)),
+	array('id' => 3, 'block' => 'B', 'number' => 1, 'chargeAmount' => 200, 'owner' => array('name' => 'B1', 'phone' => '09352000001', 'nationalId' => '999', 'approved' => true)));
+$bc = array(
+	array('id' => 11, 'unitId' => 1, 'amount' => 100, 'total' => 100, 'paid' => false, 'pendingApproval' => true, 'trackingCode' => 'TA', 'receipt' => array('date' => '۱۴۰۵/۰۸/۱۰')),
+	array('id' => 12, 'unitId' => 2, 'amount' => 100, 'total' => 100, 'paid' => false),
+	array('id' => 13, 'unitId' => 3, 'amount' => 200, 'total' => 200, 'paid' => false, 'pendingApproval' => true, 'trackingCode' => 'TB'));
+$bregs = array(
+	array('id' => 51, 'buildingCode' => 'C-700700', 'block' => 'A', 'unitNumber' => 2, 'phone' => '09351000002', 'name' => 'A2', 'role' => 'owner', 'passwordHash' => 'RA2', 'status' => 'pending'),
+	array('id' => 52, 'buildingCode' => 'C-700700', 'block' => 'B', 'unitNumber' => 1, 'phone' => '09352000001', 'name' => 'B1', 'role' => 'owner', 'passwordHash' => 'RB1', 'status' => 'pending'));
+$bms = array(
+	array('id' => 901, 'name' => 'Ali', 'phone' => '09120000901', 'block' => 'A', 'passwordHash' => 'bh_A', 'active' => true),
+	array('id' => 902, 'name' => 'Bob', 'phone' => '09120000902', 'block' => 'B', 'passwordHash' => 'bh_B', 'active' => true));
+call(array('action' => 'push', 'token' => $bmt, 'changes' => array(
+	'v3' => array('v' => json_encode(array('building' => array('code' => 'C-700700', 'type' => 'complex', 'blocks' => array(array('name' => 'A'), array('name' => 'B'))))), 'r' => 0),
+	'units' => array('v' => json_encode($bu), 'r' => 0), 'charges' => array('v' => json_encode($bc), 'r' => 0),
+	'registered_residents' => array('v' => json_encode($bregs), 'r' => 0), 'block_managers' => array('v' => json_encode($bms), 'r' => 0),
+	'settings' => array('v' => json_encode(array('managerCard' => '6037991122334455', 'managerSheba' => 'IR12', 'monthlyCharge' => 100)), 'r' => 0),
+	'expenses' => array('v' => json_encode(array(array('id' => 1, 'amount' => 5))), 'r' => 0),
+	'notices' => array('v' => json_encode(array(array('id' => 71, 'title' => 'all', 'targetType' => 'all'), array('id' => 72, 'title' => 'forB', 'targetType' => 'block', 'targetBlock' => 'B'))), 'r' => 0))));
+$x = $bget('block_managers');
+ok('block manager password bcrypted on server', password_verify('bh_A', $x[0]['passwordHash']));
+list(, $pl) = call(array('action' => 'pull', 'token' => $bmt, 'since' => 0));
+ok('manager pull hides block manager hash', strpos($pl['keys']['block_managers']['v'], 'passwordHash') === false && strpos($pl['keys']['block_managers']['v'], 'Ali') !== false);
+// مدیر کل بدون رمز می‌فرستد → رمز می‌ماند
+$x = json_decode($pl['keys']['block_managers']['v'], true); $x[0]['name'] = 'Ali R';
+$bpush($bmt, 'block_managers', $x);
+$x = $bget('block_managers');
+ok('manager edit keeps block manager hash', $x[0]['name'] === 'Ali R' && password_verify('bh_A', $x[0]['passwordHash']));
+list($s,) = call(array('action' => 'block_login', 'code' => 'c-700700', 'blockPhone' => '09120000901', 'passHash' => 'nope'));
+ok('block login wrong password 401', $s == 401);
+list($s,) = call(array('action' => 'block_login', 'code' => 'C-700700', 'blockPhone' => '09120000999', 'passHash' => 'bh_A'));
+ok('block login unknown phone 404', $s == 404);
+list($s, $bl) = call(array('action' => 'block_login', 'code' => 'c-700700', 'blockPhone' => '۰۹۱۲۰۰۰۰۹۰۱', 'passHash' => 'bh_A'));
+ok('block login ok', $s == 200 && !empty($bl['token']) && $bl['phone'] === $BP && $bl['manager']['block'] === 'A' && !isset($bl['manager']['passwordHash']));
+$bt = $bl['token'];
+// نمای مدیر بلوک
+list($s, $pl) = call(array('action' => 'pull', 'token' => $bt, 'since' => 0));
+$pu = json_decode($pl['keys']['units']['v'], true); $pc = json_decode($pl['keys']['charges']['v'], true);
+$pr = json_decode($pl['keys']['registered_residents']['v'], true); $pst = json_decode($pl['keys']['settings']['v'], true);
+$pn = json_decode($pl['keys']['notices']['v'], true); $pbm = json_decode($pl['keys']['block_managers']['v'], true);
+ok('block pull: own block units/charges only', $s == 200 && count($pu) == 2 && $pu[0]['owner']['phone'] === '09351000001' && count($pc) == 2 && strpos($pl['keys']['units']['v'], '09352000001') === false);
+ok('block pull: own regs, no hashes, no card, no expenses', count($pr) == 1 && $pr[0]['id'] == 51 && !isset($pr[0]['passwordHash']) && !isset($pst['managerCard']) && !isset($pst['managerSheba']) && $pst['monthlyCharge'] == 100 && json_decode($pl['keys']['expenses']['v'], true) === array());
+ok('block pull: notices of own block/all, only own manager row', count($pn) == 1 && $pn[0]['id'] == 71 && count($pbm) == 1 && $pbm[0]['id'] == 901 && !isset($pbm[0]['passwordHash']));
+// تأیید پرداخت بلوک خودش (+ تلاش برای تغییر مبلغ)
+$pc[0]['paid'] = true; $pc[0]['pendingApproval'] = false; $pc[0]['paidDate'] = '۱۴۰۵/۰۸/۱۰'; $pc[0]['amount'] = 1; $pc[0]['total'] = 1; $pc[0]['approvedBy'] = 'main';
+$bpush($bt, 'charges', $pc);
+$x = $bget('charges');
+ok('block approves own-block payment (amount untouched, approvedBy recorded)', $x[0]['paid'] === true && $x[0]['pendingApproval'] === false && $x[0]['paidDate'] === '۱۴۰۵/۰۸/۱۰' && $x[0]['amount'] == 100 && $x[0]['total'] == 100 && $x[0]['approvedBy'] === 'block:Ali R' && count($x) == 3);
+// شارژ بلوک دیگر و شارژ بدون اعلام پرداخت و صدور شارژ جدید → رد
+$fake = $bget('charges'); $fake[2]['paid'] = true; $fake[2]['pendingApproval'] = false; $fake[1]['paid'] = true; $fake[] = array('id' => 99, 'unitId' => 1, 'amount' => 5, 'paid' => false);
+$bpush($bt, 'charges', $fake);
+$x = $bget('charges');
+ok('block cannot touch other block / undeclared / new charges', $x[2]['paid'] === false && $x[2]['pendingApproval'] === true && $x[1]['paid'] === false && count($x) == 3);
+// مبلغ شارژ واحد و واحد بلوک دیگر
+$u = $bget('units'); $u[0]['chargeAmount'] = 1; $u[0]['debt'] = 0; $u[2]['chargeAmount'] = 1; $u[2]['owner']['name'] = 'X'; $u[] = array('id' => 9, 'block' => 'A', 'number' => 9);
+$bpush($bt, 'units', $u);
+$x = $bget('units');
+ok('block cannot change chargeAmount / other block / add units', $x[0]['chargeAmount'] == 100 && !isset($x[0]['debt']) && $x[2]['chargeAmount'] == 200 && $x[2]['owner']['name'] === 'B1' && count($x) == 3);
+// تأیید ثبت‌نام بلوک خودش، نه بلوک دیگر
+$r = $bregs; foreach ($r as &$rr_) { unset($rr_['passwordHash']); $rr_['status'] = 'approved'; } unset($rr_);
+$bpush($bt, 'registered_residents', $r);
+$u = $bget('units'); $u[1]['owner']['approved'] = true;
+$bpush($bt, 'units', $u);
+$x = $bget('registered_residents'); $xu = $bget('units');
+ok('block approves own-block registration only', $x[0]['status'] === 'approved' && $x[0]['reviewedBy'] === 'block:Ali R' && password_verify('RA2', $x[0]['passwordHash']) && $x[1]['status'] === 'pending' && $xu[1]['owner']['approved'] === true);
+// اطلاعیه: فقط بلوک خودش
+$n = $bget('notices');
+$n[] = array('id' => 81, 'title' => 'okA', 'targetType' => 'block', 'targetBlock' => 'A');
+$n[] = array('id' => 82, 'title' => 'toAll', 'targetType' => 'all');
+$n[] = array('id' => 83, 'title' => 'toB', 'targetType' => 'block', 'targetBlock' => 'B');
+$n[] = array('id' => 84, 'title' => 'unitsMixed', 'targetType' => 'units', 'targetUnits' => array(1, 3));
+$n[0]['title'] = 'HACK';
+$bpush($bt, 'notices', $n);
+$x = $bget('notices'); $ids = array_map(function ($q) { return $q['id']; }, $x);
+ok('block notices: own block only, others untouched', $ids == array(71, 72, 81) && $x[0]['title'] === 'all' && $x[2]['createdBy'] === 'block:Ali R');
+// حذف اطلاعیه: فقط مال خودش
+$bpush($bt, 'notices', array());
+$x = $bget('notices'); $ids = array_map(function ($q) { return $q['id']; }, $x);
+ok('block deletes only own notices', $ids == array(71, 72));
+// پیام: فقط واحدهای بلوک خودش
+$m = array(array('id' => 61, 'unitId' => 1, 'direction' => 'sent', 'body' => 'hi A1'), array('id' => 62, 'unitId' => 3, 'direction' => 'sent', 'body' => 'hi B1'), array('id' => 63, 'unitId' => 1, 'direction' => 'received', 'body' => 'fake'));
+call(array('action' => 'push', 'token' => $bt, 'changes' => array('messages' => array('v' => json_encode($m), 'r' => 0))));
+$x = $bget('messages');
+ok('block messages own units only (sent)', count($x) == 1 && $x[0]['id'] == 61 && $x[0]['sentBy'] === 'block:Ali R');
+// کلیدهای ممنوع
+call(array('action' => 'push', 'token' => $bt, 'changes' => array('settings' => array('v' => '{"managerCard":"1"}', 'r' => $brev('settings')), 'expenses' => array('v' => '[]', 'r' => $brev('expenses')), 'block_managers' => array('v' => '[]', 'r' => $brev('block_managers')))));
+ok('block cannot write settings/expenses/block_managers', $bget('settings')['managerCard'] === '6037991122334455' && count($bget('expenses')) == 1 && count($bget('block_managers')) == 2);
+list($s,) = call(array('action' => 'change_password', 'token' => $bt, 'oldHash' => 'MP', 'newHash' => 'x'));
+ok('block cannot change manager password', $s == 403);
+// ساکن مدیران بلوک را نمی‌بیند
+list(, $o) = call(array('action' => 'open', 'code' => 'C-700700'));
+list(, $pl) = call(array('action' => 'pull', 'token' => $o['token'], 'since' => 0));
+ok('resident sees no block managers', $pl['keys']['block_managers']['v'] === '[]');
+// تعویض رمز توسط مدیر کل → توکن قبلی باطل
+$x = $bget('block_managers'); foreach ($x as &$q) unset($q['passwordHash']); unset($q);
+$x[0]['passwordHash'] = 'bh_A2'; $x[0]['passSetAt'] = 2;
+$bpush($bmt, 'block_managers', $x);
+list($s,) = call(array('action' => 'pull', 'token' => $bt, 'since' => 0));
+list($s2, $bl2) = call(array('action' => 'block_login', 'code' => 'C-700700', 'blockPhone' => '09120000901', 'passHash' => 'bh_A2'));
+ok('password reset invalidates old block token', $s == 401 && $s2 == 200);
+// غیرفعال‌سازی
+$x = $bget('block_managers'); foreach ($x as &$q) unset($q['passwordHash']); unset($q); $x[0]['active'] = false;
+$bpush($bmt, 'block_managers', $x);
+list($s,) = call(array('action' => 'pull', 'token' => $bl2['token'], 'since' => 0));
+list($s2,) = call(array('action' => 'block_login', 'code' => 'C-700700', 'blockPhone' => '09120000901', 'passHash' => 'bh_A2'));
+ok('disabled block manager locked out', $s == 401 && $s2 == 403);
 echo "\n$pass passed, $failN failed\n";
