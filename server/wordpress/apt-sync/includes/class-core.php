@@ -361,7 +361,9 @@ class Apt_Sync_Core {
 	 * مدیر بلوک با کد ساختمان + موبایل + رمز وارد می‌شود و توکن ro=b می‌گیرد که فقط به بلوک خودش دسترسی دارد.
 	 */
 	private static function passVer($hash) { return substr(hash('sha256', (string) $hash), 0, 12); }
-	private static function bmActive($m) { return is_array($m) && (!array_key_exists('active', $m) || $m['active'] !== false); }
+	/** وضعیت ردیف مدیر بلوک: ردیف‌های قدیمی (ساخته مدیر کل) وضعیت ندارند = approved */
+	public static function bmStatus($m) { $s = is_array($m) && isset($m['status']) ? (string) $m['status'] : ''; return ($s === 'pending' || $s === 'rejected') ? $s : 'approved'; }
+	private static function bmActive($m) { return is_array($m) && (!array_key_exists('active', $m) || $m['active'] !== false) && self::bmStatus($m) === 'approved'; }
 
 	/** هویت مدیر بلوک از توکن + داده فعلی؛ null یعنی دسترسی ندارد */
 	public static function bident($t, $all) {
@@ -563,22 +565,102 @@ class Apt_Sync_Core {
 		$phone = $this->s->codeOwner($code);
 		if (!$phone) throw new Apt_Sync_Error(404, 'not_found');
 		$rec = $this->s->getKey($phone, 'block_managers');
-		$found = null; $disabled = false;
+		$found = null; $disabled = false; $pending = false; $rejected = false;
 		foreach (($rec ? self::jlist($rec['v']) : array()) as $m) {
 			if (!is_array($m) || self::normPhone(isset($m['phone']) ? $m['phone'] : '') !== $bp) continue;
 			$h = isset($m['passwordHash']) ? (string) $m['passwordHash'] : '';
 			if ($h === '' || !(self::isBcrypt($h) ? password_verify($pass, $h) : hash_equals($h, $pass))) continue;
+			$st = self::bmStatus($m);
+			if ($st === 'pending') { $pending = true; continue; }
+			if ($st === 'rejected') { $rejected = true; continue; }
 			if (!self::bmActive($m)) { $disabled = true; continue; }
 			$found = $m; break;
 		}
 		if (!$found) {
+			// درخواست ثبت‌نام (نسخه ۱.۳): تا تأیید مدیر کل ورود ممکن نیست
+			if ($pending) throw new Apt_Sync_Error(403, 'pending');
 			if ($disabled) throw new Apt_Sync_Error(403, 'disabled');
+			if ($rejected) throw new Apt_Sync_Error(403, 'rejected');
 			$any = false; foreach (($rec ? self::jlist($rec['v']) : array()) as $m) if (is_array($m) && self::normPhone(isset($m['phone']) ? $m['phone'] : '') === $bp) $any = true;
 			throw new Apt_Sync_Error($any ? 401 : 404, $any ? 'bad_password' : 'block_manager_not_found');
 		}
 		$tok = $this->sign(array('p' => $phone, 'ro' => 'b', 'c' => $code, 'bid' => (string) $found['id'], 'pv' => self::passVer($found['passwordHash']), 'e' => self::now() + self::TOKEN_TTL));
 		unset($found['passwordHash'], $found['password']);
 		return array('ok' => true, 'token' => $tok, 'phone' => $phone, 'code' => $code, 'manager' => $found);
+	}
+
+	/* ---------- ثبت‌نام مدیر بلوک (نسخه ۱.۳) ----------
+	 * مهمان (فقط با کد ساختمان) درخواست می‌فرستد؛ ردیف با status=pending در block_managers همان ساختمان ذخیره می‌شود
+	 * و با pull بعدی به پنل مدیر کل می‌رسد. تا مدیر کل تأیید نکند block_login خطای pending می‌دهد.
+	 */
+	private function buildingBlocks($phone) {
+		$all = $this->s->getAll($phone);
+		$v3 = isset($all['v3']) ? json_decode((string) $all['v3']['v'], true) : null;
+		$b = is_array($v3) && isset($v3['building']) && is_array($v3['building']) ? $v3['building'] : array();
+		$names = array();
+		if (isset($b['blocks']) && is_array($b['blocks'])) foreach ($b['blocks'] as $x) {
+			$n = is_array($x) ? (isset($x['name']) ? $x['name'] : '') : $x;
+			$n = self::blockKey($n); if ($n !== '—' && !in_array($n, $names, true)) $names[] = $n;
+		}
+		$complex = (isset($b['type']) ? $b['type'] : '') === 'complex';
+		if ($complex && !$names) {
+			foreach ((isset($all['units']) ? self::jlist($all['units']['v']) : array()) as $u) {
+				$n = self::blockKey(is_array($u) && isset($u['block']) ? $u['block'] : '');
+				if ($n !== '—' && !in_array($n, $names, true)) $names[] = $n;
+			}
+		}
+		return array('complex' => $complex, 'blocks' => $names, 'name' => (string) (isset($b['name']) ? $b['name'] : ''));
+	}
+	private function blockInfo($b) {
+		$code = self::normCode(isset($b['code']) ? $b['code'] : '');
+		if ($code === '') throw new Apt_Sync_Error(400, 'bad_request');
+		$this->rateLimit('c:' . $code, 60, 900);
+		$phone = $this->s->codeOwner($code);
+		if (!$phone) throw new Apt_Sync_Error(404, 'not_found');
+		$i = $this->buildingBlocks($phone);
+		return array('ok' => true, 'code' => $code, 'name' => $i['name'], 'complex' => $i['complex'], 'blocks' => $i['complex'] ? $i['blocks'] : array());
+	}
+	private function blockRegister($b) {
+		$code = self::normCode(isset($b['code']) ? $b['code'] : '');
+		$bp = self::normPhone(isset($b['blockPhone']) ? $b['blockPhone'] : '');
+		$pass = (string) (isset($b['passHash']) ? $b['passHash'] : '');
+		$name = trim(preg_replace('/\s+/u', ' ', (string) (isset($b['name']) ? $b['name'] : '')));
+		$block = self::blockKey(isset($b['block']) ? $b['block'] : '');
+		if ($code === '' || !preg_match('/^09\d{9}$/', $bp) || $pass === '' || self::isBcrypt($pass) || strlen($pass) > 200) throw new Apt_Sync_Error(400, 'bad_request');
+		if (mb_strlen($name, 'UTF-8') < 2 || mb_strlen($name, 'UTF-8') > 60) throw new Apt_Sync_Error(400, 'bad_name');
+		// مثل ثبت‌نام ساکن: محدودیت تعداد برای هر ساختمان و هر شماره
+		$this->rateLimit('br:' . $code, 20, 3600);
+		$this->rateLimit('brp:' . $code . ':' . $bp, 5, 3600);
+		$phone = $this->s->codeOwner($code);
+		if (!$phone) throw new Apt_Sync_Error(404, 'not_found');
+		$info = $this->buildingBlocks($phone);
+		if (!$info['complex']) throw new Apt_Sync_Error(409, 'not_complex');
+		if ($block === '—' || !in_array($block, $info['blocks'], true)) throw new Apt_Sync_Error(400, 'bad_block', array('blocks' => $info['blocks']));
+		if (!$this->s->lock($phone)) throw new Apt_Sync_Error(503, 'busy');
+		try {
+			$all = $this->s->getAll($phone); $rev = 0;
+			foreach ($all as $rec) $rev = max($rev, (int) $rec['r']);
+			$list = isset($all['block_managers']) ? self::jlist($all['block_managers']['v']) : array();
+			$keep = array(); $pendingN = 0;
+			foreach ($list as $m) {
+				if (!is_array($m)) continue;
+				$st = self::bmStatus($m);
+				if (self::normPhone(isset($m['phone']) ? $m['phone'] : '') === $bp) {
+					if ($st === 'rejected') continue; // درخواست ردشده قبلی جایش را به درخواست تازه می‌دهد
+					throw new Apt_Sync_Error(409, 'phone_exists', array('status' => $st, 'sameBlock' => self::blockKey(isset($m['block']) ? $m['block'] : '') === $block));
+				}
+				if ($st === 'pending') $pendingN++;
+				$keep[] = $m;
+			}
+			if ($pendingN >= 30) throw new Apt_Sync_Error(429, 'too_many_pending');
+			$id = self::now() * 10 + mt_rand(0, 9);
+			$row = array('id' => $id, 'name' => $name, 'phone' => $bp, 'block' => $block, 'active' => true, 'status' => 'pending',
+				'source' => 'self', 'passwordHash' => password_hash($pass, PASSWORD_DEFAULT), 'requestedAt' => gmdate('Y-m-d\TH:i:s\Z'));
+			$keep[] = $row;
+			$rev++;
+			$this->s->putKey($phone, 'block_managers', self::enc($keep), $rev, 'g');
+		} finally { $this->s->unlock($phone); }
+		return array('ok' => true, 'status' => 'pending', 'id' => $id, 'block' => $block, 'name' => $info['name']);
 	}
 
 	/* ---------- actions ---------- */
@@ -746,6 +828,8 @@ class Apt_Sync_Core {
 				case 'open': $out = $this->residentOpen($body); break;
 				case 'resident_login': $out = $this->residentLogin($body); break;
 				case 'block_login': $out = $this->blockLogin($body); break;
+				case 'block_info': $out = $this->blockInfo($body); break;
+				case 'block_register': $out = $this->blockRegister($body); break;
 				case 'pull': $out = $this->pull($body); break;
 				case 'push': $out = $this->push($body); break;
 				case 'change_password': $out = $this->changePassword($body); break;

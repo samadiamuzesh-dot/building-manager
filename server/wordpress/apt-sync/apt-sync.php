@@ -2,13 +2,13 @@
 /**
  * Plugin Name: Apartment Plus Sync (آپارتمان پلاس — همگام‌سازی)
  * Description: سرور همگام‌سازی موقت پنل مدیر و پنل ساکن برنامه «آپارتمان پلاس». فقط یک مسیر REST دارد (/wp-json/apt-sync/v1/sync)، هیچ صفحه یا محتوای عمومی نمی‌سازد و روی سئوی سایت اثری ندارد.
- * Version: 1.2.0
+ * Version: 1.3.0
  * Requires PHP: 7.2
  * Author: Hark
  */
 if (!defined('ABSPATH')) exit;
 
-define('APT_SYNC_VER', '1.2.0');
+define('APT_SYNC_VER', '1.3.0');
 define('APT_SYNC_MAX_BODY', 4 * 1024 * 1024);
 require_once __DIR__ . '/includes/class-core.php';
 require_once __DIR__ . '/includes/class-store-wpdb.php';

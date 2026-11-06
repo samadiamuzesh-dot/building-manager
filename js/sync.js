@@ -461,6 +461,15 @@
       await pullOnce(c, j.token);
       return j;
     },
+    /** بلوک‌های یک ساختمان برای فرم ثبت‌نام مدیر بلوک (سرور ۱.۳) */
+    blockInfo(code) {
+      return call({ action: 'block_info', code: String(code || '').trim().toUpperCase() });
+    },
+    /** درخواست ثبت‌نام مدیر بلوک؛ تا تأیید مدیر کل «در انتظار» می‌ماند */
+    blockRegister(o) {
+      return call({ action: 'block_register', code: String(o.code || '').trim().toUpperCase(), block: String(o.block || '').trim(),
+        name: String(o.name || '').trim(), blockPhone: normPhone(o.phone), passHash: o.passHash });
+    },
     /** خروج مدیر بلوک: همه داده‌های بلوک از این دستگاه پاک می‌شود */
     blockLogout() {
       const bs = jparse(get(BLOCK_SESSION), null);

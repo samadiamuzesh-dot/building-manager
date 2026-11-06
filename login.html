@@ -13,199 +13,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="مدیر ساختمان">
 
-  <style>
-    .login-page {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
-      padding: 20px;
-    }
-
-    .login-box {
-      background: #fff;
-      border-radius: 20px;
-      padding: 32px 28px;
-      width: 100%;
-      max-width: 440px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-    }
-
-    .login-brand {
-      text-align: center;
-      margin-bottom: 24px;
-    }
-
-    .login-brand svg {
-      width: 70px;
-      height: 70px;
-      border-radius: 16px;
-      margin-bottom: 10px;
-      box-shadow: 0 8px 24px rgba(91, 76, 219, 0.3);
-    }
-
-    .login-brand h1 {
-      font-size: 22px;
-      font-weight: 900;
-      color: #5b4cdb;
-      margin-bottom: 4px;
-    }
-
-    .login-brand p {
-      font-size: 13px;
-      color: #64748b;
-    }
-
-    /* تب‌ها */
-    .login-tabs {
-      display: flex;
-      gap: 6px;
-      background: #f8fafc;
-      border-radius: 12px;
-      padding: 5px;
-      margin-bottom: 22px;
-      border: 1px solid #e2e8f0;
-    }
-
-    .login-tab {
-      flex: 1;
-      padding: 11px 6px;
-      white-space: nowrap;
-      border: none;
-      background: transparent;
-      border-radius: 9px;
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 700;
-      color: #64748b;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .login-tab:hover {
-      background: #eef2ff;
-      color: #5b4cdb;
-    }
-
-    .login-tab.active {
-      background: #5b4cdb;
-      color: #fff;
-    }
-
-    .login-tab-content {
-      display: none;
-    }
-
-    .login-tab-content.active {
-      display: block;
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-5px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .login-box .form-group {
-      margin-bottom: 16px;
-    }
-
-    .login-box .form-group label {
-      display: block;
-      font-size: 13.5px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      color: #1e293b;
-    }
-
-    .login-box .form-input {
-      width: 100%;
-      padding: 12px 14px;
-      font-family: inherit;
-      font-size: 14.5px;
-      background: #f8fafc;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 10px;
-      outline: none;
-      transition: all 0.2s ease;
-    }
-
-    .login-box .form-input:focus {
-      border-color: #5b4cdb;
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(91, 76, 219, 0.1);
-    }
-
-    .login-box .form-input.input-error {
-      border-color: #ef4444 !important;
-      background: #fef2f2 !important;
-    }
-
-    .login-error-msg {
-      font-size: 12px;
-      color: #ef4444;
-      margin-top: 6px;
-      font-weight: 600;
-      display: none;
-    }
-
-    .login-error-msg.show {
-      display: block;
-    }
-
-    .login-submit-btn {
-      width: 100%;
-      padding: 14px;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 700;
-      color: #fff;
-      background: linear-gradient(135deg, #5b4cdb 0%, #4338ca 100%);
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      margin-top: 8px;
-    }
-
-    .login-submit-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(91, 76, 219, 0.35);
-    }
-
-    .login-footer-text {
-      text-align: center;
-      font-size: 12.5px;
-      color: #94a3b8;
-      margin-top: 18px;
-    }
-
-    .login-footer-text a {
-      color: #5b4cdb;
-      font-weight: 700;
-      text-decoration: none;
-      cursor: pointer;
-    }
-
-    /* چک‌باکس نمایش رمز */
-    .show-pass-wrapper {
-      position: relative;
-    }
-
-    .show-pass-btn {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      cursor: pointer;
-      font-size: 16px;
-      padding: 4px;
-    }
-  </style>
+  <link rel="stylesheet" href="css/auth.css?v=1">
 </head>
 <body>
 
@@ -226,7 +34,6 @@
       <!-- تب‌ها -->
       <div class="login-tabs">
         <button class="login-tab active" data-login-tab="login">🔑 ورود</button>
-        <button class="login-tab" data-login-tab="block">🧩 مدیر بلوک</button>
         <button class="login-tab" data-login-tab="signup">✨ ثبت‌نام</button>
       </div>
 
@@ -257,28 +64,10 @@
           حساب کاربری نداری؟
           <a data-switch-to-signup>ثبت‌نام کن</a>
         </p>
-      </div>
 
-      <!-- تب ورود مدیر بلوک -->
-      <div class="login-tab-content" data-login-tab-content="block">
-        <p style="font-size:12.5px;color:#64748b;line-height:1.8;margin:-6px 0 14px;">مدیر بلوک با کد ساختمان، شماره موبایل و رمزی که مدیر ساختمان برایش ساخته وارد می‌شود.</p>
-        <div class="form-group">
-          <label for="blockLoginCode">🏢 کد ساختمان</label>
-          <input type="text" id="blockLoginCode" class="form-input" placeholder="مثلاً C-123456" dir="ltr" autocomplete="organization" />
-        </div>
-        <div class="form-group">
-          <label for="blockLoginPhone">📱 شماره موبایل</label>
-          <input type="tel" id="blockLoginPhone" class="form-input" placeholder="۰۹۱۲۱۲۳۴۵۶۷" maxlength="11" dir="ltr" autocomplete="username" />
-        </div>
-        <div class="form-group">
-          <label for="blockLoginPassword">🔒 رمز عبور</label>
-          <div class="show-pass-wrapper">
-            <input type="password" id="blockLoginPassword" class="form-input" placeholder="••••••••" style="padding-left: 40px;" autocomplete="current-password" />
-            <button type="button" class="show-pass-btn" data-toggle-pass="blockLoginPassword">👁️</button>
-          </div>
-        </div>
-        <div class="login-error-msg" id="blockLoginError" style="margin:-4px 0 8px;"></div>
-        <button class="login-submit-btn" id="btnBlockLoginSubmit">🚀 ورود مدیر بلوک</button>
+        <a class="login-alt-link" href="block.html" id="linkBlockManager">
+          🧩 مدیر بلوک هستید؟ <strong>ورود / ثبت‌نام مدیر بلوک</strong>
+        </a>
       </div>
 
       <!-- تب ثبت‌نام (فقط متن راهنما) -->
@@ -310,8 +99,8 @@
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="js/sync.js?v=5"></script>
+  <script src="js/sync.js?v=6"></script>
   <script src="js/plans.js?v=3"></script>
-  <script src="js/auth.js?v=4"></script>
+  <script src="js/auth.js?v=5"></script>
 </body>
 </html>

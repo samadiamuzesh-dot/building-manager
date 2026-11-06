@@ -280,4 +280,60 @@ $bpush($bmt, 'block_managers', $x);
 list($s,) = call(array('action' => 'pull', 'token' => $bl2['token'], 'since' => 0));
 list($s2,) = call(array('action' => 'block_login', 'code' => 'C-700700', 'blockPhone' => '09120000901', 'passHash' => 'bh_A2'));
 ok('disabled block manager locked out', $s == 401 && $s2 == 403);
+
+// ---------- ثبت‌نام مدیر بلوک (نسخه ۱.۳) ----------
+list($s, $bi) = call(array('action' => 'block_info', 'code' => 'c-700700'));
+ok('block_info lists building blocks', $s == 200 && $bi['complex'] === true && $bi['blocks'] === array('A', 'B'));
+list($s, $bi2) = call(array('action' => 'block_info', 'code' => 'S-111111'));
+ok('block_info single building: not complex', $s == 200 && $bi2['complex'] === false && $bi2['blocks'] === array());
+list($s,) = call(array('action' => 'block_info', 'code' => 'X-000000'));
+ok('block_info wrong code 404', $s == 404);
+$breg = function ($o) { return call(array_merge(array('action' => 'block_register', 'code' => 'C-700700', 'block' => 'B', 'name' => 'Sara', 'blockPhone' => '09120000777', 'passHash' => 'bh_S'), $o)); };
+list($s, $e) = $breg(array('code' => 'X-000000'));
+ok('block register wrong code 404', $s == 404 && $e['error'] === 'not_found');
+list($s, $e) = $breg(array('code' => 'S-111111'));
+ok('block register single building rejected', $s == 409 && $e['error'] === 'not_complex');
+list($s, $e) = $breg(array('block' => 'Z'));
+ok('block register unknown block rejected (server-side)', $s == 400 && $e['error'] === 'bad_block' && $e['blocks'] === array('A', 'B'));
+list($s, $e) = $breg(array('blockPhone' => '0912'));
+ok('block register bad phone 400', $s == 400);
+list($s, $e) = $breg(array('blockPhone' => '09120000902'));
+ok('block register: phone already a block manager', $s == 409 && $e['error'] === 'phone_exists' && $e['status'] === 'approved');
+$rev0 = $brev('block_managers');
+list($s, $rg) = $breg(array('blockPhone' => '۰۹۱۲۰۰۰۰۷۷۷'));
+$x = $bget('block_managers'); $row = end($x);
+ok('block register stores pending row (bcrypt, rev bumped)', $s == 200 && $rg['status'] === 'pending' && $row['status'] === 'pending' && $row['phone'] === '09120000777' && $row['block'] === 'B' && password_verify('bh_S', $row['passwordHash']) && $brev('block_managers') > $rev0 && count($x) == 3);
+list($s, $e) = $breg(array());
+ok('block register duplicate pending 409', $s == 409 && $e['error'] === 'phone_exists' && $e['status'] === 'pending');
+list($s, $e) = call(array('action' => 'block_login', 'code' => 'C-700700', 'blockPhone' => '09120000777', 'passHash' => 'bh_S'));
+ok('block login while pending: 403 pending', $s == 403 && $e['error'] === 'pending');
+list($s,) = call(array('action' => 'block_login', 'code' => 'C-700700', 'blockPhone' => '09120000777', 'passHash' => 'wrong'));
+ok('block login pending + wrong password: 401', $s == 401);
+list(, $pl) = call(array('action' => 'pull', 'token' => $bmt, 'since' => $rev0));
+$mx = json_decode($pl['keys']['block_managers']['v'], true); $mrow = end($mx);
+ok('main manager pull gets pending request without hash', $mrow['status'] === 'pending' && $mrow['name'] === 'Sara' && !isset($mrow['passwordHash']));
+// تأیید مدیر کل (بدون هش در داده)
+foreach ($mx as &$q) if ($q['phone'] === '09120000777') { $q['status'] = 'approved'; $q['reviewedAt'] = 'now'; } unset($q);
+$bpush($bmt, 'block_managers', $mx);
+list($s, $bl3) = call(array('action' => 'block_login', 'code' => 'C-700700', 'blockPhone' => '09120000777', 'passHash' => 'bh_S'));
+ok('approved self-registered block manager logs in', $s == 200 && $bl3['manager']['block'] === 'B' && !empty($bl3['token']));
+list($s, $pl) = call(array('action' => 'pull', 'token' => $bl3['token'], 'since' => 0));
+$pu = json_decode($pl['keys']['units']['v'], true);
+ok('self-registered block manager sees only own block', $s == 200 && count($pu) == 1 && $pu[0]['block'] === 'B');
+// مدیر کل همان را رد می‌کند → توکن باطل و ورود: rejected
+$x = $bget('block_managers'); foreach ($x as &$q) { unset($q['passwordHash']); if ($q['phone'] === '09120000777') $q['status'] = 'rejected'; } unset($q);
+$bpush($bmt, 'block_managers', $x);
+list($s,) = call(array('action' => 'pull', 'token' => $bl3['token'], 'since' => 0));
+list($s2, $e) = call(array('action' => 'block_login', 'code' => 'C-700700', 'blockPhone' => '09120000777', 'passHash' => 'bh_S'));
+ok('rejected request: token revoked, login 403 rejected', $s == 401 && $s2 == 403 && $e['error'] === 'rejected');
+// ثبت‌نام دوباره پس از رد → ردیف ردشده جایگزین می‌شود
+list($s, $rg2) = $breg(array('block' => 'A', 'passHash' => 'bh_S2'));
+$x = $bget('block_managers'); $mine = array_values(array_filter($x, function ($q) { return $q['phone'] === '09120000777'; }));
+ok('re-register after reject replaces old row', $s == 200 && count($mine) == 1 && $mine[0]['status'] === 'pending' && $mine[0]['block'] === 'A');
+// ردیف‌های قدیمی (بدون status) همچنان کار می‌کنند
+list($s,) = call(array('action' => 'block_login', 'code' => 'C-700700', 'blockPhone' => '09120000902', 'passHash' => 'bh_B'));
+ok('legacy manager-created block manager still logs in', $s == 200);
+// محدودیت تعداد
+for ($i = 0; $i < 6; $i++) list($s,) = $breg(array('blockPhone' => '09120000888', 'name' => 'Rl'));
+ok('block register rate-limited per phone', $s == 429);
 echo "\n$pass passed, $failN failed\n";

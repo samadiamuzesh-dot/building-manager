@@ -22,7 +22,9 @@
 | `login` | `phone, passHash` | `token, phone, code` — خطاها: 404 `not_found`، 401 `bad_password`، 429 |
 | `open` | `code` (کد ساختمان) | توکن ساکن `token, phone, code` |
 | `resident_login` | `code, residentPhone, passHash` | `{ok, resident, token}` — توکن با هویت ساکن (rid) |
-| `block_login` | `code, blockPhone, passHash` | `{ok, token, phone, code, manager}` — توکن مدیر بلوک (bid)؛ خطاها: 404، 401 `bad_password`، 403 `disabled`، 429 |
+| `block_login` | `code, blockPhone, passHash` | `{ok, token, phone, code, manager}` — توکن مدیر بلوک (bid)؛ خطاها: 404، 401 `bad_password`، 403 `pending` / `disabled` / `rejected` (۱.۳)، 429 |
+| `block_info` (۱.۳) | `code` | `{ok, code, name, complex, blocks: [نام بلوک‌ها]}` — برای فرم ثبت‌نام مدیر بلوک؛ 404 `not_found` |
+| `block_register` (۱.۳) | `code, block, name, blockPhone, passHash` | `{ok, status:'pending', id, block}` — ردیف `status:'pending', source:'self'` (رمز bcrypt) در `block_managers` ساختمان؛ مدیر کل با `status:'approved'/'rejected'` تأیید/رد می‌کند. خطاها: 404 `not_found`، 409 `not_complex`، 400 `bad_block` (+`blocks`)، 409 `phone_exists` (+`status`)، 429 (۲۰ در ساعت برای هر ساختمان، ۵ برای هر شماره، حداکثر ۳۰ درخواست در انتظار) |
 | `pull` | `token, since` | `{keys: {base: {v, r}}, rev}` |
 | `push` | `token, changes: {base: {v, r}}` | `{applied: {base: r}, conflicts: {base: {v, r}}}` |
 | `change_password` | `token, oldHash, newHash` | `{ok}` |

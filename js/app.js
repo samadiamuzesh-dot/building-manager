@@ -8309,7 +8309,18 @@ function renderBlockManagersSettings() {
   if (!host) return;
   const data = loadData();
   const blocks = (data?.building?.blocks || []).map(b => String(b.name).trim());
-  const list = loadBlockManagers();
+  const all = loadBlockManagers();
+  const list = all.filter(m => bmStatusOf(m) === 'approved');
+  // درخواست‌های ثبت‌نام بالای توضیحات صفحه نمایش داده می‌شوند
+  let reqHost = document.getElementById('blockRequestsHost');
+  if (!reqHost && host.parentElement) {
+    reqHost = document.createElement('div');
+    reqHost.id = 'blockRequestsHost';
+    const hint = host.parentElement.querySelector('.hint-text');
+    host.parentElement.insertBefore(reqHost, hint || host);
+  }
+  if (reqHost) { reqHost.innerHTML = renderBlockRequestsHtml(all, blocks); bindBlockRequestButtons(reqHost); }
+  updateBlockRequestsBadge();
   if (!list.length) {
     host.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:28px 10px;font-size:13.5px;line-height:1.9;">
       هنوز مدیر بلوکی تعریف نشده است.<br><span style="font-size:12.5px;">مدیر بلوک فقط واحدها و شارژهای بلوک خودش را می‌بیند، اعلام پرداخت‌ها و ثبت‌نام‌های همان بلوک را بررسی می‌کند و به همان بلوک اطلاعیه و پیام می‌فرستد. همه پرداخت‌ها همچنان به کارت شما واریز می‌شود.</span></div>`;
@@ -8324,7 +8335,7 @@ function renderBlockManagersSettings() {
       ${byBlock[b].map(m => `
         <div class="bm-row" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:${m.active === false ? '#f8fafc' : '#fff'};border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin-bottom:8px;${m.active === false ? 'opacity:.7;' : ''}">
           <div style="font-size:13px;color:#334155;min-width:0;">
-            <strong>${escapeHtml(m.name || '')}</strong> — <span dir="ltr">${escapeHtml(m.phone || '')}</span>
+            <strong>${escapeHtml(m.name || '')}</strong> — <span dir="ltr">${escapeHtml(m.phone || '')}</span>${m.source === 'self' ? ' <span style="font-size:11px;color:#64748b;">(ثبت‌نام خودش)</span>' : ''}
             ${m.active === false ? '<span class="badge" style="background:#fee2e2;color:#b91c1c;margin-right:6px;">غیرفعال</span>' : '<span class="badge badge-paid" style="margin-right:6px;">فعال</span>'}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -8341,9 +8352,118 @@ function renderBlockManagersSettings() {
   host.querySelectorAll('[data-bm-delete]').forEach(b => b.addEventListener('click', () => deleteBlockManager(Number(b.dataset.bmDelete))));
 }
 
+/* ---------- درخواست‌های ثبت‌نام مدیر بلوک (از block.html، سرور ۱.۳) ---------- */
+/** ردیف‌های قدیمی وضعیت ندارند = تأییدشده */
+function bmStatusOf(m) { const s = m && m.status; return (s === 'pending' || s === 'rejected') ? s : 'approved'; }
+function pendingBlockRequests() { return loadBlockManagers().filter(m => bmStatusOf(m) === 'pending'); }
+function fmtBmDate(iso) { try { return iso ? new Date(iso).toLocaleDateString('fa-IR') : ''; } catch (e) { return ''; } }
+
+function renderBlockRequestsHtml(all, blocks) {
+  const pend = all.filter(m => bmStatusOf(m) === 'pending');
+  const rej = all.filter(m => bmStatusOf(m) === 'rejected');
+  if (!pend.length && !rej.length) return '';
+  const row = (m, rejected) => `
+    <div class="bm-req-row" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:${rejected ? '#f8fafc' : '#fff'};border:1px solid ${rejected ? '#e2e8f0' : '#fde68a'};border-radius:12px;padding:10px 12px;margin-bottom:8px;">
+      <div style="font-size:13px;color:#334155;min-width:0;line-height:1.8;">
+        <strong>${escapeHtml(m.name || '')}</strong> — <span dir="ltr">${escapeHtml(m.phone || '')}</span><br>
+        <span style="font-size:12px;color:#64748b;">بلوک ${escapeHtml(m.block || '')}${blocks.includes(String(m.block)) ? '' : ' <span style="color:#b91c1c;">(در ساختمان نیست)</span>'}${m.requestedAt ? ' · ' + escapeHtml(fmtBmDate(m.requestedAt)) : ''}</span>
+        ${rejected ? '<span class="badge" style="background:#fee2e2;color:#b91c1c;margin-right:6px;">رد شد</span>' : '<span class="badge" style="background:#fef3c7;color:#92400e;margin-right:6px;">در انتظار تأیید</span>'}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${rejected ? '' : `<button type="button" class="btn btn-primary" data-bm-approve="${m.id}" style="padding:6px 12px;font-size:12.5px;">✅ تأیید</button>
+        <button type="button" class="btn btn-secondary" data-bm-reject="${m.id}" style="padding:6px 12px;font-size:12.5px;">❌ رد</button>`}
+        ${rejected ? `<button type="button" class="btn btn-danger" data-bm-req-delete="${m.id}" style="padding:6px 10px;font-size:12.5px;">🗑️</button>` : ''}
+      </div>
+    </div>`;
+  return `<div id="blockRequestsBox" style="margin-bottom:18px;">
+    ${pend.length ? `<div style="font-weight:800;color:#92400e;margin-bottom:8px;">🔔 درخواست‌های تازه مدیر بلوک (${formatNumber(pend.length)})</div>
+      <p class="hint-text" style="margin:0 0 10px;">این افراد خودشان از صفحه «مدیر بلوک» ثبت‌نام کرده‌اند. تا تأیید نکنید نمی‌توانند وارد شوند.</p>
+      ${pend.map(m => row(m, false)).join('')}` : ''}
+    ${rej.length ? `<div style="font-weight:700;color:#64748b;margin:10px 0 8px;font-size:13px;">درخواست‌های ردشده</div>${rej.map(m => row(m, true)).join('')}` : ''}
+  </div>`;
+}
+
+function bindBlockRequestButtons(host) {
+  host.querySelectorAll('[data-bm-approve]').forEach(b => b.addEventListener('click', () => reviewBlockRequest(Number(b.dataset.bmApprove), 'approved')));
+  host.querySelectorAll('[data-bm-reject]').forEach(b => b.addEventListener('click', () => reviewBlockRequest(Number(b.dataset.bmReject), 'rejected')));
+  host.querySelectorAll('[data-bm-req-delete]').forEach(b => b.addEventListener('click', () => deleteBlockManager(Number(b.dataset.bmReqDelete))));
+}
+
+async function reviewBlockRequest(id, status) {
+  if (blockDenied()) return;
+  const list = loadBlockManagers();
+  const m = list.find(x => Number(x.id) === Number(id));
+  if (!m || bmStatusOf(m) !== 'pending') { renderBlockManagersSettings(); return; }
+  const blocks = (loadData()?.building?.blocks || []).map(b => String(b.name).trim());
+  if (status === 'approved') {
+    if (!blocks.includes(String(m.block))) { toastWarning('بلوک این درخواست در ساختمان نیست؛ آن را رد کنید.'); return; }
+    const dupe = list.find(x => x !== m && bmStatusOf(x) === 'approved' && normalizePhone(x.phone) === normalizePhone(m.phone));
+    if (dupe) { toastWarning('این شماره قبلاً مدیر بلوک است.'); return; }
+    if (!(await appConfirm(`«${m.name}» (${m.phone}) به‌عنوان مدیر بلوک ${m.block} تأیید شود؟
+
+او فقط واحدها، شارژها، اعلام پرداخت‌ها و ثبت‌نام‌های بلوک ${m.block} را می‌بیند و با رمزی که خودش ساخته به پنل بلوک دسترسی پیدا می‌کند.`, { okText: '✅ تأیید', cancelText: 'انصراف' }))) return;
+  } else {
+    if (!(await appConfirm(`درخواست «${m.name}» برای مدیریت بلوک ${m.block} رد شود؟
+
+او نمی‌تواند وارد پنل شود.`, { okText: 'رد درخواست', cancelText: 'انصراف' }))) return;
+  }
+  const cur = loadBlockManagers();
+  const row = cur.find(x => Number(x.id) === Number(id));
+  if (!row) return;
+  row.status = status;
+  row.active = status === 'approved';
+  row.reviewedAt = new Date().toISOString();
+  row.reviewedBy = 'main';
+  saveBlockManagers(cur);
+  renderBlockManagersSettings();
+  refreshNotifications();
+  if (status === 'approved') toastSuccess(`«${row.name}» مدیر بلوک ${row.block} شد. حالا می‌تواند از صفحه «مدیر بلوک» وارد شود.`);
+  else toastInfo('درخواست رد شد.');
+}
+
+/** نشان تعداد درخواست‌های در انتظار روی منوی تنظیمات و کارت «مدیران بلوک» */
+function updateBlockRequestsBadge() {
+  const n = (typeof isBlockManager === 'function' && isBlockManager()) || loadData()?.building?.type !== 'complex' ? 0 : pendingBlockRequests().length;
+  const put = (host, id, extraCss) => {
+    if (!host) return;
+    let b = host.querySelector('.bm-req-badge');
+    if (!n) { if (b) b.remove(); return; }
+    if (!b) {
+      b = document.createElement('span');
+      b.className = 'bm-req-badge';
+      b.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#ef4444;color:#fff;font-size:11.5px;font-weight:800;line-height:1;' + (extraCss || '');
+      host.appendChild(b);
+    }
+    b.textContent = formatNumber(n);
+    b.title = `${formatNumber(n)} درخواست مدیر بلوک در انتظار تأیید`;
+  };
+  put(document.querySelector('#menu li[data-page="settings"]'), 'menu', 'margin-right:auto;');
+  put(document.querySelector('[data-settings-page="blockManagers"] .settings-info h4'), 'card', 'margin-right:6px;vertical-align:middle;');
+}
+
+/** درخواست تازه از سرور رسید: نشان، اعلان و فهرست به‌روز شود */
+let _seenBlockRequests = null;
+function watchBlockRequests() {
+  if (isBlockManager()) return;
+  const ids = () => new Set(pendingBlockRequests().map(m => String(m.id)));
+  _seenBlockRequests = ids();
+  updateBlockRequestsBadge();
+  window.addEventListener('storage', (e) => {
+    if (!e.key || e.key !== getBlockManagersKey()) return;
+    const now = ids();
+    const fresh = pendingBlockRequests().filter(m => !_seenBlockRequests.has(String(m.id)));
+    _seenBlockRequests = now;
+    updateBlockRequestsBadge();
+    if (typeof refreshNotifications === 'function') refreshNotifications();
+    const sub = document.getElementById('settingsBlockManagers');
+    if (sub && sub.style.display !== 'none') renderBlockManagersSettings();
+    if (fresh.length) toastInfo(fresh.length === 1 ? `«${fresh[0].name}» برای مدیریت بلوک ${fresh[0].block} درخواست داده است.` : `${formatNumber(fresh.length)} درخواست تازه مدیر بلوک رسیده است.`, 'درخواست مدیر بلوک');
+  });
+}
+
 function showBlockManagerCredentials(m, pass, title) {
   const code = loadData()?.building?.code || '—';
-  return appAlert(`${title}\n\nکد ساختمان: ${code}\nموبایل: ${m.phone}\nرمز: ${pass}\n\nاین رمز فقط همین یک بار نمایش داده می‌شود؛ آن را به ${m.name} بدهید. ورود از صفحه ورود ← «مدیر بلوک».`, { okText: 'یادداشت کردم' });
+  return appAlert(`${title}\n\nکد ساختمان: ${code}\nموبایل: ${m.phone}\nرمز: ${pass}\n\nاین رمز فقط همین یک بار نمایش داده می‌شود؛ آن را به ${m.name} بدهید. ورود از صفحه ورود ← «مدیر بلوک هستید؟ ورود / ثبت‌نام مدیر بلوک».`, { okText: 'یادداشت کردم' });
 }
 
 function openBlockManagerForm(editId) {
@@ -8379,7 +8499,10 @@ function openBlockManagerForm(editId) {
     if (!isValidIranMobile(phone)) { err.textContent = 'شماره موبایل معتبر نیست.'; return; }
     if (!m && pass.length < 6) { err.textContent = 'رمز باید حداقل ۶ کاراکتر باشد.'; return; }
     const cur = loadBlockManagers();
-    if (cur.some(x => normalizePhone(x.phone) === phone && Number(x.id) !== Number(editId))) { err.textContent = 'این شماره قبلاً به‌عنوان مدیر بلوک ثبت شده است.'; return; }
+    const same = cur.find(x => normalizePhone(x.phone) === phone && Number(x.id) !== Number(editId) && bmStatusOf(x) !== 'rejected');
+    if (same) { err.textContent = bmStatusOf(same) === 'pending' ? 'برای این شماره درخواست ثبت‌نام در انتظار است؛ آن را در بالای همین صفحه تأیید کنید.' : 'این شماره قبلاً به‌عنوان مدیر بلوک ثبت شده است.'; return; }
+    // درخواست ردشده قبلی با همین شماره جایش را به ردیف تازه می‌دهد
+    for (let i = cur.length - 1; i >= 0; i--) if (!m && normalizePhone(cur[i].phone) === phone && bmStatusOf(cur[i]) === 'rejected') cur.splice(i, 1);
     const now = new Date().toISOString();
     if (m) {
       const row = cur.find(x => Number(x.id) === Number(editId));
@@ -8444,7 +8567,7 @@ function blockManagerLogout(message) {
   try { if (window.AptSync && window.AptSync.blockLogout) window.AptSync.blockLogout(); else localStorage.removeItem('ham_sakhteman_block_session'); } catch (e) {}
   localStorage.removeItem('ham_sakhteman_block_session');
   if (message) { try { sessionStorage.setItem('apt_login_notice', message); } catch (e) {} }
-  window.location.href = 'login.html';
+  window.location.href = 'block.html';
 }
 
 /** ظاهر پنل در حالت مدیر بلوک: منوها و دکمه‌های ممنوع پنهان */
@@ -8890,6 +9013,7 @@ function init() {
   initNotificationsAndProfile();
   document.getElementById('btnAddBlockManager')?.addEventListener('click', () => openBlockManagerForm(null));
   applyBlockManagerMode();
+  watchBlockRequests();
 
   updateSidebarLockStates();
 
@@ -9056,6 +9180,25 @@ function generateAutoNotifications() {
     });
   }
 
+  if (!isBlockManager() && loadData()?.building?.type === 'complex') {
+    const bmReq = pendingBlockRequests();
+    if (bmReq.length > 0) {
+      auto.push({
+        id: 'auto-block-requests',
+        type: 'warning',
+        icon: '🧩',
+        iconClass: 'notif-icon-orange',
+        title: `${formatNumber(bmReq.length)} درخواست مدیر بلوک`,
+        desc: bmReq.map(m => `${m.name} (بلوک ${m.block})`).join('، ').substring(0, 70),
+        time: 'اکنون',
+        read: false,
+        createdAt: now,
+        page: 'block-requests',
+      });
+    }
+  }
+  updateBlockRequestsBadge();
+
   const manualNotifs = notifications.filter(n => n.manual === true);
   notifications = [...auto, ...manualNotifs];
 
@@ -9117,7 +9260,11 @@ function renderNotifications() {
         renderNotifications();
       }
 
-      if (page) {
+      if (page === 'block-requests') {
+        switchPage('settings');
+        showSettingsSubpage('blockManagers');
+        closeNotifPanel();
+      } else if (page) {
         switchPage(page);
         closeNotifPanel();
       }
