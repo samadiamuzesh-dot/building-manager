@@ -4969,3 +4969,8 @@ body.dark-mode .modal-detail .detail-item {
   .sidebar-backdrop.open { display: block; }
   body.sidebar-locked { overflow: hidden; }
 }
+
+/* iOS Safari zooms the page when a focused field is under 16px: keep fields at 16px on touch screens */
+@media (max-width: 900px), (pointer: coarse) {
+  input, select, textarea, .form-input { font-size: 16px !important; }
+}

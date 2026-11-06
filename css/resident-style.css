@@ -2047,3 +2047,8 @@ body:has(.resident-modal-backdrop.open) #aptSyncBadge { display: none !important
 
 /* صفحه پیام: نشان همگام‌سازی روی کادر نوشتن پیام نیفتد */
 body:has(#resident-messages.active) #aptSyncBadge { bottom: auto !important; top: calc(92px + env(safe-area-inset-top, 0px)) !important; }
+
+/* iOS Safari zooms the page when a focused field is under 16px: keep fields at 16px on touch screens */
+@media (max-width: 900px), (pointer: coarse) {
+  input, select, textarea, .form-input { font-size: 16px !important; }
+}
