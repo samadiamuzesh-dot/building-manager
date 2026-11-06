@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <title>آپارتمان پلاس | اپلیکیشن ساکنین</title>
-        <link rel="stylesheet" href="css/resident-style.css?v=18">
+        <link rel="stylesheet" href="css/resident-style.css?v=19">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap">
   <link rel="manifest" href="resident-manifest.json">
   <meta name="theme-color" content="#5b4cdb">
@@ -66,7 +66,7 @@
       </div>
       <div class="resident-form-group">
         <label for="residentLoginPhone">📱 شماره موبایل</label>
-        <input type="tel" id="residentLoginPhone" name="username" autocomplete="username" class="resident-form-input" placeholder="09xxxxxxxxx" dir="ltr" />
+        <input type="tel" id="residentLoginPhone" name="username" inputmode="numeric" maxlength="11" autocomplete="username" class="resident-form-input" placeholder="09xxxxxxxxx" dir="ltr" />
       </div>
       <div class="resident-form-group">
         <label for="residentLoginPassword">🔒 رمز عبور</label>
@@ -117,7 +117,7 @@
 
       <div class="resident-form-group">
         <label for="residentPhone">📱 شماره موبایل <span class="resident-required">*</span></label>
-        <input type="tel" id="residentPhone" class="resident-form-input"
+        <input type="tel" id="residentPhone" inputmode="numeric" autocomplete="tel" class="resident-form-input"
                placeholder="۰۹۱۲۱۲۳۴۵۶۷" maxlength="11" dir="ltr" />
         <div class="resident-error-msg" id="residentPhoneError"></div>
       </div>
@@ -347,7 +347,7 @@
 <div id="residentToastContainer" class="resident-toast-container"></div>
 <script src="js/dialogs.js?v=1"></script>
 <script src="js/sync.js?v=6"></script>
-<script src="js/resident-app.js?v=22"></script>
+<script src="js/resident-app.js?v=23"></script>
   <!-- ============ مودال اعلام واریز ============ -->
 <div class="resident-modal-backdrop" id="residentPayModal">
   <div class="resident-modal">

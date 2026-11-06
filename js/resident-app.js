@@ -2937,3 +2937,28 @@ function bindResidentNotifications() {
     }
   }, 30000);
 }
+
+// دکمه 👁️ نمایش/پنهان رمز برای همه فیلدهای رمز ساکن (مثل پنل مدیر)
+(function addResidentPassToggles() {
+  function run() {
+    document.querySelectorAll('input[type="password"].resident-form-input').forEach(inp => {
+      if (inp.dataset.passToggle) return;
+      inp.dataset.passToggle = '1';
+      const wrap = document.createElement('div');
+      wrap.className = 'resident-pass-wrap';
+      inp.parentNode.insertBefore(wrap, inp);
+      wrap.appendChild(inp);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'resident-pass-btn';
+      btn.setAttribute('aria-label', 'نمایش رمز');
+      btn.textContent = '👁️';
+      btn.addEventListener('click', () => {
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+        btn.textContent = inp.type === 'password' ? '👁️' : '🙈';
+      });
+      wrap.appendChild(btn);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+})();

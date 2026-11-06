@@ -2052,3 +2052,7 @@ body:has(#resident-messages.active) #aptSyncBadge { bottom: auto !important; top
 @media (max-width: 900px), (pointer: coarse) {
   input, select, textarea, .form-input { font-size: 16px !important; }
 }
+.resident-pass-wrap { position: relative; }
+.resident-pass-wrap .resident-form-input { padding-left: 44px; }
+.resident-pass-btn { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: 0; font-size: 18px; padding: 4px; cursor: pointer; line-height: 1; }
+html { -webkit-text-size-adjust: 100%; }

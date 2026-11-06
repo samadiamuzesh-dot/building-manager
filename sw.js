@@ -1,6 +1,6 @@
 // v2: network-first برای HTML/JS/CSS تا اصلاحات جدید فوراً به کاربر برسد
 // (نسخه قبلی cache-first بود و صفحات قدیمی برای همیشه از کش نمایش داده می‌شد)
-const CACHE = 'apartman-plus-v19';
+const CACHE = 'apartman-plus-v20';
 // مسیرها نسبی‌اند تا روی هر دامنه‌ای (Vercel یا GitHub Pages) کار کند
 const ASSETS = [
   './',
