@@ -53,6 +53,25 @@ class Apt_Sync_Store_WPDB {
 	public function codeOwner($code) { $p = $this->db->get_var($this->db->prepare("SELECT phone FROM {$this->c} WHERE code=%s", $code)); return $p ? $p : null; }
 	public function setCode($code, $phone) { $this->db->replace($this->c, array('code' => $code, 'phone' => $phone)); }
 	public function delCode($code) { $this->db->delete($this->c, array('code' => $code)); }
+	/** اشتراک‌های اعلان فوری (نسخه ۱.۴) در ردیف جدای __push؛ getAll و pull آن را نمی‌بینند */
+	public function getPush($phone) {
+		$v = $this->db->get_var($this->db->prepare("SELECT v FROM {$this->t} WHERE phone=%s AND k='__push'", $phone));
+		$j = $v ? json_decode($v, true) : null;
+		return is_array($j) ? $j : array();
+	}
+	public function setPush($phone, $list) {
+		$this->db->replace($this->t, array('phone' => $phone, 'k' => '__push', 'v' => wp_json_encode(array_values($list)), 'r' => 0, 't' => Apt_Sync_Core::now(), 'by_role' => 'p'));
+	}
+	public static function pushCounts() {
+		global $wpdb;
+		$out = array();
+		foreach ((array) $wpdb->get_results("SELECT phone, v FROM {$wpdb->prefix}apt_sync WHERE k='__push'", ARRAY_A) as $r) {
+			$l = json_decode((string) $r['v'], true); $c = array('m' => 0, 'b' => 0, 'r' => 0);
+			foreach ((array) $l as $x) if (is_array($x) && isset($x['ro']) && isset($c[$x['ro']])) $c[$x['ro']]++;
+			$out[$r['phone']] = $c;
+		}
+		return $out;
+	}
 	public function lock($phone) { return (int) $this->db->get_var($this->db->prepare('SELECT GET_LOCK(%s, 8)', 'apt_sync_' . $phone)) === 1; }
 	public function unlock($phone) { $this->db->query($this->db->prepare('SELECT RELEASE_LOCK(%s)', 'apt_sync_' . $phone)); }
 	public function rateHit($key, $sec) {

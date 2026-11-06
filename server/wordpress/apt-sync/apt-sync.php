@@ -2,24 +2,68 @@
 /**
  * Plugin Name: Apartment Plus Sync (آپارتمان پلاس — همگام‌سازی)
  * Description: سرور همگام‌سازی موقت پنل مدیر و پنل ساکن برنامه «آپارتمان پلاس». فقط یک مسیر REST دارد (/wp-json/apt-sync/v1/sync)، هیچ صفحه یا محتوای عمومی نمی‌سازد و روی سئوی سایت اثری ندارد.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Requires PHP: 7.2
  * Author: Hark
  */
 if (!defined('ABSPATH')) exit;
 
-define('APT_SYNC_VER', '1.3.0');
+define('APT_SYNC_VER', '1.4.0');
 define('APT_SYNC_MAX_BODY', 4 * 1024 * 1024);
 require_once __DIR__ . '/includes/class-core.php';
 require_once __DIR__ . '/includes/class-store-wpdb.php';
+require_once __DIR__ . '/includes/class-webpush.php';
 
-register_activation_hook(__FILE__, array('Apt_Sync_Store_WPDB', 'install'));
+register_activation_hook(__FILE__, function () { Apt_Sync_Store_WPDB::install(); apt_sync_vapid(); });
 add_action('plugins_loaded', function () { if (get_option('apt_sync_db') !== '1') Apt_Sync_Store_WPDB::install(); });
 
 function apt_sync_secret() {
 	$s = get_option('apt_sync_secret');
 	if (!$s) { $s = wp_generate_password(48, false, false); update_option('apt_sync_secret', $s, false); }
 	return $s;
+}
+
+/* ---------- اعلان فوری (Web Push، نسخه ۱.۴) ---------- */
+/** جفت‌کلید VAPID: یک بار ساخته و در گزینه وردپرس نگه داشته می‌شود. null یعنی این سرور نمی‌تواند push بفرستد. */
+function apt_sync_vapid() {
+	if (!Apt_Sync_WebPush::available()) return null;
+	$v = get_option('apt_sync_vapid');
+	if (is_array($v) && !empty($v['pub']) && !empty($v['pem'])) return $v;
+	try { $v = Apt_Sync_WebPush::createVapid(); }
+	catch (Exception $e) { update_option('apt_sync_push_err', $e->getMessage(), false); return null; }
+	update_option('apt_sync_vapid', $v, false);
+	return $v;
+}
+function apt_sync_push_subject() {
+	$mail = get_option('admin_email');
+	return apply_filters('apt_sync_push_subject', is_email($mail) ? 'mailto:' . $mail : home_url('/'));
+}
+function apt_sync_new_core() {
+	$core = new Apt_Sync_Core(new Apt_Sync_Store_WPDB(), apt_sync_secret());
+	$v = apt_sync_vapid();
+	$core->setPush($v ? $v['pub'] : null);
+	return $core;
+}
+/** بعد از فرستادن پاسخ به برنامه، اعلان‌ها را بفرست (مهلت کوتاه، موازی) */
+function apt_sync_flush_push($box) {
+	if (!$box) return;
+	if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request();
+	elseif (function_exists('litespeed_finish_request')) @litespeed_finish_request();
+	@ignore_user_abort(true);
+	$v = apt_sync_vapid();
+	if (!$v) return;
+	$res = Apt_Sync_WebPush::sendMany($box, $v, apt_sync_push_subject(), 6);
+	$dead = array(); $stat = array();
+	foreach ($res as $i => $code) {
+		$it = $box[$i];
+		if ($code === 404 || $code === 410) $dead[$it['phone']][] = $it['sub']['e'];
+		$host = (string) parse_url($it['sub']['e'], PHP_URL_HOST);
+		$stat[] = array('t' => current_time('mysql'), 'h' => $host, 'ro' => $it['sub']['ro'], 'tag' => substr((string) $it['tag'], 0, 40), 's' => $code);
+	}
+	if ($dead) { $core = apt_sync_new_core(); foreach ($dead as $ph => $eps) $core->removeEndpoints($ph, $eps); }
+	$log = get_option('apt_sync_push_log', array());
+	if (!is_array($log)) $log = array();
+	update_option('apt_sync_push_log', array_slice(array_merge(array_reverse($stat), $log), 0, 40), false);
 }
 
 function apt_sync_allowed_origin($origin) {
@@ -35,15 +79,18 @@ add_action('rest_api_init', function () {
 		array('methods' => 'GET', 'permission_callback' => '__return_true', 'callback' => function () {
 			global $wpdb;
 			$ok = (bool) $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->prefix . 'apt_sync'));
-			return new WP_REST_Response(array('ok' => true, 'service' => 'apartment-plus-sync', 'storage' => $ok, 'v' => APT_SYNC_VER), 200);
+			$v = apt_sync_vapid();
+			return new WP_REST_Response(array('ok' => true, 'service' => 'apartment-plus-sync', 'storage' => $ok, 'v' => APT_SYNC_VER, 'push' => (bool) $v, 'pushKey' => $v ? $v['pub'] : null), 200);
 		}),
 		array('methods' => 'POST', 'permission_callback' => '__return_true', 'callback' => function (WP_REST_Request $req) {
 			$raw = $req->get_body();
 			if (strlen($raw) > APT_SYNC_MAX_BODY) return new WP_REST_Response(array('error' => 'too_large'), 413);
 			$body = json_decode($raw, true);
-			$core = new Apt_Sync_Core(new Apt_Sync_Store_WPDB(), apt_sync_secret());
+			$core = apt_sync_new_core();
 			list($status, $out) = $core->handle($body);
 			apt_sync_log($body, $status, $out);
+			$box = $core->takeOutbox();
+			if ($box) register_shutdown_function('apt_sync_flush_push', $box);
 			return new WP_REST_Response($out, $status);
 		}),
 	));
@@ -121,7 +168,20 @@ add_action('admin_menu', function () {
 function apt_sync_admin_page() {
 	global $wpdb; $t = $wpdb->prefix . 'apt_sync'; $c = $wpdb->prefix . 'apt_sync_codes';
 	echo '<div class="wrap" style="direction:rtl"><h1>آپارتمان پلاس — سرور همگام‌سازی</h1>';
-	echo '<p>آدرس سرور: <code>' . esc_html(rest_url('apt-sync/v1/sync')) . '</code></p>';
+	echo '<p>آدرس سرور: <code>' . esc_html(rest_url('apt-sync/v1/sync')) . '</code> — نسخه ' . esc_html(APT_SYNC_VER) . ' — PHP ' . esc_html(PHP_VERSION) . '</p>';
+	// وضعیت اعلان فوری
+	$v = apt_sync_vapid(); $counts = Apt_Sync_Store_WPDB::pushCounts(); $tot = array('m' => 0, 'b' => 0, 'r' => 0);
+	foreach ($counts as $c) foreach ($c as $k => $n) $tot[$k] += $n;
+	echo '<h2>اعلان فوری (Web Push)</h2>';
+	if ($v) echo '<p style="color:#047857">✅ فعال — کلید عمومی VAPID: <code style="font-size:11px">' . esc_html(substr($v['pub'], 0, 24)) . '…</code></p>';
+	else echo '<p style="color:#b91c1c">⛔ غیرفعال: ' . esc_html(Apt_Sync_WebPush::why() ?: (string) get_option('apt_sync_push_err', 'ساخت کلید ناموفق بود')) . '. همگام‌سازی عادی کار می‌کند؛ فقط اعلان وقتی برنامه بسته است نمی‌رسد.</p>';
+	echo '<p>دستگاه‌های مشترک: مدیر کل ' . (int) $tot['m'] . ' — مدیر بلوک ' . (int) $tot['b'] . ' — ساکن ' . (int) $tot['r'] . ' (جمع ' . array_sum($tot) . ')</p>';
+	$pl = (array) get_option('apt_sync_push_log', array());
+	if ($pl) {
+		echo '<details><summary>آخرین ارسال‌ها (201 = تحویل به سرویس push؛ 404/410 = اشتراک منقضی و حذف شد؛ 0 = خطای شبکه/مهلت)</summary><table class="widefat striped"><thead><tr><th>زمان</th><th>سرویس</th><th>نقش</th><th>رویداد</th><th>نتیجه</th></tr></thead><tbody>';
+		foreach ($pl as $e) echo '<tr><td>' . esc_html($e['t'] ?? '') . '</td><td>' . esc_html($e['h'] ?? '') . '</td><td>' . esc_html($e['ro'] ?? '') . '</td><td>' . esc_html($e['tag'] ?? '') . '</td><td>' . esc_html((string) ($e['s'] ?? '')) . '</td></tr>';
+		echo '</tbody></table></details>';
+	}
 	$phones = $wpdb->get_col("SELECT DISTINCT phone FROM $t");
 	echo '<h2>ساختمان‌ها (' . count($phones) . ')</h2><table class="widefat striped"><thead><tr><th>شماره مدیر</th><th>کد ساختمان</th><th>کدهای ایندکس</th><th>تعداد کلید</th><th>واحدها</th><th>ساکنین ثبت‌نامی</th><th>آخرین تغییر</th><th>توسط</th></tr></thead><tbody>';
 	foreach ($phones as $ph) {

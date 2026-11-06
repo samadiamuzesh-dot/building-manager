@@ -817,8 +817,54 @@ function openResidentPanel() {
 
   renderResidentHeader();
   renderResidentDashboard();
-  switchResidentPage('dashboard');
+  const RPAGES = ['dashboard', 'charges', 'notices', 'messages', 'voting', 'profile'];
+  const fromUrl = window.AptNotify ? AptNotify.consumeUrlPage() : '';
+  switchResidentPage(RPAGES.includes(fromUrl) ? fromUrl : 'dashboard');
+  // زنگوله همان لحظه (نه فقط بعد از لمس یا ۳۰ ثانیه)
+  renderResidentNotifications();
+  if (window.AptNotify) AptNotify.banner(document.getElementById('residentPushBanner'));
 }
+
+/* ============ 🔔 صدا + اعلان سیستمی برای موارد تازه همین ساکن ============ */
+function residentNotifyItems() {
+  const myUnitId = getUnitIdBySession();
+  if (myUnitId == null) return null;
+  const cut = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+  const items = [];
+  getMyNotices().forEach(n => items.push({ tag: 'notice-' + n.id, url: 'resident.html?n=notices', page: 'notices',
+    body: '📢 ' + (cut(n.title, 60) || 'اطلاعیه جدید') + (n.body ? ' — ' + cut(n.body, 140) : '') }));
+  loadMessages().filter(m => Number(m.unitId) === Number(myUnitId) && m.direction === 'sent').forEach(m =>
+    items.push({ tag: 'msg-' + m.id, url: 'resident.html?n=messages', page: 'messages', body: '💬 پیام جدید از مدیر: ' + cut(m.body, 140) }));
+  loadCharges().filter(c => Number(c.unitId) === Number(myUnitId)).forEach(c => {
+    const per = [c.month, c.year].filter(Boolean).join(' ');
+    const amt = formatTomanR(c.total != null ? c.total : c.amount);
+    if (!c.paid) items.push({ tag: 'charge-' + c.id, url: 'resident.html?n=charges', page: 'charges', body: '💰 شارژ جدید ' + per + ': ' + amt });
+    if (c.paid) items.push({ tag: 'payok-' + c.id, url: 'resident.html?n=charges', page: 'charges', body: '✅ پرداخت شارژ ' + per + ' (' + amt + ') تأیید شد' });
+    else if (c.rejectedAt && !c.pendingApproval) items.push({ tag: 'payrej-' + c.id + '-' + c.rejectedAt, url: 'resident.html?n=charges', page: 'charges',
+      body: '✖ اعلام پرداخت شارژ ' + per + ' رد شد' + (c.rejectReason ? ': ' + cut(c.rejectReason, 100) : '') });
+  });
+  return items;
+}
+function residentNotifyCheck() {
+  const session = getResidentSession();
+  if (!session || !window.AptNotify) return;
+  const items = residentNotifyItems();
+  if (!items) return; // واحد هنوز روی این دستگاه نیست: «دیده‌شده» نساز تا بعداً اعلان انبوه نیاید
+  const scope = 'r_' + String(session.managerPhone || _residentResolvedPhone || '') + '_' + session.residentId;
+  AptNotify.check(scope, items, {
+    url: 'resident.html',
+    onFresh: (fresh) => showResidentToast(fresh.length > 1 ? `${toPersianNumR(fresh.length)} مورد تازه دارید` : escapeHtmlR(fresh[0].body), 'info', '🔔 اعلان تازه'),
+  });
+}
+window.addEventListener('apt-sync-pulled', () => {
+  if (!getResidentSession()) return;
+  renderResidentNotifications();
+  residentNotifyCheck();
+});
+window.addEventListener('apt-open-url', (e) => {
+  const n = window.AptNotify ? AptNotify.pageFromUrl(e.detail && e.detail.url) : '';
+  if (n && getResidentSession() && document.getElementById('resident-' + n)) { closeResidentNotifPanel(); switchResidentPage(n); }
+});
 
 function renderResidentHeader() {
   const session = getResidentSession();
@@ -2078,6 +2124,8 @@ function saveResidentProfile() {
 /* ============ خروج ============ */
 async function logoutResident() {
   if (!(await appConfirm('آیا از خروج مطمئن هستید؟'))) return;
+  // اعلان‌های این حساب دیگر به این گوشی نیاید
+  if (window.AptNotify) await AptNotify.disablePush();
   clearResidentSession();
   showResidentToast('از حساب خارج شدید', 'success');
   setTimeout(() => location.reload(), 800);
@@ -2241,6 +2289,8 @@ function initResidentApp() {
     if (!e.key || !e.key.startsWith('ham_sakhteman_') || !getResidentSession()) return;
     clearTimeout(_syncTimer);
     _syncTimer = setTimeout(() => {
+      // زنگوله در هر صفحه‌ای تازه شود (قبلاً فقط با لمس زنگوله یا هر ۳۰ ثانیه)
+      try { renderResidentNotifications(); } catch (err) {}
       const active = document.querySelector('.resident-page.active');
       const key = active ? active.id.replace('resident-', '') : 'dashboard';
       if (key === 'messages' || key === 'profile') return; // چت خودش polling دارد؛ فرم پروفایل را خراب نکن
@@ -2768,7 +2818,7 @@ function generateResidentNotifications() {
   });
 
   // ===== ۴. همه اطلاعیه‌ها =====
-  const notices = loadNotices();
+  const notices = getMyNotices();
   notices.forEach(n => {
     notifications.push({
       id: `notice-${n.id}`,
@@ -2825,11 +2875,11 @@ function renderResidentNotifications() {
       <div class="resident-notif-icon ${n.iconClass}">${n.icon}</div>
       <div class="resident-notif-body">
         <div class="resident-notif-title">
-          <span>${n.title}</span>
+          <span>${escapeHtmlR(n.title)}</span>
           ${!n.read ? '<span class="resident-notif-badge">جدید</span>' : ''}
         </div>
-        <div class="resident-notif-desc">${n.desc}</div>
-        <div class="resident-notif-time">${n.time}</div>
+        <div class="resident-notif-desc">${escapeHtmlR(n.desc)}</div>
+        <div class="resident-notif-time">${escapeHtmlR(n.time)}</div>
       </div>
     </div>
   `).join('');

@@ -1,6 +1,6 @@
 // v2: network-first برای HTML/JS/CSS تا اصلاحات جدید فوراً به کاربر برسد
 // (نسخه قبلی cache-first بود و صفحات قدیمی برای همیشه از کش نمایش داده می‌شد)
-const CACHE = 'apartman-plus-v20';
+const CACHE = 'apartman-plus-v21';
 // مسیرها نسبی‌اند تا روی هر دامنه‌ای (Vercel یا GitHub Pages) کار کند
 const ASSETS = [
   './',
@@ -22,6 +22,7 @@ const ASSETS = [
   'js/block-auth.js',
   'js/plans.js',
   'js/sync.js',
+  'js/notify.js',
   'js/resident-app.js',
   'assets/logo.png'
 ];
@@ -54,4 +55,44 @@ self.addEventListener('fetch', e => {
       })
       .catch(() => caches.match(e.request))
   );
+});
+
+/* ---------- اعلان فوری (Web Push) و کلیک روی اعلان ---------- */
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { try { d = { body: e.data.text() }; } catch (er) {} }
+  const title = d.title || 'آپارتمان پلاس';
+  const tag = d.tag || 'apt-' + Date.now();
+  const opts = {
+    body: d.body || 'مورد تازه‌ای دارید',
+    icon: 'assets/icon-192.png',
+    badge: 'assets/icon-192.png',
+    tag,
+    renotify: true,
+    dir: 'rtl',
+    lang: 'fa',
+    data: { url: d.url || '' },
+  };
+  // همیشه اعلان نشان بده (آیفون و کروم push بی‌اعلان را جریمه می‌کنند)؛ به صفحه‌های باز هم خبر بده تا تکرار نکنند
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(title, opts),
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => list.forEach(c => c.postMessage({ type: 'apt-push', tag }))),
+  ]));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const rel = (e.notification.data && e.notification.data.url) || '';
+  const target = new URL(rel || './', self.registration.scope).href;
+  const norm = p => (p.endsWith('/') ? p + 'index.html' : p);
+  const tPath = norm(new URL(target).pathname);
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    // پنجره همان صفحه (ساکن یا مدیر) باز است: همان را جلو بیاور و به صفحه مربوط ببر
+    const same = list.find(c => norm(new URL(c.url).pathname) === tPath) || (rel ? null : list[0]);
+    if (same) {
+      same.postMessage({ type: 'apt-open', url: target });
+      return same.focus ? same.focus() : same;
+    }
+    return self.clients.openWindow ? self.clients.openWindow(target) : null;
+  }));
 });

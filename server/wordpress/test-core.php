@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/apt-sync/includes/class-core.php';
+require __DIR__ . '/apt-sync/includes/class-webpush.php';
 class MemStore {
 	public $m = array(); public $k = array(); public $c = array(); public $rl = array();
 	function getMeta($p) { return isset($this->m[$p]) ? $this->m[$p] : null; }
@@ -13,6 +14,9 @@ class MemStore {
 	function delCode($c) { unset($this->c[$c]); }
 	function lock($p) { return true; } function unlock($p) {}
 	function rateHit($k, $s) { $this->rl[$k] = (isset($this->rl[$k]) ? $this->rl[$k] : 0) + 1; return $this->rl[$k]; }
+	public $push = array();
+	function getPush($p) { return isset($this->push[$p]) ? $this->push[$p] : array(); }
+	function setPush($p, $l) { $this->push[$p] = array_values($l); }
 }
 $S = new MemStore(); $core = new Apt_Sync_Core($S, 'secret');
 $pass = 0; $failN = 0;
@@ -336,4 +340,151 @@ ok('legacy manager-created block manager still logs in', $s == 200);
 // محدودیت تعداد
 for ($i = 0; $i < 6; $i++) list($s,) = $breg(array('blockPhone' => '09120000888', 'name' => 'Rl'));
 ok('block register rate-limited per phone', $s == 429);
+
+/* ================= نسخه ۱.۴: Web Push ================= */
+$W = 'Apt_Sync_WebPush';
+ok('webpush available on this PHP (openssl_pkey_derive + aes-128-gcm)', $W::available() && $W::why() === '');
+$vap = $W::createVapid();
+$vpub = $W::b64ud($vap['pub']);
+ok('vapid keypair: 65-byte uncompressed P-256 public key', strlen($vpub) === 65 && $vpub[0] === "\x04" && strpos($vap['pem'], 'PRIVATE KEY') !== false);
+$jwt = $W::vapidJwt('https://fcm.googleapis.com', 'mailto:test@example.com', $vap['pem'], 2000000000);
+list($jh, $jc, $js) = explode('.', $jwt);
+$claims = json_decode($W::b64ud($jc), true);
+$sigRaw = $W::b64ud($js);
+ok('vapid jwt: ES256 header + aud/sub/exp claims', json_decode($W::b64ud($jh), true) === array('typ' => 'JWT', 'alg' => 'ES256') && $claims['aud'] === 'https://fcm.googleapis.com' && $claims['sub'] === 'mailto:test@example.com' && $claims['exp'] === 2000000000);
+ok('vapid jwt: 64-byte raw signature verifies with the public key', strlen($sigRaw) === 64 && openssl_verify($jh . '.' . $jc, $W::rawToDer($sigRaw), $W::publicPem($vpub), OPENSSL_ALGO_SHA256) === 1);
+ok('vapid jwt: signature over other data fails', openssl_verify($jh . '.x' . $jc, $W::rawToDer($sigRaw), $W::publicPem($vpub), OPENSSL_ALGO_SHA256) !== 1);
+// اشتراک آزمایشی (کار مرورگر): جفت‌کلید P-256 + auth ۱۶ بایتی
+$mkSub = function ($name) use ($W) { $k = $W::newEcKey(); return array('key' => $k, 'json' => array('endpoint' => 'https://fcm.googleapis.com/fcm/send/' . $name, 'keys' => array('p256dh' => $W::b64u($W::rawPublic($k)), 'auth' => $W::b64u(random_bytes(16))))); };
+$t1 = $mkSub('t1');
+$msg = json_encode(array('title' => 'آپارتمان پلاس', 'body' => 'اطلاعیه آزمایشی', 'url' => 'resident.html?n=notices', 'tag' => 'notice-1'), JSON_UNESCAPED_UNICODE);
+$enc = $W::encrypt($msg, $t1['json']['keys']['p256dh'], $t1['json']['keys']['auth']);
+$hdr = unpack('Nrs', substr($enc, 16, 4));
+ok('aes128gcm header: salt16 + rs=4096 + keyid=65-byte ephemeral key', $hdr['rs'] === 4096 && ord($enc[20]) === 65 && $enc[21] === "\x04");
+ok('aes128gcm round-trip: subscriber private key decrypts payload', $W::decrypt($enc, $t1['key'], $t1['json']['keys']['auth']) === $msg);
+$bad = $enc; $bad[strlen($bad) - 20] = chr(ord($bad[strlen($bad) - 20]) ^ 1);
+ok('aes128gcm: tampered ciphertext rejected', $W::decrypt($bad, $t1['key'], $t1['json']['keys']['auth']) === false);
+$other = $mkSub('o');
+ok('aes128gcm: another subscription cannot decrypt', $W::decrypt($enc, $other['key'], $t1['json']['keys']['auth']) === false);
+$req = $W::buildRequest(array('e' => $t1['json']['endpoint'], 'k' => $t1['json']['keys']['p256dh'], 'a' => $t1['json']['keys']['auth']), $msg, $vap, 'mailto:test@example.com');
+$hs = implode("\n", $req['headers']);
+ok('push request headers: aes128gcm, TTL, vapid t=…, k=…', strpos($hs, 'Content-Encoding: aes128gcm') !== false && strpos($hs, 'TTL: ') !== false && strpos($hs, 'Authorization: vapid t=') !== false && strpos($hs, ', k=' . $vap['pub']) !== false
+	&& $W::decrypt($req['body'], $t1['key'], $t1['json']['keys']['auth']) === $msg);
+ok('endpoint allow-list (push services only)', $W::endpointAllowed('https://fcm.googleapis.com/fcm/send/x') && $W::endpointAllowed('https://web.push.apple.com/QAB') && $W::endpointAllowed('https://updates.push.services.mozilla.com/wpush/v2/x')
+	&& !$W::endpointAllowed('http://fcm.googleapis.com/x') && !$W::endpointAllowed('https://evil.example.com/x') && !$W::endpointAllowed('https://fcm.googleapis.com.evil.com/x'));
+
+// ساختمان آزمایشی با دو بلوک، دو ساکن، دو مدیر بلوک
+$S = new MemStore(); $core = new Apt_Sync_Core($S, 'secret');
+list($s, $e) = call(array('action' => 'push_key'));
+ok('push_key without VAPID: 503 push_unavailable', $s == 503 && $e['error'] === 'push_unavailable');
+$core->setPush($vap['pub']);
+list($s, $e) = call(array('action' => 'push_key'));
+ok('push_key returns public key', $s == 200 && $e['key'] === $vap['pub']);
+list(, $rg) = call(array('action' => 'register', 'phone' => '09127770000', 'passHash' => 'MP', 'code' => 'P-100100'));
+$pm = $rg['token'];
+$pput = function ($tok, $base, $val) { global $S; $cur = $S->getKey('09127770000', $base); return call(array('action' => 'push', 'token' => $tok, 'changes' => array($base => array('v' => json_encode($val, JSON_UNESCAPED_UNICODE), 'r' => $cur ? $cur['r'] : 0)))); };
+$pget = function ($base) { global $S; $c = $S->getKey('09127770000', $base); return $c ? json_decode($c['v'], true) : array(); };
+$pput($pm, 'v3', array('building' => array('code' => 'P-100100', 'type' => 'complex', 'blocks' => array('A', 'B'))));
+$pput($pm, 'units', array(array('id' => 1, 'block' => 'A', 'number' => 1, 'owner' => array('name' => 'R1', 'phone' => '09350000001', 'approved' => true)), array('id' => 2, 'block' => 'B', 'number' => 2, 'owner' => array('name' => 'R2', 'phone' => '09350000002', 'approved' => true))));
+$pput($pm, 'registered_residents', array(
+	array('id' => 501, 'buildingCode' => 'P-100100', 'phone' => '09350000001', 'passwordHash' => 'R1', 'status' => 'approved', 'block' => 'A', 'unitNumber' => 1, 'name' => 'R1'),
+	array('id' => 502, 'buildingCode' => 'P-100100', 'phone' => '09350000002', 'passwordHash' => 'R2', 'status' => 'approved', 'block' => 'B', 'unitNumber' => 2, 'name' => 'R2')));
+$pput($pm, 'block_managers', array(array('id' => 901, 'name' => 'BA', 'phone' => '09120000901', 'block' => 'A', 'passwordHash' => 'bh_A', 'active' => true), array('id' => 902, 'name' => 'BB', 'phone' => '09120000902', 'block' => 'B', 'passwordHash' => 'bh_B', 'active' => true)));
+$pput($pm, 'charges', array(array('id' => 71, 'unitId' => 1, 'total' => 500000, 'month' => 'آذر', 'year' => '1405', 'paid' => false), array('id' => 72, 'unitId' => 2, 'total' => 500000, 'month' => 'آذر', 'year' => '1405', 'paid' => false)));
+$core->takeOutbox();
+list(, $l1) = call(array('action' => 'resident_login', 'code' => 'P-100100', 'residentPhone' => '09350000001', 'passHash' => 'R1')); $r1 = $l1['token'];
+list(, $l2) = call(array('action' => 'resident_login', 'code' => 'P-100100', 'residentPhone' => '09350000002', 'passHash' => 'R2')); $r2 = $l2['token'];
+list(, $ba) = call(array('action' => 'block_login', 'code' => 'P-100100', 'blockPhone' => '09120000901', 'passHash' => 'bh_A')); $tba = $ba['token'];
+list(, $bb) = call(array('action' => 'block_login', 'code' => 'P-100100', 'blockPhone' => '09120000902', 'passHash' => 'bh_B')); $tbb = $bb['token'];
+list(, $og) = call(array('action' => 'open', 'code' => 'P-100100')); $guest = $og['token'];
+$subs = array(); foreach (array('m', 'm2', 'r1', 'r2', 'ba', 'bb', 'g') as $n) $subs[$n] = $mkSub($n);
+list($s, $e) = call(array('action' => 'push_sub', 'token' => $guest, 'sub' => $subs['g']['json']));
+ok('push_sub: guest (code only, no resident login) refused 403', $s == 403 && $e['error'] === 'need_login');
+list($s,) = call(array('action' => 'push_sub', 'token' => 'forged.token', 'sub' => $subs['m']['json']));
+ok('push_sub: bad token 401', $s == 401);
+list($s,) = call(array('action' => 'push_sub', 'token' => $pm, 'sub' => array('endpoint' => 'https://evil.example.com/x', 'keys' => $subs['m']['json']['keys'])));
+ok('push_sub: non-push-service endpoint refused', $s == 400);
+list($s,) = call(array('action' => 'push_sub', 'token' => $pm, 'sub' => array('endpoint' => $subs['m']['json']['endpoint'], 'keys' => array('p256dh' => 'AAAA', 'auth' => 'BBBB'))));
+ok('push_sub: malformed keys refused', $s == 400);
+$okAll = true;
+foreach (array('m' => $pm, 'm2' => $pm, 'r1' => $r1, 'r2' => $r2, 'ba' => $tba, 'bb' => $tbb) as $n => $tok) { list($s,) = call(array('action' => 'push_sub', 'token' => $tok, 'sub' => $subs[$n]['json'])); $okAll = $okAll && $s == 200; }
+$byE = array(); foreach ($S->getPush('09127770000') as $x) $byE[$x['e']] = $x;
+ok('push_sub: manager, residents (with rid) and block managers (with bid) stored', $okAll && count($byE) == 6 && $byE[$subs['r1']['json']['endpoint']]['rid'] === '501' && $byE[$subs['ba']['json']['endpoint']]['bid'] === '901' && $byE[$subs['m']['json']['endpoint']]['ro'] === 'm');
+call(array('action' => 'push_sub', 'token' => $pm, 'sub' => $subs['m']['json']));
+ok('push_sub: same endpoint again does not duplicate', count($S->getPush('09127770000')) == 6);
+list(, $pl) = call(array('action' => 'pull', 'token' => $r1, 'since' => 0));
+list(, $plm) = call(array('action' => 'pull', 'token' => $pm, 'since' => 0));
+ok('pull never returns push subscriptions', strpos(json_encode($pl), 'fcm.googleapis') === false && strpos(json_encode($plm), 'fcm.googleapis') === false);
+
+// رویداد → گیرنده
+$who = function () use ($core, $subs) { $o = array(); foreach ($core->takeOutbox() as $it) foreach ($subs as $n => $x) if ($x['json']['endpoint'] === $it['sub']['e']) $o[$n][] = $it; ksort($o); return $o; };
+$names = function ($o) { $k = array_keys($o); sort($k); return implode(',', $k); };
+$pput($pm, 'notices', array(array('id' => 31, 'title' => 'آب قطع است', 'body' => 'فردا ۱۰ تا ۱۲', 'targetType' => 'units', 'targetUnits' => array(1))));
+$o = $who();
+ok('notice for unit 1 → only resident of unit 1 (' . $names($o) . ')', $names($o) === 'r1');
+$it = $o['r1'][0]; $rq = $W::buildRequest($it['sub'], $it['payload'], $vap, 'mailto:t@e.st');
+$dec = json_decode((string) $W::decrypt($rq['body'], $subs['r1']['key'], $subs['r1']['json']['keys']['auth']), true);
+ok('queued push decrypts to {title, body, url, tag}', $dec && $dec['title'] === 'آپارتمان پلاس' && strpos($dec['body'], 'آب قطع است') !== false && $dec['url'] === 'resident.html?n=notices' && $dec['tag'] === 'notice-31');
+$n = $pget('notices'); $n[] = array('id' => 32, 'title' => 'جلسه', 'body' => 'x', 'targetType' => 'all');
+$pput($pm, 'notices', $n);
+ok('notice for all → both residents, not the manager who sent it', $names($who()) === 'r1,r2');
+$n = $pget('notices'); $n[] = array('id' => 33, 'title' => 'بلوک B', 'targetType' => 'block', 'targetBlock' => 'B');
+$pput($pm, 'notices', $n);
+ok('notice for block B → only resident of block B', $names($who()) === 'r2');
+$pput($pm, 'messages', array(array('id' => 41, 'unitId' => 2, 'direction' => 'sent', 'body' => 'سلام واحد ۲')));
+ok('manager message to unit 2 → only resident 2', $names($who()) === 'r2');
+// ساکن ۱ اعلام پرداخت می‌کند
+$c = $pget('charges'); $c[0]['pendingApproval'] = true; $c[0]['pendingAt'] = '2026-11-06T10:00:00Z'; $c[0]['trackingCode'] = '123';
+$pput($r1, 'charges', $c);
+$o = $who();
+ok('resident 1 payment declaration → manager devices + block A manager only (' . $names($o) . ')', $names($o) === 'ba,m,m2' && $o['m'][0]['tag'] === 'pay-71-2026-11-06T10:00:00Z');
+$m = $pget('messages'); $m[] = array('id' => 42, 'unitId' => 1, 'direction' => 'received', 'body' => 'سؤال');
+$pput($r1, 'messages', $m);
+ok('resident 1 message → manager + block A manager, not other resident', $names($who()) === 'ba,m,m2');
+// مدیر بلوک A تأیید می‌کند → فقط ساکن ۱ (خودش و مدیر بلوک B نه)
+list(, $plb) = call(array('action' => 'pull', 'token' => $tba, 'since' => 0));
+$bc = json_decode($plb['keys']['charges']['v'], true); $bc[0]['paid'] = true; $bc[0]['pendingApproval'] = false;
+call(array('action' => 'push', 'token' => $tba, 'changes' => array('charges' => array('v' => json_encode($bc), 'r' => $plb['keys']['charges']['r']))));
+$o = $who();
+ok('block A approves payment → only resident 1 gets "approved" (' . $names($o) . ')', $names($o) === 'r1' && $o['r1'][0]['tag'] === 'payok-71');
+// رد اعلام پرداخت ساکن ۲
+$c = $pget('charges'); $c[1]['pendingApproval'] = true; $c[1]['pendingAt'] = 'p2';
+$pput($r2, 'charges', $c);
+ok('resident 2 declaration → manager + block B manager', $names($who()) === 'bb,m,m2');
+$c = $pget('charges'); $c[1]['pendingApproval'] = false; $c[1]['rejectedAt'] = 'rj'; $c[1]['rejectReason'] = 'کد پیگیری نامعتبر';
+$pput($pm, 'charges', $c);
+$o = $who();
+ok('manager rejects → resident 2 only, reason in body', $names($o) === 'r2' && strpos($o['r2'][0]['payload'], 'کد پیگیری نامعتبر') !== false);
+// صدور شارژ تازه برای هر دو واحد
+$c = $pget('charges'); $c[] = array('id' => 73, 'unitId' => 1, 'total' => 600000, 'month' => 'دی', 'year' => '1405', 'paid' => false); $c[] = array('id' => 74, 'unitId' => 2, 'total' => 600000, 'month' => 'دی', 'year' => '1405', 'paid' => false);
+$pput($pm, 'charges', $c);
+$o = $who();
+ok('charge issue → each resident gets exactly one push for own unit', $names($o) === 'r1,r2' && count($o['r1']) == 1 && $o['r1'][0]['tag'] === 'charge-73' && $o['r2'][0]['tag'] === 'charge-74');
+// ثبت‌نام تازه در بلوک B → مدیر + مدیر بلوک B
+list(, $og2) = call(array('action' => 'open', 'code' => 'P-100100'));
+$rr = $pget('registered_residents'); foreach ($rr as &$x) unset($x['passwordHash']); unset($x);
+$rr[] = array('id' => 503, 'buildingCode' => 'P-100100', 'phone' => '09350000003', 'passwordHash' => 'R3', 'status' => 'pending', 'block' => 'B', 'unitNumber' => 2, 'name' => 'R3');
+list(, $plg) = call(array('action' => 'pull', 'token' => $og2['token'], 'since' => 0));
+call(array('action' => 'push', 'token' => $og2['token'], 'changes' => array('registered_residents' => array('v' => json_encode($rr), 'r' => $plg['keys']['registered_residents']['r']))));
+ok('new registration in block B → manager + block B manager', $names($who()) === 'bb,m,m2');
+// مدیر بلوک غیرفعال → دیگر نمی‌گیرد
+$bm = $pget('block_managers'); foreach ($bm as &$x) { unset($x['passwordHash']); if ($x['id'] == 902) $x['active'] = false; } unset($x);
+$pput($pm, 'block_managers', $bm);
+$m = $pget('messages'); $m[] = array('id' => 43, 'unitId' => 2, 'direction' => 'received', 'body' => 'x');
+$pput($r2, 'messages', $m);
+ok('disabled block manager no longer receives', $names($who()) === 'm,m2');
+// خروج: لغو اشتراک
+call(array('action' => 'push_unsub', 'token' => $r2, 'endpoint' => $subs['r2']['json']['endpoint']));
+$n = $pget('notices'); $n[] = array('id' => 34, 'title' => 'همه', 'targetType' => 'all');
+$pput($pm, 'notices', $n);
+ok('after unsubscribe resident 2 gets nothing', $names($who()) === 'r1' && count($S->getPush('09127770000')) == 5);
+ok('removeEndpoints (404/410 cleanup)', $core->removeEndpoints('09127770000', array($subs['m2']['json']['endpoint'])) === 1 && count($S->getPush('09127770000')) == 4);
+// بازگردانی پشتیبان (اطلاعیه‌های زیاد یکجا) اعلان انبوه نمی‌سازد
+$n = $pget('notices'); for ($i = 0; $i < 8; $i++) $n[] = array('id' => 100 + $i, 'title' => 't' . $i, 'targetType' => 'all');
+$pput($pm, 'notices', $n);
+ok('bulk restore of many notices does not spam', $names($who()) === '');
+// درخواست مدیر بلوک (مهمان) → مدیر کل
+list($s,) = call(array('action' => 'block_register', 'code' => 'P-100100', 'block' => 'A', 'name' => 'Nima', 'blockPhone' => '09120000999', 'passHash' => 'bh_N'));
+$o = $who();
+ok('block manager self-registration → main manager push', $s == 200 && $names($o) === 'm');
 echo "\n$pass passed, $failN failed\n";

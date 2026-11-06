@@ -1,0 +1,6 @@
+# Minimal OpenSSL config for EC key generation when the server openssl.cnf is missing
+HOME = .
+[ req ]
+default_bits = 2048
+distinguished_name = req_dn
+[ req_dn ]

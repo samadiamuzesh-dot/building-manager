@@ -28,7 +28,13 @@ class Apt_Sync_Core {
 
 	/** @var object store: getMeta setMeta getKey getAll putKey delKey codeOwner setCode delCode lock unlock rateHit */
 	private $s; private $secret;
+	/** کلید عمومی VAPID (نسخه ۱.۴)؛ null یعنی اعلان فوری (Web Push) غیرفعال است */
+	private $pushKey = null; private $outbox = array();
 	public function __construct($store, $secret) { $this->s = $store; $this->secret = (string) $secret; }
+	public function setPush($pubKey) { $this->pushKey = $pubKey ? (string) $pubKey : null; }
+	/** اعلان‌هایی که باید بعد از پاسخ فرستاده شوند: [['phone','sub','payload'], …] */
+	public function takeOutbox() { $o = $this->outbox; $this->outbox = array(); return $o; }
+	private function pushOn() { return $this->pushKey !== null && method_exists($this->s, 'getPush'); }
 
 	/* ---------- helpers ---------- */
 	public static function now() { return (int) floor(microtime(true) * 1000); }
@@ -659,6 +665,8 @@ class Apt_Sync_Core {
 			$keep[] = $row;
 			$rev++;
 			$this->s->putKey($phone, 'block_managers', self::enc($keep), $rev, 'g');
+			if ($this->pushOn()) $this->queuePush($phone, array(array('tag' => 'bmreq-' . $id, 'mgr' => true, 'blocks' => array(), 'units' => array(), 'rids' => array(),
+				'body' => 'درخواست مدیر بلوک: ' . $name . ' (بلوک ' . $block . ')', 'url' => 'index.html?n=settings')), $this->s->getAll($phone), $this->s->getMeta($phone), array('ro' => 'g', 'id' => ''));
 		} finally { $this->s->unlock($phone); }
 		return array('ok' => true, 'status' => 'pending', 'id' => $id, 'block' => $block, 'name' => $info['name']);
 	}
@@ -746,6 +754,7 @@ class Apt_Sync_Core {
 			$meta = $this->s->getMeta($t['p']);
 			if (!$meta) throw new Apt_Sync_Error(404, 'not_found');
 			$cur = $this->s->getAll($t['p']); $rev = 0;
+			$before = $cur;
 			foreach ($cur as $rec) $rev = max($rev, (int) $rec['r']);
 			$id = null; $newRegs = array();
 			if ($t['ro'] === 'r') {
@@ -801,6 +810,7 @@ class Apt_Sync_Core {
 					}
 				}
 			}
+			if ($this->pushOn() && count((array) $applied)) $this->queuePush($t['p'], self::pushEvents($before, $cur), $cur, $meta, self::actorOf($t));
 		} finally { $this->s->unlock($t['p']); }
 		return array('applied' => $applied, 'conflicts' => $conflicts);
 	}
@@ -815,6 +825,218 @@ class Apt_Sync_Core {
 		$meta['pass'] = password_hash($new, PASSWORD_DEFAULT);
 		$this->s->setMeta($t['p'], $meta);
 		return array('ok' => true);
+	}
+
+	/* ---------- اعلان فوری Web Push (نسخه ۱.۴) ----------
+	 * اشتراک هر دستگاه {e: endpoint, k: p256dh, a: auth, ro: m|b|r, rid|bid} جدا از داده‌ها نگه داشته می‌شود
+	 * (در pull برگردانده نمی‌شود). رویدادها از تفاوت داده قبل/بعد هر push درمی‌آیند و گیرنده‌ها با همان
+	 * قواعد حریم pull انتخاب می‌شوند: ساکن فقط رویداد واحد خودش، مدیر بلوک فقط بلوک خودش.
+	 */
+	const PUSH_MAX_SUBS = 600;
+	const PUSH_MAX_PER_ID = 6;
+	private static function actorOf($t) {
+		$ro = isset($t['ro']) ? $t['ro'] : '';
+		return array('ro' => $ro, 'id' => $ro === 'r' ? (string) (isset($t['rid']) ? $t['rid'] : '') : ($ro === 'b' ? (string) (isset($t['bid']) ? $t['bid'] : '') : ''));
+	}
+	private function pushKeyAction() {
+		if ($this->pushKey === null) throw new Apt_Sync_Error(503, 'push_unavailable');
+		return array('ok' => true, 'key' => $this->pushKey);
+	}
+	private function pushSub($b) {
+		if (!$this->pushOn()) throw new Apt_Sync_Error(503, 'push_unavailable');
+		$t = $this->auth($b);
+		$sub = isset($b['sub']) && is_array($b['sub']) ? $b['sub'] : array();
+		$e = isset($sub['endpoint']) ? (string) $sub['endpoint'] : '';
+		$k = isset($sub['keys']['p256dh']) ? (string) $sub['keys']['p256dh'] : '';
+		$a = isset($sub['keys']['auth']) ? (string) $sub['keys']['auth'] : '';
+		if (!class_exists('Apt_Sync_WebPush') || !Apt_Sync_WebPush::endpointAllowed($e)) throw new Apt_Sync_Error(400, 'bad_endpoint');
+		$kr = Apt_Sync_WebPush::b64ud($k); $ar = Apt_Sync_WebPush::b64ud($a);
+		if (!is_string($kr) || strlen($kr) !== 65 || $kr[0] !== "\x04" || !is_string($ar) || strlen($ar) < 16 || strlen($ar) > 64) throw new Apt_Sync_Error(400, 'bad_keys');
+		$row = array('e' => $e, 'k' => $k, 'a' => $a, 'ro' => $t['ro'], 't' => self::now());
+		if ($t['ro'] === 'r') {
+			$id = self::ident($t, $this->s->getAll($t['p']));
+			if ($id['rid'] === null) throw new Apt_Sync_Error(403, 'need_login'); // مهمان (فقط کد ساختمان) اشتراک نمی‌گیرد
+			$row['rid'] = $id['rid'];
+		} elseif ($t['ro'] === 'b') $row['bid'] = (string) $t['bid'];
+		$this->rateLimit('ps:' . $t['p'], 120, 3600);
+		if (!$this->s->lock($t['p'])) throw new Apt_Sync_Error(503, 'busy');
+		try {
+			$list = (array) $this->s->getPush($t['p']); $keep = array(); $mine = 0;
+			foreach ($list as $x) {
+				if (!is_array($x) || !isset($x['e']) || $x['e'] === $e) continue; // همان دستگاه: جایگزین (شاید حساب عوض شده)
+				$same = isset($x['ro']) && $x['ro'] === $row['ro'] && (isset($x['rid']) ? $x['rid'] : '') === (isset($row['rid']) ? $row['rid'] : '') && (isset($x['bid']) ? $x['bid'] : '') === (isset($row['bid']) ? $row['bid'] : '');
+				if ($same) $mine++;
+				$keep[] = $x;
+			}
+			if ($mine >= self::PUSH_MAX_PER_ID) { // قدیمی‌ترین دستگاه همین حساب کنار می‌رود
+				foreach ($keep as $i => $x) if ($x['ro'] === $row['ro'] && (isset($x['rid']) ? $x['rid'] : '') === (isset($row['rid']) ? $row['rid'] : '') && (isset($x['bid']) ? $x['bid'] : '') === (isset($row['bid']) ? $row['bid'] : '')) { unset($keep[$i]); break; }
+				$keep = array_values($keep);
+			}
+			if (count($keep) >= self::PUSH_MAX_SUBS) array_shift($keep);
+			$keep[] = $row;
+			$this->s->setPush($t['p'], $keep);
+		} finally { $this->s->unlock($t['p']); }
+		return array('ok' => true);
+	}
+	private function pushUnsub($b) {
+		if (!method_exists($this->s, 'getPush')) return array('ok' => true);
+		$e = isset($b['endpoint']) ? (string) $b['endpoint'] : '';
+		$t = $this->auth($b);
+		$this->removeEndpoints($t['p'], array($e));
+		return array('ok' => true);
+	}
+	public function removeEndpoints($phone, $endpoints) {
+		if (!method_exists($this->s, 'getPush') || !$endpoints) return 0;
+		$drop = array_flip($endpoints); $n = 0;
+		if (!$this->s->lock($phone)) return 0;
+		try {
+			$keep = array();
+			foreach ((array) $this->s->getPush($phone) as $x) { if (is_array($x) && isset($x['e']) && isset($drop[$x['e']])) { $n++; continue; } $keep[] = $x; }
+			if ($n) $this->s->setPush($phone, $keep);
+		} finally { $this->s->unlock($phone); }
+		return $n;
+	}
+
+	private static function shortTxt($s, $n) {
+		$s = trim(preg_replace('/\s+/u', ' ', (string) $s));
+		return mb_strlen($s, 'UTF-8') > $n ? mb_substr($s, 0, $n - 1, 'UTF-8') . '…' : $s;
+	}
+	private static function unitLabel($u) {
+		if (!is_array($u)) return '';
+		$b = self::blockKey(isset($u['block']) ? $u['block'] : '');
+		return 'واحد ' . (isset($u['number']) ? $u['number'] : '?') . ($b !== '—' ? ' بلوک ' . $b : '');
+	}
+
+	/**
+	 * رویدادهای اعلان از تفاوت داده قبل و بعد. هر رویداد:
+	 * {tag, body, url, units: [unitId…] (ساکنین), rids: [regId…], mgr: bool (مدیر کل), blocks: [block…] (مدیران بلوک)}
+	 */
+	public static function pushEvents($before, $after) {
+		$L = function ($all, $b) { return isset($all[$b]) ? self::jlist($all[$b]['v']) : array(); };
+		$units = self::byIdMap($L($after, 'units'));
+		$blockOfUnit = function ($uid) use ($units) { return isset($units[(string) $uid]) ? self::blockKey(isset($units[(string) $uid]['block']) ? $units[(string) $uid]['block'] : '') : '—'; };
+		$ev = array();
+		$money = function ($c) { $a = isset($c['total']) ? $c['total'] : (isset($c['amount']) ? $c['amount'] : 0); return number_format((float) $a) . ' تومان'; };
+		$period = function ($c) { return trim((isset($c['month']) ? $c['month'] : '') . ' ' . (isset($c['year']) ? $c['year'] : '')); };
+
+		// اطلاعیه تازه → ساکنین هدف
+		$bN = self::byIdMap($L($before, 'notices'));
+		$freshN = array();
+		foreach ($L($after, 'notices') as $n) if (is_array($n) && isset($n['id']) && !isset($bN[(string) $n['id']])) $freshN[] = $n;
+		if (count($freshN) > 5) $freshN = array(); // بازگردانی پشتیبان یا همگام‌سازی اول، نه اطلاعیه تازه
+		foreach ($freshN as $n) {
+			$tt = isset($n['targetType']) ? $n['targetType'] : 'all'; $to = array();
+			foreach ($units as $uid => $u) {
+				if ($tt === 'all') $to[] = $uid;
+				elseif ($tt === 'block' && self::blockKey(isset($u['block']) ? $u['block'] : '') === self::blockKey(isset($n['targetBlock']) ? $n['targetBlock'] : '')) $to[] = $uid;
+			}
+			if ($tt === 'units') foreach ((array) (isset($n['targetUnits']) ? $n['targetUnits'] : array()) as $x) $to[] = (string) $x;
+			$title = self::shortTxt(isset($n['title']) ? $n['title'] : '', 60);
+			$ev[] = array('tag' => 'notice-' . $n['id'], 'units' => $to, 'url' => 'resident.html?n=notices',
+				'body' => '📢 ' . ($title !== '' ? $title : 'اطلاعیه جدید') . (isset($n['body']) && trim((string) $n['body']) !== '' ? ' — ' . self::shortTxt($n['body'], 140) : ''));
+		}
+		// پیام تازه: مدیر → ساکن / ساکن → مدیر و مدیر بلوک
+		$bM = self::byIdMap($L($before, 'messages'));
+		$freshM = array();
+		foreach ($L($after, 'messages') as $m) if (is_array($m) && isset($m['id']) && !isset($bM[(string) $m['id']]) && isset($m['unitId'])) $freshM[(string) $m['unitId'] . '|' . (isset($m['direction']) ? $m['direction'] : '')][] = $m;
+		foreach ($freshM as $grp) {
+			$m = end($grp);
+			$dir = isset($m['direction']) ? $m['direction'] : '';
+			$txt = count($grp) > 3 ? count($grp) . ' پیام تازه' : self::shortTxt(isset($m['body']) ? $m['body'] : '', 140);
+			if ($dir === 'sent') $ev[] = array('tag' => 'msg-' . $m['id'], 'units' => array((string) $m['unitId']), 'url' => 'resident.html?n=messages', 'body' => '💬 پیام جدید از مدیر: ' . $txt);
+			elseif ($dir === 'received') $ev[] = array('tag' => 'rmsg-' . $m['id'], 'mgr' => true, 'blocks' => array($blockOfUnit($m['unitId'])), 'url' => 'index.html?n=messages',
+				'body' => '💬 پیام از ' . self::unitLabel(isset($units[(string) $m['unitId']]) ? $units[(string) $m['unitId']] : array('number' => '?')) . ': ' . $txt);
+		}
+		// شارژ: صدور، اعلام پرداخت، تأیید، رد
+		$bC = self::byIdMap($L($before, 'charges'));
+		$newPerUnit = array();
+		foreach ($L($after, 'charges') as $c) {
+			if (!is_array($c) || !isset($c['id']) || !isset($c['unitId'])) continue;
+			$uid = (string) $c['unitId']; $k = (string) $c['id'];
+			if (!isset($bC[$k])) { if (empty($c['paid'])) $newPerUnit[$uid][] = $c; continue; }
+			$o = $bC[$k];
+			if (empty($o['pendingApproval']) && !empty($c['pendingApproval']) && empty($c['paid']))
+				$ev[] = array('tag' => 'pay-' . $k . '-' . (isset($c['pendingAt']) ? $c['pendingAt'] : ''), 'mgr' => true, 'blocks' => array($blockOfUnit($uid)), 'url' => 'index.html?n=charges',
+					'body' => '💳 اعلام پرداخت ' . self::unitLabel(isset($units[$uid]) ? $units[$uid] : array('number' => '?')) . ': ' . $money($c) . ($period($c) ? ' (' . $period($c) . ')' : ''));
+			elseif (empty($o['paid']) && !empty($c['paid']))
+				$ev[] = array('tag' => 'payok-' . $k, 'units' => array($uid), 'url' => 'resident.html?n=charges', 'body' => '✅ پرداخت شارژ ' . $period($c) . ' (' . $money($c) . ') تأیید شد');
+			elseif (!empty($o['pendingApproval']) && empty($c['pendingApproval']) && empty($c['paid']))
+				$ev[] = array('tag' => 'payrej-' . $k . '-' . (isset($c['rejectedAt']) ? $c['rejectedAt'] : ''), 'units' => array($uid), 'url' => 'resident.html?n=charges',
+					'body' => '✖ اعلام پرداخت شارژ ' . $period($c) . ' رد شد' . (!empty($c['rejectReason']) ? ': ' . self::shortTxt($c['rejectReason'], 100) : ''));
+		}
+		foreach ($newPerUnit as $uid => $cs) {
+			$c = $cs[0];
+			$ev[] = array('tag' => 'charge-' . $c['id'], 'units' => array((string) $uid), 'url' => 'resident.html?n=charges',
+				'body' => count($cs) > 1 ? '💰 ' . count($cs) . ' شارژ جدید برای واحد شما صادر شد' : '💰 شارژ جدید ' . $period($c) . ': ' . $money($c));
+		}
+		// ثبت‌نام ساکن: درخواست تازه → مدیر/مدیر بلوک؛ تأیید → خود ساکن
+		$bR = self::byIdMap($L($before, 'registered_residents'));
+		foreach ($L($after, 'registered_residents') as $r) {
+			if (!is_array($r) || !isset($r['id'])) continue;
+			$k = (string) $r['id']; $st = isset($r['status']) ? $r['status'] : '';
+			if (!isset($bR[$k])) {
+				if ($st === 'pending') $ev[] = array('tag' => 'reg-' . $k, 'mgr' => true, 'blocks' => array(self::blockKey(isset($r['block']) ? $r['block'] : '')), 'url' => 'index.html?n=units',
+					'body' => '👤 درخواست عضویت: ' . self::shortTxt(isset($r['name']) ? $r['name'] : '', 40) . ' — ' . self::unitLabel(array('number' => isset($r['unitNumber']) ? $r['unitNumber'] : '?', 'block' => isset($r['block']) ? $r['block'] : '')));
+			} elseif ((isset($bR[$k]['status']) ? $bR[$k]['status'] : '') === 'pending' && $st === 'approved') {
+				$ev[] = array('tag' => 'regok-' . $k, 'rids' => array($k), 'url' => 'resident.html', 'body' => '🎉 عضویت شما در ساختمان تأیید شد');
+			}
+		}
+		// درخواست مدیر بلوک → مدیر کل
+		$bB = self::byIdMap($L($before, 'block_managers'));
+		foreach ($L($after, 'block_managers') as $m) {
+			if (!is_array($m) || !isset($m['id']) || isset($bB[(string) $m['id']]) || self::bmStatus($m) !== 'pending') continue;
+			$ev[] = array('tag' => 'bmreq-' . $m['id'], 'mgr' => true, 'url' => 'index.html?n=settings', 'body' => '🧩 درخواست مدیر بلوک: ' . self::shortTxt(isset($m['name']) ? $m['name'] : '', 40) . ' (بلوک ' . (isset($m['block']) ? $m['block'] : '') . ')');
+		}
+		foreach ($ev as &$e) { $e += array('units' => array(), 'rids' => array(), 'mgr' => false, 'blocks' => array()); $e['units'] = array_values(array_unique(array_map('strval', $e['units']))); }
+		unset($e);
+		return array_slice($ev, 0, 300);
+	}
+
+	/** گیرنده‌های یک رویداد از میان اشتراک‌ها (با همان قواعد حریم pull) */
+	public static function pushTargets($subs, $event, $after, $code, $actor = null) {
+		$out = array(); $idCache = array(); $bCache = array();
+		$units = array_flip($event['units']); $rids = array_flip(array_map('strval', $event['rids']));
+		foreach ((array) $subs as $s) {
+			if (!is_array($s) || empty($s['e']) || empty($s['ro'])) continue;
+			$ro = $s['ro'];
+			if ($actor && $actor['ro'] === $ro && ($ro === 'm' || (string) (isset($s[$ro === 'r' ? 'rid' : 'bid']) ? $s[$ro === 'r' ? 'rid' : 'bid'] : '') === $actor['id'])) continue; // به خود فرستنده نه
+			if ($ro === 'm') { if (!empty($event['mgr'])) $out[] = $s; continue; }
+			if ($ro === 'b') {
+				if (empty($event['mgr']) || !$event['blocks']) continue;
+				$bid = (string) (isset($s['bid']) ? $s['bid'] : '');
+				if (!array_key_exists($bid, $bCache)) {
+					$bCache[$bid] = null;
+					foreach ((isset($after['block_managers']) ? self::jlist($after['block_managers']['v']) : array()) as $m)
+						if (is_array($m) && isset($m['id']) && (string) $m['id'] === $bid && self::bmActive($m)) $bCache[$bid] = self::blockKey(isset($m['block']) ? $m['block'] : '');
+				}
+				if ($bCache[$bid] !== null && $bCache[$bid] !== '—' && in_array($bCache[$bid], $event['blocks'], true)) $out[] = $s;
+				continue;
+			}
+			if ($ro === 'r') {
+				$rid = (string) (isset($s['rid']) ? $s['rid'] : '');
+				if ($rid === '') continue;
+				if (!isset($idCache[$rid])) $idCache[$rid] = self::ident(array('rid' => $rid, 'c' => $code), $after);
+				$id = $idCache[$rid];
+				if ($id['rid'] === null) continue; // ردشده یا حذف‌شده
+				if (isset($rids[$rid])) { $out[] = $s; continue; }
+				if (empty($id['approved'])) continue; // ثبت‌نام تأییدنشده هنوز داده واحد را نمی‌گیرد
+				foreach ($id['unitIds'] as $u) if (isset($units[$u])) { $out[] = $s; break; }
+			}
+		}
+		return $out;
+	}
+
+	private function queuePush($phone, $events, $after, $meta, $actor) {
+		if (!$events) return;
+		$subs = (array) $this->s->getPush($phone);
+		if (!$subs) return;
+		$code = self::normCode(is_array($meta) && isset($meta['code']) ? $meta['code'] : '');
+		foreach ($events as $e) {
+			foreach (self::pushTargets($subs, $e, $after, $code, $actor) as $s) {
+				if (count($this->outbox) >= 400) return;
+				$this->outbox[] = array('phone' => $phone, 'sub' => $s, 'tag' => $e['tag'], 'payload' => self::enc(array('title' => 'آپارتمان پلاس', 'body' => $e['body'], 'url' => $e['url'], 'tag' => $e['tag'])));
+			}
+		}
 	}
 
 	/** returns array(status, body) */
@@ -833,6 +1055,9 @@ class Apt_Sync_Core {
 				case 'pull': $out = $this->pull($body); break;
 				case 'push': $out = $this->push($body); break;
 				case 'change_password': $out = $this->changePassword($body); break;
+				case 'push_key': $out = $this->pushKeyAction(); break;
+				case 'push_sub': $out = $this->pushSub($body); break;
+				case 'push_unsub': $out = $this->pushUnsub($body); break;
 				default: throw new Apt_Sync_Error(400, 'unknown_action');
 			}
 			return array(200, $out);

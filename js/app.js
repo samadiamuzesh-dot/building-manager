@@ -6749,7 +6749,7 @@ function saveMessage() {
       ownerName: t.ownerName,
       body: body,
       direction: 'sent',
-      read: true,
+      read: false, // «خوانده‌شده» را ساکن تعیین می‌کند (قبلاً true بود و زنگوله ساکن پیام مدیر را نشان نمی‌داد)
       date: persianDate,
       time: persianTime,
       createdAt: now.toISOString(),
@@ -6888,7 +6888,7 @@ function sendConversationReply() {
     ownerName: unit.owner?.name || 'ثبت‌نام نکرده',
     body: body,
     direction: 'sent',
-    read: true,
+    read: false,
     date: persianDate,
     time: persianTime,
     createdAt: now.toISOString(),
@@ -8563,7 +8563,8 @@ async function deleteBlockManager(id) {
 }
 
 /** خروج مدیر بلوک: داده‌های بلوک از دستگاه پاک می‌شود */
-function blockManagerLogout(message) {
+async function blockManagerLogout(message) {
+  if (window.AptNotify) { try { await AptNotify.disablePush(); } catch (e) {} }
   try { if (window.AptSync && window.AptSync.blockLogout) window.AptSync.blockLogout(); else localStorage.removeItem('ham_sakhteman_block_session'); } catch (e) {}
   localStorage.removeItem('ham_sakhteman_block_session');
   if (message) { try { sessionStorage.setItem('apt_login_notice', message); } catch (e) {} }
@@ -9026,8 +9027,56 @@ function init() {
     }, 200);
   });
 
-  switchPage('dashboard');
+  const fromUrl = window.AptNotify ? AptNotify.consumeUrlPage() : '';
+  if (fromUrl) openManagerTarget(fromUrl); else switchPage('dashboard');
+  if (window.AptNotify) AptNotify.banner(document.getElementById('managerPushBanner'));
 }
+
+/* ============================================================
+   🔔 صدا + اعلان سیستمی برای موارد تازه (مدیر کل و مدیر بلوک)
+   اعلام پرداخت، درخواست عضویت ساکن، پیام ساکن، درخواست مدیر بلوک
+   ============================================================ */
+function openManagerTarget(n) {
+  n = String(n || '');
+  if (n === 'settings' && !isBlockManager()) { switchPage('settings'); try { showSettingsSubpage('blockManagers'); } catch (e) {} return; }
+  if (!document.getElementById('page-' + n) || (isBlockManager() && !BLOCK_ALLOWED_PAGES.includes(n))) n = 'dashboard';
+  switchPage(n);
+}
+function managerNotifyItems() {
+  const cut = (t, k) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > k ? t.slice(0, k - 1) + '…' : t; };
+  const unitsById = new Map((UNITS || []).map(u => [String(u.id), u]));
+  const unitLbl = (uid) => { const u = unitsById.get(String(uid)); if (!u) return 'یک واحد'; const b = String(u.block || '').trim(); return 'واحد ' + u.number + (b && b !== '—' ? ' بلوک ' + b : ''); };
+  const items = [];
+  (loadCharges() || []).filter(c => c && c.pendingApproval && !c.paid).forEach(c => items.push({
+    tag: 'pay-' + c.id + '-' + (c.pendingAt || ''), url: 'index.html?n=charges', page: 'charges',
+    body: '💳 اعلام پرداخت ' + unitLbl(c.unitId) + ': ' + formatToman(c.total != null ? c.total : c.amount) }));
+  const regs = loadRegisteredResidentsForBuilding().mine.filter(r => r && r.status === 'pending' && (!isBlockManager() || String(r.block || '').trim() === myBlockName()));
+  regs.forEach(r => items.push({ tag: 'reg-' + r.id, url: 'index.html?n=units', page: 'units',
+    body: '👤 درخواست عضویت: ' + cut(r.name, 40) + ' — واحد ' + r.unitNumber + (r.block && r.block !== '—' ? ' بلوک ' + r.block : '') }));
+  (loadMessages() || []).filter(m => m && m.direction === 'received').forEach(m => items.push({ tag: 'rmsg-' + m.id, url: 'index.html?n=messages', page: 'messages',
+    body: '💬 پیام از ' + unitLbl(m.unitId) + ': ' + cut(m.body, 140) }));
+  if (!isBlockManager()) pendingBlockRequests().forEach(m => items.push({ tag: 'bmreq-' + m.id, url: 'index.html?n=settings', page: 'settings',
+    body: '🧩 درخواست مدیر بلوک: ' + cut(m.name, 40) + ' (بلوک ' + m.block + ')' }));
+  return items;
+}
+function managerNotifyCheck() {
+  if (!window.AptNotify || !window.AptSync || document.body.classList.contains('signup-mode')) return;
+  const scope = AptSync.identity();
+  if (!scope || scope[0] === 'r') return;
+  try { loadUnits(); } catch (e) {}
+  AptNotify.check(scope, managerNotifyItems(), {
+    url: 'index.html',
+    onFresh: (fresh) => toastInfo(fresh.length > 1 ? `${formatNumber(fresh.length)} مورد تازه رسید` : escapeHtml(fresh[0].body), '🔔 اعلان تازه'),
+  });
+}
+window.addEventListener('apt-sync-pulled', () => {
+  try { if (typeof refreshNotifications === 'function') refreshNotifications(); } catch (e) {}
+  managerNotifyCheck();
+});
+window.addEventListener('apt-open-url', (e) => {
+  const n = window.AptNotify ? AptNotify.pageFromUrl(e.detail && e.detail.url) : '';
+  if (n) { try { closeNotifPanel(); } catch (er) {} openManagerTarget(n); }
+});
 
 
 function getExpectedUnitsCount(building) {
@@ -9443,6 +9492,8 @@ async function handleLogout() {
     return;
   }
 
+  // اعلان‌های این حساب دیگر به این دستگاه نیاید
+  if (window.AptNotify) await AptNotify.disablePush();
   localStorage.setItem('ham_sakhteman_logged_out', 'true');
 
   toastSuccess('از پنل خارج شدید. در حال انتقال...');

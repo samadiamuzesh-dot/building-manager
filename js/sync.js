@@ -364,6 +364,8 @@
         throw e;
       }
       badge('ok', 'آخرین همگام‌سازی: ' + new Date().toLocaleTimeString('fa-IR'));
+      // برنامه‌ها (زنگوله، صدا و اعلان) بلافاصله بعد از هر دریافت از سرور به‌روز شوند
+      try { window.dispatchEvent(new CustomEvent('apt-sync-pulled', { detail: { role: c.role } })); } catch (e) {}
     } catch (e) {
       badge(e.status ? 'err' : 'off', String(e.message || e));
       if (opts && opts.throw) throw e;
@@ -484,6 +486,27 @@
       return call({ action: 'change_password', token, oldHash, newHash });
     },
     forget() { const c = ctx(); if (c) del(tokKey(c)); },
+    /** هویت فعلی این صفحه (برای کلید «دیده‌شده»های اعلان و ثبت اشتراک push) */
+    identity() {
+      const c = ctx(); if (!c) return '';
+      if (c.role === 'r') return c.rid ? 'r_' + c.phone + '_' + c.rid : '';
+      if (c.role === 'b') { const bs = jparse(get(BLOCK_SESSION), {}); return 'b_' + c.phone + '_' + (bs.id != null ? bs.id : c.bPhone); }
+      return 'm_' + c.phone;
+    },
+    /* ---------- اعلان فوری Web Push (سرور ۱.۴) ---------- */
+    async pushKey() { const j = await call({ action: 'push_key' }); return j && j.key; },
+    async pushRegister(sub) {
+      const c = ctx(); if (!c) throw Object.assign(new Error('no_ctx'), { status: 401 });
+      if (c.role === 'r' && !c.rid) throw Object.assign(new Error('need_login'), { status: 403 });
+      const token = await ensureToken(c);
+      if (c.role === 'r' && usingGuest) throw Object.assign(new Error('need_login'), { status: 403 });
+      return call({ action: 'push_sub', token, sub });
+    },
+    async pushUnregister(endpoint) {
+      const c = ctx(); if (!c || !endpoint) return;
+      const token = get(tokKey(c)); if (!token) return;
+      return call({ action: 'push_unsub', token, endpoint }, true);
+    },
   };
   window.AptSync = AptSync;
 
